@@ -109,7 +109,11 @@ const complaintSchema = new mongoose.Schema(
         createdAt: { type: Date, default: Date.now }
       }
     ],
-    statusHistory: [statusHistorySchema]
+    statusHistory: [statusHistorySchema],
+    agreedToTerms: {
+      type: Boolean,
+      default: false
+    }
   },
   {
     timestamps: true

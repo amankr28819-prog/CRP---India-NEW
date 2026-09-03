@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, AlertCircle } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { UserPlus, AlertCircle, Info } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function CitizenRegister() {
@@ -14,6 +14,10 @@ export default function CitizenRegister() {
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const from = location.state?.from?.pathname || location.state?.from || '/';
+  const redirectMessage = location.state?.message;
 
   const handleInputChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -35,7 +39,7 @@ export default function CitizenRegister() {
     try {
       const res = await register(formData);
       if (res.success) {
-        navigate('/');
+        navigate(from, { replace: true });
       }
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -58,6 +62,13 @@ export default function CitizenRegister() {
             Create an account to track all your civic grievances in one place
           </p>
         </div>
+
+        {redirectMessage && !error && (
+          <div className="alert alert-info" style={{ marginBottom: '20px', backgroundColor: 'var(--color-accent-blue-bg)', borderColor: 'var(--color-primary)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Info size={18} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+            <span style={{ fontSize: '0.875rem' }}>{redirectMessage}</span>
+          </div>
+        )}
 
         {error && (
           <div className="alert alert-error" style={{ marginBottom: '20px' }}>
@@ -140,7 +151,11 @@ export default function CitizenRegister() {
 
         <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
           Already have an account?{' '}
-          <Link to="/login" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>
+          <Link
+            to="/login"
+            state={{ from, message: redirectMessage }}
+            style={{ color: 'var(--color-primary)', fontWeight: 600 }}
+          >
             Sign in
           </Link>
         </div>

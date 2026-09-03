@@ -29,6 +29,21 @@ const createComplaint = async (req, res, next) => {
       citizenEmail
     } = req.body;
 
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please log in or register to report a civic issue.'
+      });
+    }
+
+    const agreed = req.body.agreedToTerms === true || req.body.agreedToTerms === 'true';
+    if (!agreed) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please agree to the Privacy Policy and Terms of Service before submitting your complaint.'
+      });
+    }
+
     if (!category || !title || !description || !location || !ward || !city) {
       return res.status(400).json({
         success: false,
@@ -36,10 +51,10 @@ const createComplaint = async (req, res, next) => {
       });
     }
 
-    const name = citizenName || (req.user ? req.user.name : 'Anonymous Resident');
-    const phone = citizenPhone || (req.user ? req.user.phone : '');
-    const email = citizenEmail || (req.user ? req.user.email : '');
-    const userId = req.user ? req.user._id : null;
+    const name = citizenName || req.user.name;
+    const phone = citizenPhone || req.user.phone || '';
+    const email = citizenEmail || req.user.email || '';
+    const userId = req.user._id;
 
     // Process uploaded images
     const imagePaths = [];
@@ -81,7 +96,8 @@ const createComplaint = async (req, res, next) => {
           remark: 'Complaint registered successfully on the civic portal.',
           timestamp: new Date()
         }
-      ]
+      ],
+      agreedToTerms: true
     });
 
     res.status(201).json({

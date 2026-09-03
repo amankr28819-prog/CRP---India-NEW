@@ -81,22 +81,28 @@ export default function Navbar() {
 
         {/* Desktop Navigation Links */}
         <nav style={{ display: 'none', alignItems: 'center', gap: '28px' }} className="desktop-nav">
-          {navLinks.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              style={{
-                fontSize: '0.9rem',
-                fontWeight: isActive(link.path) ? 600 : 500,
-                color: isActive(link.path) ? 'var(--color-primary)' : 'var(--text-primary)',
-                borderBottom: isActive(link.path) ? '2px solid var(--color-primary)' : '2px solid transparent',
-                padding: '6px 0',
-                transition: 'color 0.15s ease'
-              }}
-            >
-              {link.name}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const isReport = link.path === '/report';
+            const targetTo = !isAuthenticated && isReport ? '/login' : link.path;
+            const targetState = !isAuthenticated && isReport ? { from: '/report', message: 'Please log in or register to report a civic issue.' } : undefined;
+            return (
+              <Link
+                key={link.path}
+                to={targetTo}
+                state={targetState}
+                style={{
+                  fontSize: '0.9rem',
+                  fontWeight: isActive(link.path) ? 600 : 500,
+                  color: isActive(link.path) ? 'var(--color-primary)' : 'var(--text-primary)',
+                  borderBottom: isActive(link.path) ? '2px solid var(--color-primary)' : '2px solid transparent',
+                  padding: '6px 0',
+                  transition: 'color 0.15s ease'
+                }}
+              >
+                {link.name}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Right Desktop Actions */}
@@ -144,7 +150,11 @@ export default function Navbar() {
           )}
 
           {/* Report an Issue CTA Button with restrained red indicator dot */}
-          <Link to="/report" className="btn btn-primary btn-sm btn-report-accent">
+          <Link
+            to={!isAuthenticated ? '/login' : '/report'}
+            state={!isAuthenticated ? { from: '/report', message: 'Please log in or register to report a civic issue.' } : undefined}
+            className="btn btn-primary btn-sm btn-report-accent"
+          >
             <span className="urgent-dot" title="Active grievance intake" />
             <span>Report an Issue</span>
           </Link>
@@ -178,26 +188,33 @@ export default function Navbar() {
           }}
           className="mobile-drawer"
         >
-          {navLinks.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              onClick={() => setMobileMenuOpen(false)}
-              style={{
-                fontSize: '1rem',
-                fontWeight: isActive(link.path) ? 600 : 500,
-                color: isActive(link.path) ? 'var(--color-primary)' : 'var(--text-primary)',
-                padding: '8px 0',
-                borderBottom: '1px solid var(--border-subtle)'
-              }}
-            >
-              {link.name}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const isReport = link.path === '/report';
+            const targetTo = !isAuthenticated && isReport ? '/login' : link.path;
+            const targetState = !isAuthenticated && isReport ? { from: '/report', message: 'Please log in or register to report a civic issue.' } : undefined;
+            return (
+              <Link
+                key={link.path}
+                to={targetTo}
+                state={targetState}
+                onClick={() => setMobileMenuOpen(false)}
+                style={{
+                  fontSize: '1rem',
+                  fontWeight: isActive(link.path) ? 600 : 500,
+                  color: isActive(link.path) ? 'var(--color-primary)' : 'var(--text-primary)',
+                  padding: '8px 0',
+                  borderBottom: '1px solid var(--border-subtle)'
+                }}
+              >
+                {link.name}
+              </Link>
+            );
+          })}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
             <Link
-              to="/report"
+              to={!isAuthenticated ? '/login' : '/report'}
+              state={!isAuthenticated ? { from: '/report', message: 'Please log in or register to report a civic issue.' } : undefined}
               onClick={() => setMobileMenuOpen(false)}
               className="btn btn-primary btn-report-accent"
               style={{ width: '100%' }}

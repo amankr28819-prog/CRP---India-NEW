@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
+import CitizenProtectedRoute from './components/CitizenProtectedRoute';
 
 // Citizen Pages
 import RoleSelection from './pages/RoleSelection';
@@ -49,8 +50,22 @@ function AppLayout() {
             path="/"
             element={!hasVisited ? <Navigate to="/select-role" replace /> : <Home />}
           />
-          <Route path="/report" element={<CategorySelect />} />
-          <Route path="/report/:categorySlug" element={<ComplaintForm />} />
+          <Route
+            path="/report"
+            element={
+              <CitizenProtectedRoute>
+                <CategorySelect />
+              </CitizenProtectedRoute>
+            }
+          />
+          <Route
+            path="/report/:categorySlug"
+            element={
+              <CitizenProtectedRoute>
+                <ComplaintForm />
+              </CitizenProtectedRoute>
+            }
+          />
           <Route path="/track" element={<TrackComplaint />} />
           <Route path="/complaint/:id" element={<ComplaintDetails />} />
           <Route path="/login" element={<CitizenLogin />} />

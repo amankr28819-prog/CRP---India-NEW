@@ -58,6 +58,7 @@ export default function ComplaintForm() {
   const [submitError, setSubmitError] = useState('');
   const [submittedRef, setSubmittedRef] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
@@ -143,6 +144,9 @@ export default function ComplaintForm() {
     if (!formData.ward.trim()) errs.ward = 'Ward identifier is required.';
     if (!formData.city.trim()) errs.city = 'City name is required.';
     if (!formData.citizenName.trim()) errs.citizenName = 'Your name is required for verification.';
+    if (!agreedToTerms) {
+      errs.agreedToTerms = 'Please agree to the Privacy Policy and Terms of Service before submitting your complaint.';
+    }
     return errs;
   };
 
@@ -171,6 +175,7 @@ export default function ComplaintForm() {
       data.append('citizenName', formData.citizenName);
       data.append('citizenPhone', formData.citizenPhone);
       data.append('citizenEmail', formData.citizenEmail);
+      data.append('agreedToTerms', agreedToTerms);
 
       selectedImages.forEach(file => {
         data.append('images', file);
@@ -550,6 +555,65 @@ export default function ComplaintForm() {
           <div className="form-hint" style={{ marginTop: '8px' }}>
             Officers may use your contact info if they need help finding the location.
           </div>
+        </div>
+
+        {/* Privacy Policy and Terms Agreement Checkbox */}
+        <div style={{ marginTop: '24px', paddingTop: '18px', borderTop: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+            <input
+              id="agreeToTermsCheckbox"
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => {
+                setAgreedToTerms(e.target.checked);
+                if (e.target.checked && errors.agreedToTerms) {
+                  setErrors(prev => ({ ...prev, agreedToTerms: '' }));
+                }
+              }}
+              style={{
+                marginTop: '3px',
+                width: '18px',
+                height: '18px',
+                cursor: 'pointer',
+                accentColor: 'var(--color-primary)'
+              }}
+            />
+            <label
+              htmlFor="agreeToTermsCheckbox"
+              style={{
+                fontSize: '0.875rem',
+                color: 'var(--text-primary)',
+                lineHeight: 1.5,
+                cursor: 'pointer',
+                userSelect: 'none'
+              }}
+            >
+              I agree to the{' '}
+              <Link
+                to="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'var(--color-primary)', textDecoration: 'underline', fontWeight: 600 }}
+              >
+                Privacy Policy
+              </Link>{' '}
+              and{' '}
+              <Link
+                to="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'var(--color-primary)', textDecoration: 'underline', fontWeight: 600 }}
+              >
+                Terms of Service
+              </Link>
+              . <span className="required">*</span>
+            </label>
+          </div>
+          {errors.agreedToTerms && (
+            <div className="form-error" style={{ marginTop: '6px', marginLeft: '28px' }}>
+              {errors.agreedToTerms}
+            </div>
+          )}
         </div>
 
         {/* Submit Button */}

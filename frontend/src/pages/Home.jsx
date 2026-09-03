@@ -15,9 +15,11 @@ import {
   ArrowRight,
   ArrowDown
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [activeCategory, setActiveCategory] = useState(null);
 
   useEffect(() => {
@@ -35,6 +37,16 @@ export default function Home() {
     if (isTouch && activeCategory !== slug) {
       e.preventDefault();
       setActiveCategory(slug);
+      return;
+    }
+    if (!isAuthenticated) {
+      e.preventDefault();
+      navigate('/login', {
+        state: {
+          from: `/report/${slug}`,
+          message: 'Please log in or register to report a civic issue.'
+        }
+      });
       return;
     }
     navigate(`/report/${slug}`);
@@ -114,7 +126,11 @@ export default function Home() {
 
             {/* Main Action Buttons */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
-              <Link to="/report" className="btn btn-primary btn-lg btn-report-accent">
+              <Link
+                to={!isAuthenticated ? '/login' : '/report'}
+                state={!isAuthenticated ? { from: '/report', message: 'Please log in or register to report a civic issue.' } : undefined}
+                className="btn btn-primary btn-lg btn-report-accent"
+              >
                 <span className="urgent-dot" />
                 <span>Report an Issue</span>
               </Link>
@@ -182,7 +198,11 @@ export default function Home() {
                 Click a category below to quickly file a complaint:
               </p>
             </div>
-            <Link to="/report" style={{ fontSize: '0.875rem', color: 'var(--color-primary)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <Link
+              to={!isAuthenticated ? '/login' : '/report'}
+              state={!isAuthenticated ? { from: '/report', message: 'Please log in or register to report a civic issue.' } : undefined}
+              style={{ fontSize: '0.875rem', color: 'var(--color-primary)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            >
               <span>View all categories</span>
               <ArrowRight size={15} />
             </Link>

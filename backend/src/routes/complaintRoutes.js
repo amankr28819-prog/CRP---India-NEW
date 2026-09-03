@@ -11,7 +11,7 @@ const { verifyToken, isAuthority, optionalAuth } = require('../middleware/auth')
 const upload = require('../middleware/upload');
 
 // Public or Citizen routes
-router.post('/', optionalAuth, upload.array('images', 3), createComplaint);
+router.post('/', verifyToken, upload.array('images', 3), createComplaint);
 router.get('/', optionalAuth, getComplaints);
 router.get('/:referenceId', getComplaintByRefId);
 
