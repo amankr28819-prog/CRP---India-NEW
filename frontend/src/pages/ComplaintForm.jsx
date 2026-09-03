@@ -9,7 +9,8 @@ import {
   Copy,
   Search,
   ArrowLeft,
-  AlertCircle
+  AlertCircle,
+  AlertTriangle
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -60,6 +61,57 @@ export default function ComplaintForm() {
   const [copied, setCopied] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [errors, setErrors] = useState({});
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+
+  // Check if citizen entered any data into the form
+  const isFormDirty = Boolean(
+    formData.title.trim() ||
+    formData.description.trim() ||
+    formData.location.trim() ||
+    formData.ward.trim() ||
+    selectedImages.length > 0 ||
+    formData.latitude ||
+    formData.longitude
+  );
+
+  // Prevent accidental loss on page refresh/close
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isFormDirty && !submittedRef) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isFormDirty, submittedRef]);
+
+  // Handle ESC key to dismiss confirmation modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && showLeaveModal) {
+        setShowLeaveModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showLeaveModal]);
+
+  const executeBack = () => {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/report');
+    }
+  };
+
+  const handleBack = () => {
+    if (isFormDirty && !submittedRef) {
+      setShowLeaveModal(true);
+      return;
+    }
+    executeBack();
+  };
 
   useEffect(() => {
     if (categorySlug && SLUG_TO_NAME[categorySlug]) {
@@ -274,10 +326,122 @@ export default function ComplaintForm() {
 
   return (
     <div className="container" style={{ padding: '32px 20px 64px 20px', maxWidth: '800px' }}>
-      <Link to="/report" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', color: 'var(--color-primary)', marginBottom: '18px' }}>
-        <ArrowLeft size={16} />
-        <span>Back to Categories</span>
-      </Link>
+      {/* Back Button */}
+      <button
+        type="button"
+        onClick={handleBack}
+        className="btn btn-secondary btn-sm"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          marginBottom: '20px',
+          cursor: 'pointer'
+        }}
+        aria-label="Back to previous page"
+      >
+        <ArrowLeft size={15} />
+        <span>Back</span>
+      </button>
+
+      {/* Leave Confirmation Modal */}
+      {showLeaveModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px',
+            backdropFilter: 'blur(2px)'
+          }}
+          onClick={() => setShowLeaveModal(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-leave-title"
+        >
+          <div
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '8px',
+              padding: '28px',
+              maxWidth: '440px',
+              width: '100%',
+              boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <div
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--color-accent-amber-bg)',
+                  color: 'var(--color-accent-amber)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}
+              >
+                <AlertTriangle size={20} />
+              </div>
+              <h3
+                id="modal-leave-title"
+                style={{
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  color: 'var(--text-primary)',
+                  margin: 0
+                }}
+              >
+                Leave without submitting?
+              </h3>
+            </div>
+
+            <p
+              style={{
+                fontSize: '0.875rem',
+                color: 'var(--text-secondary)',
+                lineHeight: 1.5,
+                marginBottom: '24px'
+              }}
+            >
+              You have entered details in your complaint form. If you go back now, your entered information will not be saved.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setShowLeaveModal(false)}
+                className="btn btn-secondary btn-sm"
+                style={{ padding: '8px 16px' }}
+              >
+                Stay on Page
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLeaveModal(false);
+                  executeBack();
+                }}
+                className="btn btn-primary btn-sm btn-report-accent"
+                style={{ padding: '8px 16px' }}
+              >
+                Leave Page
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="page-header" style={{ marginBottom: '24px', paddingTop: '4px' }}>
         <h1 className="page-title">Report an Issue</h1>
