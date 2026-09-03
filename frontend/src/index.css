@@ -557,3 +557,136 @@ h1, h2, h3, h4, h5, h6 {
     gap: 12px;
   }
 }
+/* How It Works Flowchart Styles */
+.flowchart-wrapper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  position: relative;
+}
+
+.flowchart-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+  max-width: 290px;
+}
+
+.flowchart-circle {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px solid var(--color-primary);
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+}
+
+.flowchart-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.flowchart-desc {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  max-width: 240px;
+}
+
+.flowchart-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 80px;
+  margin-top: 15px;
+  position: relative;
+  color: var(--color-primary);
+}
+
+.flowchart-connector-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--border-subtle);
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.flowchart-connector-arrow {
+  position: relative;
+  z-index: 2;
+  background-color: var(--bg-primary);
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flowchart-connector .arrow-vertical {
+  display: none;
+}
+
+.flowchart-connector .arrow-horizontal {
+  display: block;
+}
+
+/* Mobile: Vertical Flow */
+@media (max-width: 768px) {
+  .flowchart-wrapper {
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .flowchart-step {
+    max-width: 100%;
+    width: 100%;
+    padding: 8px 0;
+  }
+
+  .flowchart-connector {
+    flex: none;
+    height: 38px;
+    width: 100%;
+    margin: 2px 0;
+    flex-direction: column;
+  }
+
+  .flowchart-connector-line {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    right: auto;
+    width: 2px;
+    height: 100%;
+    transform: translateX(-50%);
+  }
+
+  .flowchart-connector-arrow {
+    padding: 4px 0;
+  }
+
+  .flowchart-connector .arrow-horizontal {
+    display: none;
+  }
+
+  .flowchart-connector .arrow-vertical {
+    display: block;
+  }
+}

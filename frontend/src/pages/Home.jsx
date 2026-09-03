@@ -12,7 +12,8 @@ import {
   Dam,
   Trees,
   HelpCircle,
-  ArrowRight
+  ArrowRight,
+  ArrowDown
 } from 'lucide-react';
 
 export default function Home() {
@@ -227,52 +228,73 @@ export default function Home() {
         </div>
       </section>
 
-      {/* How It Works - Simplified, Citizen-Friendly 3 Step Flow */}
-      <section style={{ padding: '36px 0 12px 0' }}>
+      {/* How It Works - Visual Process Flowchart */}
+      <section style={{ padding: '36px 0 16px 0' }}>
         <div className="container">
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '28px' }}>
             <h2 style={{ fontSize: '1.3rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
               How It Works
             </h2>
             <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              Three simple steps to resolve issues in your neighborhood.
+              Three simple steps to report and track a civic problem.
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-            <div style={{ padding: '20px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '6px' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
-                Step 1
+          <div className="flowchart-wrapper">
+            {/* Step 01 */}
+            <div className="flowchart-step">
+              <div className="flowchart-circle">
+                01
               </div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+              <h3 className="flowchart-title">
                 Report a problem
               </h3>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                Pick a category, describe the issue, add the location, and optionally attach photos.
+              <p className="flowchart-desc">
+                Choose the problem, location and add a photo if needed.
               </p>
             </div>
 
-            <div style={{ padding: '20px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '6px' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
-                Step 2
+            {/* Connector 1 -> 2 */}
+            <div className="flowchart-connector" aria-hidden="true">
+              <div className="flowchart-connector-line" />
+              <div className="flowchart-connector-arrow">
+                <ArrowRight className="arrow-horizontal" size={18} strokeWidth={2.2} />
+                <ArrowDown className="arrow-vertical" size={18} strokeWidth={2.2} />
               </div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+            </div>
+
+            {/* Step 02 */}
+            <div className="flowchart-step">
+              <div className="flowchart-circle">
+                02
+              </div>
+              <h3 className="flowchart-title">
                 Sent to your local team
               </h3>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                Your issue is sent directly to the right municipal department and field officer.
+              <p className="flowchart-desc">
+                We send it to the right municipal team.
               </p>
             </div>
 
-            <div style={{ padding: '20px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '6px' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '8px' }}>
-                Step 3
+            {/* Connector 2 -> 3 */}
+            <div className="flowchart-connector" aria-hidden="true">
+              <div className="flowchart-connector-line" />
+              <div className="flowchart-connector-arrow">
+                <ArrowRight className="arrow-horizontal" size={18} strokeWidth={2.2} />
+                <ArrowDown className="arrow-vertical" size={18} strokeWidth={2.2} />
               </div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
+            </div>
+
+            {/* Step 03 */}
+            <div className="flowchart-step">
+              <div className="flowchart-circle">
+                03
+              </div>
+              <h3 className="flowchart-title">
                 Check your complaint
               </h3>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                Use your Reference ID to see live updates until the problem is fixed.
+              <p className="flowchart-desc">
+                Use your Reference ID to see updates.
               </p>
             </div>
           </div>
