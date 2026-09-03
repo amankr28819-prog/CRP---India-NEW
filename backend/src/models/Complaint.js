@@ -30,8 +30,8 @@ const complaintSchema = new mongoose.Schema(
     },
     citizen: {
       name: { type: String, required: true, trim: true },
-      phone: { type: String, trim: true, default: '' },
-      email: { type: String, trim: true, default: '' },
+      phone: { type: String, required: true, trim: true },
+      email: { type: String, required: true, trim: true },
       userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
     },
     category: {

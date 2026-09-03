@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   MapPin,
   Camera,
@@ -34,7 +34,8 @@ const SLUG_TO_NAME = {
 export default function ComplaintForm() {
   const { categorySlug } = useParams();
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
+  const { user, isAuthenticated, loading } = useAuth();
 
   const initialCategory = categorySlug ? SLUG_TO_NAME[categorySlug] || 'Roads & Potholes' : 'Roads & Potholes';
 
@@ -121,12 +122,24 @@ export default function ComplaintForm() {
   }, [categorySlug]);
 
   useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      navigate('/login', {
+        state: {
+          from: location,
+          message: 'Please log in or register to report a civic issue.'
+        },
+        replace: true
+      });
+    }
+  }, [isAuthenticated, loading, navigate, location]);
+
+  useEffect(() => {
     if (user) {
       setFormData(prev => ({
         ...prev,
-        citizenName: prev.citizenName || user.name,
-        citizenPhone: prev.citizenPhone || user.phone || '',
-        citizenEmail: prev.citizenEmail || user.email || ''
+        citizenName: user.name || '',
+        citizenPhone: user.phone || '',
+        citizenEmail: user.email || ''
       }));
     }
   }, [user]);
@@ -224,7 +237,21 @@ export default function ComplaintForm() {
       }
     }
 
-    if (!formData.citizenName.trim()) errs.citizenName = 'Your name is required for verification.';
+    // 3. Citizen Contact Details validation (mandatory from registered account)
+    const currentName = (user?.name || formData.citizenName || '').trim();
+    const currentPhone = (user?.phone || formData.citizenPhone || '').trim();
+    const currentEmail = (user?.email || formData.citizenEmail || '').trim();
+
+    if (!currentName) {
+      errs.citizenName = 'Full Name is missing from your registered account. Please update your account profile.';
+    }
+    if (!currentPhone) {
+      errs.citizenPhone = 'Phone Number is missing from your registered account. Please update your account profile.';
+    }
+    if (!currentEmail) {
+      errs.citizenEmail = 'Email Address is missing from your registered account. Please update your account profile.';
+    }
+
     if (!agreedToTerms) {
       errs.agreedToTerms = 'Please agree to the Privacy Policy and Terms of Service before submitting your complaint.';
     }
@@ -696,52 +723,105 @@ export default function ComplaintForm() {
 
         {/* Citizen Contact Section */}
         <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--border-subtle)' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '14px' }}>
-            Your Contact Details
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+              Your Contact Details
+            </h3>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', backgroundColor: 'var(--bg-subtle)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>
+              Auto-filled from registered account (Read-only)
+            </span>
+          </div>
+
+          {(!user?.name || !user?.phone || !user?.email) && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px 14px', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid var(--color-status-rejected)', borderRadius: '6px', marginBottom: '16px', color: 'var(--color-status-rejected)', fontSize: '0.8125rem', lineHeight: 1.5 }}>
+              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                Your registered account profile is missing required contact details ({!user?.name ? 'Full Name, ' : ''}{!user?.phone ? 'Phone Number, ' : ''}{!user?.email ? 'Email Address' : ''}). Please complete your account profile before submitting a complaint.
+              </div>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">
+              <label className="form-label" htmlFor="citizenName">
                 Full Name <span className="required">*</span>
               </label>
               <input
+                id="citizenName"
                 type="text"
                 name="citizenName"
-                value={formData.citizenName}
-                onChange={handleInputChange}
-                placeholder="e.g. Rajesh Nair"
-                className="form-input"
+                value={user?.name || formData.citizenName || ''}
+                readOnly
+                placeholder="Full Name *"
+                className={`form-input ${errors.citizenName ? 'input-error' : ''}`}
+                style={{
+                  backgroundColor: 'var(--bg-subtle)',
+                  cursor: 'not-allowed',
+                  color: 'var(--text-primary)',
+                  borderColor: errors.citizenName ? 'var(--color-status-rejected)' : 'var(--border-subtle)'
+                }}
               />
-              {errors.citizenName && <div className="form-error">{errors.citizenName}</div>}
+              {errors.citizenName && (
+                <div className="form-error" style={{ color: 'var(--color-status-rejected)', fontSize: '0.8125rem', marginTop: '4px' }}>
+                  {errors.citizenName}
+                </div>
+              )}
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Phone Number (Optional)</label>
+              <label className="form-label" htmlFor="citizenPhone">
+                Phone Number <span className="required">*</span>
+              </label>
               <input
+                id="citizenPhone"
                 type="tel"
                 name="citizenPhone"
-                value={formData.citizenPhone}
-                onChange={handleInputChange}
-                placeholder="e.g. +91 98765 43210"
-                className="form-input"
+                value={user?.phone || formData.citizenPhone || ''}
+                readOnly
+                placeholder="Phone Number *"
+                className={`form-input ${errors.citizenPhone ? 'input-error' : ''}`}
+                style={{
+                  backgroundColor: 'var(--bg-subtle)',
+                  cursor: 'not-allowed',
+                  color: 'var(--text-primary)',
+                  borderColor: errors.citizenPhone ? 'var(--color-status-rejected)' : 'var(--border-subtle)'
+                }}
               />
+              {errors.citizenPhone && (
+                <div className="form-error" style={{ color: 'var(--color-status-rejected)', fontSize: '0.8125rem', marginTop: '4px' }}>
+                  {errors.citizenPhone}
+                </div>
+              )}
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Email Address (Optional)</label>
+              <label className="form-label" htmlFor="citizenEmail">
+                Email Address <span className="required">*</span>
+              </label>
               <input
+                id="citizenEmail"
                 type="email"
                 name="citizenEmail"
-                value={formData.citizenEmail}
-                onChange={handleInputChange}
-                placeholder="e.g. rajesh@example.com"
-                className="form-input"
+                value={user?.email || formData.citizenEmail || ''}
+                readOnly
+                placeholder="Email Address *"
+                className={`form-input ${errors.citizenEmail ? 'input-error' : ''}`}
+                style={{
+                  backgroundColor: 'var(--bg-subtle)',
+                  cursor: 'not-allowed',
+                  color: 'var(--text-primary)',
+                  borderColor: errors.citizenEmail ? 'var(--color-status-rejected)' : 'var(--border-subtle)'
+                }}
               />
+              {errors.citizenEmail && (
+                <div className="form-error" style={{ color: 'var(--color-status-rejected)', fontSize: '0.8125rem', marginTop: '4px' }}>
+                  {errors.citizenEmail}
+                </div>
+              )}
             </div>
           </div>
           <div className="form-hint" style={{ marginTop: '8px' }}>
-            Officers may use your contact info if they need help finding the location.
+            Verified from your registered citizen account. Officers will use these contact details to follow up on your grievance.
           </div>
         </div>
 

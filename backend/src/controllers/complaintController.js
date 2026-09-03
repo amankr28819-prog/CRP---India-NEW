@@ -85,10 +85,18 @@ const createComplaint = async (req, res, next) => {
       });
     }
 
-    const name = citizenName || req.user.name;
-    const phone = citizenPhone || req.user.phone || '';
-    const email = citizenEmail || req.user.email || '';
+    // Retrieve verified contact info strictly from the authenticated user account (Security: do NOT trust client body)
+    const name = (req.user.name || '').trim();
+    const phone = (req.user.phone || '').trim();
+    const email = (req.user.email || '').trim();
     const userId = req.user._id;
+
+    if (!name || !phone || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Your registered account profile is missing required contact details (Full Name, Phone Number, or Email). Please update your account profile before submitting a complaint.'
+      });
+    }
 
     // Process uploaded images
     const imagePaths = [];
