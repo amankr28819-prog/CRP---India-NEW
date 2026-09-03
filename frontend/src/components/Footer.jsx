@@ -9,7 +9,7 @@ export default function Footer() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '32px', marginBottom: '32px' }}>
           {/* Section 1: CRP India */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div
                 style={{
                   width: '28px',
@@ -30,9 +30,6 @@ export default function Footer() {
                 CRP India
               </span>
             </div>
-            <p style={{ lineHeight: 1.6, fontSize: '0.8125rem', color: 'var(--text-footer)' }}>
-              Civic Reporting Platform — Empowering citizens across India to report municipal infrastructure defects, track grievance resolution in real time, and hold civic departments accountable.
-            </p>
           </div>
 
           {/* Section 2: Navigation */}
@@ -115,9 +112,8 @@ export default function Footer() {
           <div>
             &copy; {new Date().getFullYear()} CRP India. All Rights Reserved. Civic Infrastructure & Grievance Division.
           </div>
-          <div style={{ display: 'flex', gap: '16px' }}>
+          <div>
             <span>Compliant with Citizen Charter Guidelines</span>
-            <span>NIC Standards Aligned</span>
           </div>
         </div>
       </div>
