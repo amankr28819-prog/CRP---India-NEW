@@ -137,6 +137,9 @@ export default function ComplaintForm() {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
+    if ((name === 'latitude' || name === 'longitude') && errors.gps) {
+      setErrors(prev => ({ ...prev, gps: '' }));
+    }
   };
 
   const handleImageChange = (e) => {
@@ -179,15 +182,14 @@ export default function ComplaintForm() {
         setFormData(prev => ({
           ...prev,
           latitude: lat,
-          longitude: lng,
-          location: prev.location.trim() ? prev.location : `GPS: ${lat}, ${lng}`
+          longitude: lng
         }));
-        setErrors(prev => ({ ...prev, location: '' }));
+        setErrors(prev => ({ ...prev, gps: '' }));
         setGpsLoading(false);
       },
       (error) => {
         setGpsLoading(false);
-        setGpsError('Unable to retrieve coordinates. Please enter the location manually.');
+        setGpsError('Unable to retrieve coordinates. Please enter your coordinates manually.');
       },
       { timeout: 10000, enableHighAccuracy: true }
     );
@@ -197,9 +199,31 @@ export default function ComplaintForm() {
     const errs = {};
     if (!formData.title.trim()) errs.title = 'Complaint title is required.';
     if (!formData.description.trim()) errs.description = 'Please provide detailed description.';
-    if (!formData.location.trim()) errs.location = 'Location is required. Please provide the location of the issue.';
-    if (!formData.ward.trim()) errs.ward = 'Ward identifier is required.';
-    if (!formData.city.trim()) errs.city = 'City name is required.';
+    
+    // 1. Manual Location validation
+    if (!formData.location || !formData.location.trim()) {
+      errs.location = 'Location is required.';
+    }
+
+    if (!formData.ward || !formData.ward.trim()) errs.ward = 'Ward identifier is required.';
+    if (!formData.city || !formData.city.trim()) errs.city = 'City name is required.';
+
+    // 2. GPS Location validation
+    const latStr = formData.latitude !== null && formData.latitude !== undefined ? String(formData.latitude).trim() : '';
+    const lngStr = formData.longitude !== null && formData.longitude !== undefined ? String(formData.longitude).trim() : '';
+
+    if (!latStr || !lngStr) {
+      errs.gps = 'GPS location is required. Please enter your coordinates or use your current device GPS.';
+    } else {
+      const numLat = Number(latStr);
+      const numLng = Number(lngStr);
+      if (isNaN(numLat) || numLat < -90 || numLat > 90) {
+        errs.gps = 'Invalid latitude. Latitude must be a number between -90 and 90.';
+      } else if (isNaN(numLng) || numLng < -180 || numLng > 180) {
+        errs.gps = 'Invalid longitude. Longitude must be a number between -180 and 180.';
+      }
+    }
+
     if (!formData.citizenName.trim()) errs.citizenName = 'Your name is required for verification.';
     if (!agreedToTerms) {
       errs.agreedToTerms = 'Please agree to the Privacy Policy and Terms of Service before submitting your complaint.';
@@ -552,11 +576,11 @@ export default function ComplaintForm() {
           </div>
         </div>
 
-        {/* Optional GPS Location */}
-        <div className="form-group" style={{ backgroundColor: 'var(--bg-subtle)', padding: '16px', borderRadius: '6px' }}>
+        {/* Required GPS Location */}
+        <div className="form-group" style={{ backgroundColor: 'var(--bg-subtle)', padding: '16px', borderRadius: '6px', border: errors.gps ? '1px solid var(--color-status-rejected)' : '1px solid var(--border-subtle)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '8px' }}>
             <label className="form-label" style={{ marginBottom: 0 }}>
-              GPS Coordinates (Optional)
+              GPS Coordinates <span className="required">*</span>
             </label>
             <button
               type="button"
@@ -575,18 +599,23 @@ export default function ComplaintForm() {
               name="latitude"
               value={formData.latitude}
               onChange={handleInputChange}
-              placeholder="Latitude (e.g. 12.9716)"
-              className="form-input"
+              placeholder="Latitude * (e.g. 12.9716)"
+              className={`form-input ${errors.gps ? 'input-error' : ''}`}
             />
             <input
               type="text"
               name="longitude"
               value={formData.longitude}
               onChange={handleInputChange}
-              placeholder="Longitude (e.g. 77.5946)"
-              className="form-input"
+              placeholder="Longitude * (e.g. 77.5946)"
+              className={`form-input ${errors.gps ? 'input-error' : ''}`}
             />
           </div>
+          {errors.gps && (
+            <div className="form-error" style={{ color: 'var(--color-status-rejected)', fontSize: '0.8125rem', marginTop: '6px' }}>
+              {errors.gps}
+            </div>
+          )}
           {gpsError && <div className="form-error" style={{ marginTop: '6px' }}>{gpsError}</div>}
         </div>
 

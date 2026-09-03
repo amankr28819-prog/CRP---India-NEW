@@ -52,6 +52,32 @@ const createComplaint = async (req, res, next) => {
       });
     }
 
+    // Validate GPS Coordinates
+    if (latitude === undefined || latitude === null || latitude === '' ||
+        longitude === undefined || longitude === null || longitude === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'GPS location is required. Please enter your coordinates or use your current device GPS.'
+      });
+    }
+
+    const numLat = Number(latitude);
+    const numLng = Number(longitude);
+
+    if (isNaN(numLat) || numLat < -90 || numLat > 90) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid GPS Latitude. Latitude must be a valid number between -90 and 90.'
+      });
+    }
+
+    if (isNaN(numLng) || numLng < -180 || numLng > 180) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid GPS Longitude. Longitude must be a valid number between -180 and 180.'
+      });
+    }
+
     if (!category || !title || !description || !ward || !city) {
       return res.status(400).json({
         success: false,
@@ -88,11 +114,11 @@ const createComplaint = async (req, res, next) => {
       category,
       title,
       description,
-      location,
+      location: location.trim(),
       ward,
       city,
-      latitude: latitude ? parseFloat(latitude) : null,
-      longitude: longitude ? parseFloat(longitude) : null,
+      latitude: numLat,
+      longitude: numLng,
       images: imagePaths,
       status: 'Submitted',
       assignedDepartment,
