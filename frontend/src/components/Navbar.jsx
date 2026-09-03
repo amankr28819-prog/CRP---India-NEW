@@ -33,6 +33,25 @@ export default function Navbar() {
 
   return (
     <header style={{ backgroundColor: 'var(--bg-header)', borderBottom: '1px solid var(--border-subtle)', position: 'sticky', top: 0, zIndex: 50 }}>
+      {/* Top Utility Bar (Role Switcher only) */}
+      <div className="gov-top-bar">
+        <div className="container" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <Link
+            to="/select-role"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              color: 'var(--text-secondary)',
+              fontSize: '0.75rem',
+              textDecoration: 'underline'
+            }}
+          >
+            <Building2 size={12} />
+            <span>Change Portal / Role</span>
+          </Link>
+        </div>
+      </div>
 
       {/* Main Navbar */}
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '68px' }}>
