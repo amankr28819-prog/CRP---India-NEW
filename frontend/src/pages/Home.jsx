@@ -107,9 +107,39 @@ export default function Home() {
   return (
     <div style={{ paddingBottom: '56px' }}>
       {/* Hero Section */}
-      <section style={{ backgroundColor: 'var(--bg-surface)', padding: '44px 0 36px 0' }}>
+
+      <section
+  style={{
+        position: 'relative',
+        minHeight: '620px',
+        overflow: 'hidden',
+        borderBottom: '1px solid var(--border-subtle)',
+        backgroundImage: `
+          linear-gradient(
+            rgba(5, 20, 40, 0.58),
+            rgba(5, 20, 40, 0.68)
+          ),
+          url('/city-bg.jpg')
+        `,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}>
         <div className="container">
-          <div style={{ maxWidth: '780px' }}>
+          <div style={{ maxWidth: '820px' }}>
+            <img
+              src="/crp-logo.jpg"
+              alt="CRP India - Citizen Redressal Platform"
+              style={{
+                width: '150px',
+                height: '150px',
+                objectFit: 'contain',
+                margin: '0 auto 24px',
+                display: 'block',
+                borderRadius: '12px',
+                filter: 'drop-shadow(0 8px 20px rgba(0, 0, 0, 0.35))',
+              }}/>
+
             {/* National Grievance Standard Tag */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 12px', backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--border-subtle)', borderRadius: '4px', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-accent-green)', display: 'inline-block' }} />
@@ -117,11 +147,13 @@ export default function Home() {
             </div>
 
             <h1 style={{ fontSize: '2.35rem', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)', lineHeight: 1.25, marginBottom: '14px' }}>
-              Report civic problems to your local municipality.
+             Report civic problems directly to your local municipality.
             </h1>
 
-            <p style={{ fontSize: '1.05rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '24px' }}>
-              Easily report potholes, garbage, streetlights, or water problems and track resolution in real time.
+            
+
+            <p style={{ fontSize: '1.1rem', color: 'rgba(255, 255, 255, 0.88)', lineHeight: 1.6, marginBottom: '28px' }}>
+              CRP India enables residents to submit verified civic complaints—from road damage and garbage overflow to disrupted water supply—and track real-time resolution from municipal engineering teams.
             </p>
 
             {/* Main Action Buttons */}
