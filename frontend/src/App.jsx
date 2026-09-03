@@ -18,6 +18,8 @@ import ComplaintDetails from './pages/ComplaintDetails';
 import CitizenLogin from './pages/CitizenLogin';
 import CitizenRegister from './pages/CitizenRegister';
 import About from './pages/About';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 
 // Authority Pages
 import AuthorityLogin from './pages/authority/AuthorityLogin';
@@ -54,6 +56,8 @@ function AppLayout() {
           <Route path="/login" element={<CitizenLogin />} />
           <Route path="/register" element={<CitizenRegister />} />
           <Route path="/about" element={<About />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
 
           {/* Municipal Authority Portal */}
           <Route path="/authority/login" element={<AuthorityLogin />} />
