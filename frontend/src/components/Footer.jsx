@@ -1,35 +1,38 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, Phone, Mail, MapPin } from 'lucide-react';
+import crpLogo from '../assets/crp-logo.png';
 
 export default function Footer() {
   return (
     <footer style={{ backgroundColor: 'var(--bg-footer)', color: 'var(--text-footer)', borderTop: '1px solid rgba(255, 255, 255, 0.08)', padding: '40px 0 24px 0', fontSize: '0.875rem' }}>
       <div className="container">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '32px', marginBottom: '32px' }}>
-          {/* Section 1: CRP India */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div
-                style={{
-                  width: '28px',
-                  height: '28px',
-                  backgroundColor: '#2563EB',
-                  borderRadius: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#FFFFFF',
-                  fontWeight: 700,
-                  fontSize: '0.85rem'
-                }}
-              >
-                CRP
-              </div>
-              <span style={{ fontWeight: 700, color: 'var(--text-footer-heading)', fontSize: '1.05rem' }}>
-                CRP India
-              </span>
-            </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '32px', marginBottom: '32px', alignItems: 'start' }}>
+          {/* Section 1: CRP India Branding */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            <img
+              src={crpLogo}
+              alt="CRP India Logo"
+              style={{
+                width: '140px',
+                maxWidth: '100%',
+                height: 'auto',
+                objectFit: 'contain',
+                borderRadius: '6px',
+                display: 'block'
+              }}
+            />
+            <span
+              style={{
+                fontWeight: 800,
+                color: 'var(--text-footer-heading)',
+                fontSize: '1.75rem',
+                letterSpacing: '-0.02em',
+                lineHeight: 1.1
+              }}
+            >
+              CRP India
+            </span>
           </div>
 
           {/* Section 2: Navigation */}
