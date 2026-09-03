@@ -1,9 +1,11 @@
 import React from 'react';
 import { Shield, BookOpen, Clock, Phone, Mail, Building, Users } from 'lucide-react';
+import BackButton from '../components/BackButton';
 
 export default function About() {
   return (
     <div className="container" style={{ padding: '36px 20px 80px 20px', maxWidth: '860px' }}>
+      <BackButton fallback="/" />
       <div className="page-header" style={{ marginBottom: '32px' }}>
         <h1 className="page-title">About CRP India</h1>
         <p className="page-subtitle">

@@ -4,6 +4,7 @@ import { ArrowLeft, MapPin, Calendar, Building2, User, Image, AlertCircle, Copy,
 import { api, getImageUrl } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import Timeline from '../components/Timeline';
+import BackButton from '../components/BackButton';
 
 export default function ComplaintDetails() {
   const { id } = useParams();
@@ -60,10 +61,7 @@ export default function ComplaintDetails() {
             <p style={{ marginTop: '4px' }}>{error || 'No complaint matches the specified identifier.'}</p>
           </div>
         </div>
-        <Link to="/track" className="btn btn-secondary">
-          <ArrowLeft size={16} />
-          <span>Back to Search</span>
-        </Link>
+        <BackButton fallback="/track" label="Back to Search" />
       </div>
     );
   }
@@ -71,10 +69,7 @@ export default function ComplaintDetails() {
   return (
     <div className="container" style={{ padding: '36px 20px 80px 20px', maxWidth: '860px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <Link to="/track" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', color: 'var(--color-primary)' }}>
-          <ArrowLeft size={16} />
-          <span>Back to Tracking</span>
-        </Link>
+        <BackButton fallback="/track" label="Back to Tracking" style={{ marginBottom: 0 }} />
 
         <button onClick={copyRef} className="btn btn-secondary btn-sm" style={{ fontSize: '0.8125rem' }}>
           <Copy size={13} />

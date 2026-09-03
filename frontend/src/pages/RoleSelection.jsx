@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Users, Building2, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
+import BackButton from '../components/BackButton';
 
 export default function RoleSelection() {
   const navigate = useNavigate();
@@ -34,6 +35,11 @@ export default function RoleSelection() {
         position: 'relative'
       }}
     >
+      {/* Top left back button */}
+      <div style={{ position: 'absolute', top: '20px', left: '20px' }}>
+        <BackButton fallback="/" style={{ marginBottom: 0 }} />
+      </div>
+
       {/* Top right theme toggle */}
       <div style={{ position: 'absolute', top: '20px', right: '20px' }}>
         <ThemeToggle />

@@ -4,6 +4,7 @@ import { Search, MapPin, Calendar, Building2, User, Image, AlertCircle, Clock, E
 import { api, getImageUrl } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import Timeline from '../components/Timeline';
+import BackButton from '../components/BackButton';
 
 export default function TrackComplaint() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -64,6 +65,7 @@ export default function TrackComplaint() {
 
   return (
     <div className="container" style={{ padding: '40px 20px 80px 20px', maxWidth: '820px' }}>
+      <BackButton fallback="/" />
       <div className="page-header" style={{ marginBottom: '24px' }}>
         <h1 className="page-title">Track your complaint</h1>
         <p className="page-subtitle">

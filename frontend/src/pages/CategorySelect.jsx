@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   ShieldCheck
 } from 'lucide-react';
+import BackButton from '../components/BackButton';
 
 export const CATEGORIES = [
   {
@@ -61,37 +62,13 @@ export const CATEGORIES = [
 export default function CategorySelect() {
   const navigate = useNavigate();
 
-  const handleBack = () => {
-    if (window.history.state && window.history.state.idx > 0) {
-      navigate(-1);
-    } else {
-      navigate('/');
-    }
-  };
-
   const handleSelect = (slug) => {
     navigate(`/report/${slug}`);
   };
 
   return (
     <div className="container" style={{ padding: '32px 20px 56px 20px' }}>
-      {/* Back Button */}
-      <button
-        type="button"
-        onClick={handleBack}
-        className="btn btn-secondary btn-sm"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '6px',
-          marginBottom: '20px',
-          cursor: 'pointer'
-        }}
-        aria-label="Back to previous page"
-      >
-        <ArrowLeft size={15} />
-        <span>Back</span>
-      </button>
+      <BackButton fallback="/" />
 
       <div className="page-header" style={{ marginBottom: '24px' }}>
         <h1 className="page-title">Report an Issue</h1>

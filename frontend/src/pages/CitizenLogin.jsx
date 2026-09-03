@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { User, Lock, AlertCircle, Building2, ArrowRight, Info } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import BackButton from '../components/BackButton';
 
 export default function CitizenLogin() {
   const [email, setEmail] = useState('');
@@ -38,6 +39,7 @@ export default function CitizenLogin() {
 
   return (
     <div className="container" style={{ padding: '48px 20px 80px 20px', maxWidth: '460px' }}>
+      <BackButton fallback="/" />
       <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '32px' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{ width: '40px', height: '40px', borderRadius: '6px', backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>

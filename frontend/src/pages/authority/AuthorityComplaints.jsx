@@ -4,6 +4,7 @@ import { Search, Filter, RefreshCw, AlertCircle, ArrowLeft, ExternalLink } from 
 import { api } from '../../services/api';
 import StatusBadge from '../../components/StatusBadge';
 import { CATEGORIES } from '../CategorySelect';
+import BackButton from '../../components/BackButton';
 
 export default function AuthorityComplaints() {
   const [complaints, setComplaints] = useState([]);
@@ -62,10 +63,7 @@ export default function AuthorityComplaints() {
     <div className="container" style={{ padding: '36px 20px 80px 20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <Link to="/authority/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', color: 'var(--color-primary)', marginBottom: '8px' }}>
-            <ArrowLeft size={14} />
-            <span>Back to Dashboard</span>
-          </Link>
+          <BackButton fallback="/authority/dashboard" label="Back to Dashboard" style={{ marginBottom: '8px' }} />
           <h1 className="page-title">Grievance Management Registry</h1>
           <p className="page-subtitle">
             Showing {complaints.length} of {totalCount} municipal grievances

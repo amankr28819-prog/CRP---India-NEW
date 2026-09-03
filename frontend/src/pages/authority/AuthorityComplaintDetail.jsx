@@ -21,6 +21,7 @@ import { api, getImageUrl } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import StatusBadge from '../../components/StatusBadge';
 import Timeline from '../../components/Timeline';
+import BackButton from '../../components/BackButton';
 
 const DEPARTMENTS = [
   'Public Works Department (Roads)',
@@ -205,22 +206,14 @@ export default function AuthorityComplaintDetail() {
           <AlertCircle size={20} />
           <span>{error}</span>
         </div>
-        <Link to="/authority/complaints" className="btn btn-secondary">
-          <ArrowLeft size={16} />
-          <span>Back to Complaints</span>
-        </Link>
+        <BackButton fallback="/authority/complaints" label="Back to Complaints" />
       </div>
     );
   }
 
   return (
     <div className="container" style={{ padding: '36px 20px 80px 20px', maxWidth: '1000px' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <Link to="/authority/complaints" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.875rem', color: 'var(--color-primary)' }}>
-          <ArrowLeft size={16} />
-          <span>Back to Complaints Registry</span>
-        </Link>
-      </div>
+      <BackButton fallback="/authority/complaints" label="Back to Complaints Registry" />
 
       {actionSuccess && (
         <div className="alert alert-success" style={{ marginBottom: '24px' }}>

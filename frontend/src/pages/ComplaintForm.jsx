@@ -15,6 +15,7 @@ import {
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { CATEGORIES } from './CategorySelect';
+import BackButton from '../components/BackButton';
 
 const SLUG_TO_NAME = {
   'roads-potholes': 'Roads & Potholes',
@@ -326,23 +327,7 @@ export default function ComplaintForm() {
 
   return (
     <div className="container" style={{ padding: '32px 20px 64px 20px', maxWidth: '800px' }}>
-      {/* Back Button */}
-      <button
-        type="button"
-        onClick={handleBack}
-        className="btn btn-secondary btn-sm"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '6px',
-          marginBottom: '20px',
-          cursor: 'pointer'
-        }}
-        aria-label="Back to previous page"
-      >
-        <ArrowLeft size={15} />
-        <span>Back</span>
-      </button>
+      <BackButton onClick={handleBack} />
 
       {/* Leave Confirmation Modal */}
       {showLeaveModal && (

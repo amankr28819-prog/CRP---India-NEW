@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Building2, Lock, Mail, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import BackButton from '../../components/BackButton';
 
 export default function AuthorityLogin() {
   const [email, setEmail] = useState('authority@crp.gov.in');
@@ -34,6 +35,7 @@ export default function AuthorityLogin() {
 
   return (
     <div className="container" style={{ padding: '48px 20px 80px 20px', maxWidth: '480px' }}>
+      <BackButton fallback="/" />
       <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '36px 32px' }}>
         {/* Civic Authority Badge */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>

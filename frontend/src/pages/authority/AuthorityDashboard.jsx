@@ -17,6 +17,7 @@ import {
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import StatusBadge from '../../components/StatusBadge';
+import BackButton from '../../components/BackButton';
 
 export default function AuthorityDashboard() {
   const { user } = useAuth();
@@ -72,6 +73,7 @@ export default function AuthorityDashboard() {
 
   return (
     <div className="container" style={{ padding: '36px 20px 80px 20px' }}>
+      <BackButton fallback="/" />
       {/* Officer Welcome Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '32px' }}>
         <div>

@@ -12,28 +12,13 @@ import {
   Mail,
   Building
 } from 'lucide-react';
+import BackButton from '../components/BackButton';
 
 export default function TermsOfService() {
   return (
     <div style={{ padding: '36px 0 64px 0' }}>
       <div className="container" style={{ maxWidth: '860px' }}>
-        {/* Back Link */}
-        <Link
-          to="/"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '0.875rem',
-            color: 'var(--color-primary)',
-            marginBottom: '20px',
-            textDecoration: 'none',
-            fontWeight: 500
-          }}
-        >
-          <ArrowLeft size={16} />
-          <span>Back to Home</span>
-        </Link>
+        <BackButton fallback="/" />
 
         {/* Page Header */}
         <div style={{ marginBottom: '32px' }}>
