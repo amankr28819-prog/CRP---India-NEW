@@ -33,38 +33,6 @@ export default function Navbar() {
 
   return (
     <header style={{ backgroundColor: 'var(--bg-header)', borderBottom: '1px solid var(--border-subtle)', position: 'sticky', top: 0, zIndex: 50 }}>
-      {/* Top Civic Identity Bar */}
-      <div className="gov-top-bar">
-        <div className="container gov-top-content">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
-              <span style={{ color: '#FF9933' }}>●</span>
-              <span style={{ color: '#000080' }}>●</span>
-              <span style={{ color: '#138808' }}>●</span>
-              Government of India Initiative
-            </span>
-            <span style={{ color: 'var(--border-subtle)' }}>|</span>
-            <span>National Civic Redressal Network</span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <Link
-              to="/select-role"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                color: 'var(--text-secondary)',
-                fontSize: '0.75rem',
-                textDecoration: 'underline'
-              }}
-            >
-              <Building2 size={12} />
-              <span>Change Portal / Role</span>
-            </Link>
-          </div>
-        </div>
-      </div>
 
       {/* Main Navbar */}
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '68px' }}>
