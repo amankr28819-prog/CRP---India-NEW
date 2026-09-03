@@ -42,6 +42,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: ''
+    },
+    agreedToTerms: {
+      type: Boolean,
+      default: false
     }
   },
   {

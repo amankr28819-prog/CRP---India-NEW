@@ -18,12 +18,19 @@ const generateToken = (user) => {
 // @route POST /api/auth/register
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, phone, agreedToTerms } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
         message: 'Please provide full name, valid email, and password.'
+      });
+    }
+
+    if (agreedToTerms !== true && agreedToTerms !== 'true') {
+      return res.status(400).json({
+        success: false,
+        message: 'You must agree to the Terms & Conditions and Privacy Policy to create an account.'
       });
     }
 
@@ -40,7 +47,8 @@ const register = async (req, res, next) => {
       email: email.toLowerCase(),
       password,
       phone: phone || '',
-      role: 'citizen'
+      role: 'citizen',
+      agreedToTerms: true
     });
 
     const token = generateToken(user);

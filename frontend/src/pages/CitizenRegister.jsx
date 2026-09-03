@@ -10,6 +10,7 @@ export default function CitizenRegister() {
     password: '',
     phone: ''
   });
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
@@ -33,11 +34,15 @@ export default function CitizenRegister() {
       setError('Password must be at least 6 characters long.');
       return;
     }
+    if (!agreedToTerms) {
+      setError('You must agree to the Terms & Conditions and Privacy Policy to register.');
+      return;
+    }
 
     setLoading(true);
     setError('');
     try {
-      const res = await register(formData);
+      const res = await register({ ...formData, agreedToTerms });
       if (res.success) {
         navigate(from, { replace: true });
       }
@@ -139,11 +144,70 @@ export default function CitizenRegister() {
             />
           </div>
 
+          {/* Mandatory Terms & Conditions / Privacy Policy Checkbox */}
+          <div style={{ marginTop: '16px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+              <input
+                id="regAgreeCheckbox"
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => {
+                  setAgreedToTerms(e.target.checked);
+                  if (e.target.checked && error.includes('Terms & Conditions')) {
+                    setError('');
+                  }
+                }}
+                style={{
+                  marginTop: '3px',
+                  width: '18px',
+                  height: '18px',
+                  cursor: 'pointer',
+                  accentColor: 'var(--color-primary)',
+                  flexShrink: 0
+                }}
+              />
+              <label
+                htmlFor="regAgreeCheckbox"
+                style={{
+                  fontSize: '0.875rem',
+                  color: 'var(--text-primary)',
+                  lineHeight: 1.5,
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }}
+              >
+                I agree to the{' '}
+                <Link
+                  to="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--color-primary)', textDecoration: 'underline', fontWeight: 600 }}
+                >
+                  Terms & Conditions
+                </Link>{' '}
+                and{' '}
+                <Link
+                  to="/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--color-primary)', textDecoration: 'underline', fontWeight: 600 }}
+                >
+                  Privacy Policy
+                </Link>.
+              </label>
+            </div>
+          </div>
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !agreedToTerms}
             className="btn btn-primary btn-lg"
-            style={{ width: '100%', marginTop: '8px' }}
+            style={{
+              width: '100%',
+              marginTop: '8px',
+              opacity: (!agreedToTerms || loading) ? 0.6 : 1,
+              cursor: (!agreedToTerms || loading) ? 'not-allowed' : 'pointer'
+            }}
           >
             {loading ? 'Creating Account...' : 'Complete Registration'}
           </button>
