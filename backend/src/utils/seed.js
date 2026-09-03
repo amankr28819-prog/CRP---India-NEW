@@ -459,6 +459,7 @@ const seedData = async (shouldExit = true) => {
       email: 'citizen@example.com',
       password: 'Citizen@123',
       phone: '+91 98765 43210',
+      voterId: 'ABC1234567',
       role: 'citizen'
     });
 

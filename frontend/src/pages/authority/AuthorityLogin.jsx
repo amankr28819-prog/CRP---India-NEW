@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Building2, Lock, Mail, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
+import authorityBg from '../../assets/authority-login-bg.jpg';
 
 export default function AuthorityLogin() {
   const [email, setEmail] = useState('authority@crp.gov.in');
@@ -34,9 +35,38 @@ export default function AuthorityLogin() {
   };
 
   return (
-    <div className="container" style={{ padding: '48px 20px 80px 20px', maxWidth: '480px' }}>
-      <BackButton fallback="/" />
-      <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '36px 32px' }}>
+    <div
+      style={{
+        minHeight: 'calc(100vh - 70px)',
+        backgroundImage: `
+          linear-gradient(
+            rgba(8, 16, 32, 0.72),
+            rgba(8, 16, 32, 0.78)
+          ),
+          url(${authorityBg})
+        `,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '44px 16px 64px 16px'
+      }}
+    >
+      <div style={{ width: '100%', maxWidth: '480px' }}>
+        <BackButton fallback="/" style={{ color: '#FFFFFF', marginBottom: '16px' }} />
+        <div
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '12px',
+            padding: '36px 32px',
+            boxShadow: '0 20px 45px rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)'
+          }}
+        >
         {/* Civic Authority Badge */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <div
@@ -129,12 +159,13 @@ export default function AuthorityLogin() {
 
         {/* Return to Citizen Site */}
         <div style={{ marginTop: '24px', textAlign: 'center' }}>
-          <Link to="/" style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+          <Link to="/home" style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <span>Looking for citizen grievance reporting? Return to Citizen Portal</span>
             <ArrowRight size={13} />
           </Link>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

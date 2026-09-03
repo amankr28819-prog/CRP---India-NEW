@@ -30,8 +30,10 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (email, password, expectedRole) => {
-    const res = await api.login({ email, password, expectedRole });
+  const login = async (email, password, expectedRole, voterId) => {
+    const payload = { email, password, expectedRole };
+    if (voterId) payload.voterId = voterId;
+    const res = await api.login(payload);
     if (res.success && res.token) {
       localStorage.setItem('crp_token', res.token);
       setToken(res.token);

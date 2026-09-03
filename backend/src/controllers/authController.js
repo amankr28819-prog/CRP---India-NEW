@@ -18,12 +18,20 @@ const generateToken = (user) => {
 // @route POST /api/auth/register
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, phone, agreedToTerms } = req.body;
+    const { name, email, password, phone, voterId, agreedToTerms } = req.body;
 
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !voterId) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide full name, valid email, and password.'
+        message: 'Please provide full name, valid email, password, and Voter ID.'
+      });
+    }
+
+    const cleanVoterId = voterId.trim().toUpperCase();
+    if (!/^[A-Z0-9]{10}$/.test(cleanVoterId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Voter ID must be a 10-digit alphanumeric code (e.g. ABC1234567).'
       });
     }
 
@@ -42,11 +50,20 @@ const register = async (req, res, next) => {
       });
     }
 
+    const existingVoter = await User.findOne({ voterId: cleanVoterId });
+    if (existingVoter) {
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this Voter ID already exists.'
+      });
+    }
+
     const user = await User.create({
       name,
       email: email.toLowerCase(),
       password,
       phone: phone || '',
+      voterId: cleanVoterId,
       role: 'citizen',
       agreedToTerms: true
     });
@@ -62,6 +79,7 @@ const register = async (req, res, next) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        voterId: user.voterId,
         role: user.role
       }
     });
@@ -74,13 +92,30 @@ const register = async (req, res, next) => {
 // @route POST /api/auth/login
 const login = async (req, res, next) => {
   try {
-    const { email, password, expectedRole } = req.body;
+    const { email, password, expectedRole, voterId } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
         success: false,
         message: 'Please enter both email address and password.'
       });
+    }
+
+    // Citizen login requires a 10-digit alphanumeric Voter ID
+    if (expectedRole === 'citizen') {
+      if (!voterId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Voter ID is required for citizen sign in.'
+        });
+      }
+      const cleanVoterId = voterId.trim().toUpperCase();
+      if (!/^[A-Z0-9]{10}$/.test(cleanVoterId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Voter ID must be a 10-digit alphanumeric code (e.g. ABC1234567).'
+        });
+      }
     }
 
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
@@ -97,6 +132,29 @@ const login = async (req, res, next) => {
         success: false,
         message: 'Invalid credentials. Please verify your password.'
       });
+    }
+
+    // Validate citizen Voter ID against record
+    if (user.role === 'citizen') {
+      if (!voterId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Voter ID is required for citizen sign in.'
+        });
+      }
+      const cleanVoterId = voterId.trim().toUpperCase();
+      if (!/^[A-Z0-9]{10}$/.test(cleanVoterId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Voter ID must be a 10-digit alphanumeric code (e.g. ABC1234567).'
+        });
+      }
+      if (user.voterId && user.voterId.toUpperCase() !== cleanVoterId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Voter ID does not match the registered citizen record.'
+        });
+      }
     }
 
     // If logging in through authority portal, ensure the account has authority privileges
@@ -118,6 +176,7 @@ const login = async (req, res, next) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        voterId: user.voterId || '',
         role: user.role,
         department: user.department,
         designation: user.designation

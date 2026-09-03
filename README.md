@@ -238,6 +238,7 @@ npm run seed
 ### Citizen Account:
 - **Email**: `citizen@example.com`
 - **Password**: `Citizen@123`
+- **Voter ID**: `ABC1234567`
 
 ### Sample Complaint Reference IDs:
 - `CRP-2026-00101` — Roads & Potholes (*In Progress*)

@@ -19,15 +19,15 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { name: 'Home', path: '/' },
+    { name: 'Home', path: '/home' },
     { name: 'Report an Issue', path: '/report' },
     { name: 'Track Complaint', path: '/track' },
     { name: 'About', path: '/about' }
   ];
 
   const isActive = (path) => {
-    if (path === '/' && location.pathname === '/') return true;
-    if (path !== '/' && location.pathname.startsWith(path)) return true;
+    if (path === '/home' && location.pathname === '/home') return true;
+    if (path !== '/home' && location.pathname.startsWith(path)) return true;
     return false;
   };
 
@@ -37,7 +37,7 @@ export default function Navbar() {
       <div className="gov-top-bar">
         <div className="container" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
           <Link
-            to="/select-role"
+            to="/"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -56,7 +56,7 @@ export default function Navbar() {
       {/* Main Navbar */}
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '68px' }}>
         {/* Brand */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
+        <Link to="/home" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
           <img
             src={crpLogo}
             alt="CRP India Logo"

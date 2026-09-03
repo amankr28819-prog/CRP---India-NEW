@@ -16,6 +16,8 @@ import {
   ArrowDown
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import heroBg from '../assets/hero-bg.png';
+import crpLogo from '../assets/crp-logo-transparent.png';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -109,50 +111,94 @@ export default function Home() {
       {/* Hero Section */}
 
       <section
-  style={{
-        position: 'relative',
-        minHeight: '620px',
-        overflow: 'hidden',
-        borderBottom: '1px solid var(--border-subtle)',
-        backgroundImage: `
-          linear-gradient(
-            rgba(5, 20, 40, 0.58),
-            rgba(5, 20, 40, 0.68)
-          ),
-          url('/city-bg.jpg')
-        `,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}>
+        style={{
+          position: 'relative',
+          minHeight: '580px',
+          overflow: 'hidden',
+          borderBottom: '1px solid var(--border-subtle)',
+          backgroundImage: `
+            linear-gradient(
+              rgba(5, 20, 40, 0.44),
+              rgba(5, 20, 40, 0.56)
+            ),
+            url(${heroBg})
+          `,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '52px 0 60px 0'
+        }}
+      >
         <div className="container">
           <div style={{ maxWidth: '820px' }}>
             <img
-              src="/crp-logo.jpg"
+              src={crpLogo}
               alt="CRP India - Citizen Redressal Platform"
               style={{
-                width: '150px',
-                height: '150px',
+                width: '140px',
+                height: '140px',
                 objectFit: 'contain',
-                margin: '0 auto 24px',
+                margin: '0 0 20px 0',
                 display: 'block',
-                borderRadius: '12px',
-                filter: 'drop-shadow(0 8px 20px rgba(0, 0, 0, 0.35))',
-              }}/>
+                filter: 'drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4))'
+              }}
+            />
 
             {/* National Grievance Standard Tag */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '4px 12px', backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--border-subtle)', borderRadius: '4px', fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-accent-green)', display: 'inline-block' }} />
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 14px',
+                backgroundColor: 'rgba(255, 255, 255, 0.16)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.28)',
+                borderRadius: '6px',
+                fontSize: '0.8125rem',
+                color: '#FFFFFF',
+                fontWeight: 500,
+                marginBottom: '16px'
+              }}
+            >
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--color-accent-green, #22C55E)',
+                  display: 'inline-block'
+                }}
+              />
               <span>Civic Problem Reporting Portal • Municipal Corporations of India</span>
             </div>
 
-            <h1 style={{ fontSize: '2.35rem', fontWeight: 700, letterSpacing: '-0.025em', color: 'var(--text-primary)', lineHeight: 1.25, marginBottom: '14px' }}>
-             Report civic problems directly to your local municipality.
+            <h1
+              style={{
+                fontSize: '2.35rem',
+                fontWeight: 700,
+                letterSpacing: '-0.025em',
+                color: '#FFFFFF',
+                lineHeight: 1.25,
+                marginBottom: '14px',
+                textShadow: '0 2px 10px rgba(0, 0, 0, 0.45)'
+              }}
+            >
+              Report civic problems directly to your local municipality.
             </h1>
 
-            
-
-            <p style={{ fontSize: '1.1rem', color: 'rgba(255, 255, 255, 0.88)', lineHeight: 1.6, marginBottom: '28px' }}>
+            <p
+              style={{
+                fontSize: '1.1rem',
+                color: 'rgba(255, 255, 255, 0.92)',
+                lineHeight: 1.6,
+                marginBottom: '28px',
+                textShadow: '0 1px 6px rgba(0, 0, 0, 0.35)'
+              }}
+            >
               CRP India enables residents to submit verified civic complaints—from road damage and garbage overflow to disrupted water supply—and track real-time resolution from municipal engineering teams.
             </p>
 

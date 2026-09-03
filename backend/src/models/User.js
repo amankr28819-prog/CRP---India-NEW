@@ -28,6 +28,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: ''
     },
+    voterId: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: ''
+    },
     role: {
       type: String,
       enum: ['citizen', 'authority'],

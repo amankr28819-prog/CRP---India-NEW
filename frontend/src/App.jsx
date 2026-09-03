@@ -32,25 +32,19 @@ import AuthorityComplaintDetail from './pages/authority/AuthorityComplaintDetail
 // Wrapper to conditionally render Navbar and Footer (hidden on standalone role selection screen)
 function AppLayout() {
   const location = useLocation();
-  const { portalRole } = useAuth();
-  const isRoleSelection = location.pathname === '/select-role';
-
-  // If user visits for the very first time (no portal role set) and hits root '/', optionally show role selection
-  const hasVisited = localStorage.getItem('crp_portal_role');
+  const isRoleSelection = location.pathname === '/' || location.pathname === '/select-role';
 
   return (
     <div className="app-wrapper">
       {!isRoleSelection && <Navbar />}
       <main className="main-content">
         <Routes>
-          {/* First visit role selection */}
+          {/* Main Front Page Gateway (Role Selection) */}
+          <Route path="/" element={<RoleSelection />} />
           <Route path="/select-role" element={<RoleSelection />} />
 
           {/* Citizen Portal */}
-          <Route
-            path="/"
-            element={!hasVisited ? <Navigate to="/select-role" replace /> : <Home />}
-          />
+          <Route path="/home" element={<Home />} />
           <Route
             path="/report"
             element={

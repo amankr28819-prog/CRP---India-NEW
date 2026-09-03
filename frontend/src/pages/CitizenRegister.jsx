@@ -3,13 +3,15 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { UserPlus, AlertCircle, Info } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BackButton from '../components/BackButton';
+import loginBg from '../assets/citizen-login-bg.jpg';
 
 export default function CitizenRegister() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
-    phone: ''
+    phone: '',
+    voterId: ''
   });
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
@@ -27,8 +29,13 @@ export default function CitizenRegister() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.password) {
-      setError('Please fill in all required fields.');
+    if (!formData.name || !formData.email || !formData.password || !formData.voterId) {
+      setError('Please fill in all required fields including Voter ID.');
+      return;
+    }
+    const cleanVoterId = formData.voterId.trim().toUpperCase();
+    if (cleanVoterId.length !== 10 || !/^[A-Z0-9]{10}$/.test(cleanVoterId)) {
+      setError('Voter ID must be a 10-digit alphanumeric code (e.g. ABC1234567).');
       return;
     }
     if (formData.password.length < 6) {
@@ -43,7 +50,7 @@ export default function CitizenRegister() {
     setLoading(true);
     setError('');
     try {
-      const res = await register({ ...formData, agreedToTerms });
+      const res = await register({ ...formData, voterId: cleanVoterId, agreedToTerms });
       if (res.success) {
         navigate(from, { replace: true });
       }
@@ -55,9 +62,38 @@ export default function CitizenRegister() {
   };
 
   return (
-    <div className="container" style={{ padding: '48px 20px 80px 20px', maxWidth: '480px' }}>
-      <BackButton fallback="/login" />
-      <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '32px' }}>
+    <div
+      style={{
+        minHeight: 'calc(100vh - 70px)',
+        backgroundImage: `
+          linear-gradient(
+            rgba(7, 16, 34, 0.72),
+            rgba(7, 16, 34, 0.78)
+          ),
+          url(${loginBg})
+        `,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '44px 16px 64px 16px'
+      }}
+    >
+      <div style={{ width: '100%', maxWidth: '480px' }}>
+        <BackButton fallback="/login" style={{ color: '#FFFFFF', marginBottom: '16px' }} />
+        <div
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '12px',
+            padding: '32px',
+            boxShadow: '0 20px 45px rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)'
+          }}
+        >
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{ width: '40px', height: '40px', borderRadius: '6px', backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
             <UserPlus size={22} />
@@ -128,6 +164,27 @@ export default function CitizenRegister() {
               placeholder="e.g. +91 98765 43210"
               className="form-input"
             />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="regVoterId">
+              Voter ID (EPIC Number) <span className="required">*</span>
+            </label>
+            <input
+              id="regVoterId"
+              type="text"
+              name="voterId"
+              value={formData.voterId}
+              onChange={(e) => setFormData(prev => ({ ...prev, voterId: e.target.value.toUpperCase() }))}
+              placeholder="e.g. ABC1234567"
+              className="form-input"
+              maxLength={10}
+              style={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}
+              required
+            />
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+              10-digit alphanumeric code for official citizen verification
+            </span>
           </div>
 
           <div className="form-group">
@@ -227,5 +284,6 @@ export default function CitizenRegister() {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }
