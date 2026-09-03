@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Search,
   Truck,
@@ -17,6 +17,29 @@ import {
 } from 'lucide-react';
 
 export default function Home() {
+  const navigate = useNavigate();
+  const [activeCategory, setActiveCategory] = useState(null);
+
+  useEffect(() => {
+    const handleGlobalClick = (e) => {
+      if (!e.target.closest('.category-card')) {
+        setActiveCategory(null);
+      }
+    };
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
+
+  const handleCategoryClick = (e, slug) => {
+    const isTouch = window.matchMedia('(pointer: coarse)').matches;
+    if (isTouch && activeCategory !== slug) {
+      e.preventDefault();
+      setActiveCategory(slug);
+      return;
+    }
+    navigate(`/report/${slug}`);
+  };
+
   const categories = [
     {
       name: 'Roads & Potholes',
@@ -166,60 +189,42 @@ export default function Home() {
           </div>
 
           {/* Directory of Civic Categories */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px' }}>
+          <div className="category-grid">
             {categories.map((cat) => {
               const Icon = cat.icon;
+              const isActive = activeCategory === cat.slug;
               return (
                 <Link
                   key={cat.slug}
                   to={`/report/${cat.slug}`}
-                  style={{
-                    backgroundColor: 'var(--bg-surface)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: '6px',
-                    padding: '16px 18px',
-                    transition: 'border-color 0.15s ease, background-color 0.15s ease',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '14px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--color-primary)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
-                  }}
+                  className={`category-card ${isActive ? 'is-active' : ''}`}
+                  onClick={(e) => handleCategoryClick(e, cat.slug)}
+                  aria-expanded={isActive}
                 >
-                  <div
-                    style={{
-                      width: '34px',
-                      height: '34px',
-                      borderRadius: '4px',
-                      backgroundColor: 'var(--bg-subtle)',
-                      color: 'var(--color-primary)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      marginTop: '2px'
-                    }}
-                  >
-                    <Icon size={18} />
+                  <div className="category-card-header">
+                    <div className="category-card-icon">
+                      <Icon size={18} />
+                    </div>
+
+                    <div className="category-card-body">
+                      <div className="category-card-title-row">
+                        <span className="category-card-title">
+                          {cat.name}
+                        </span>
+                        <ArrowRight size={14} className="category-card-arrow" />
+                      </div>
+                      <div className="category-card-dept">
+                        {cat.dept}
+                      </div>
+                    </div>
                   </div>
 
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                      <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-                        {cat.name}
-                      </span>
-                      <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} />
+                  <div className="category-desc-drawer" aria-hidden={!isActive}>
+                    <div className="category-desc-inner">
+                      <p className="category-desc-text">
+                        {cat.desc}
+                      </p>
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 500, marginTop: '2px', marginBottom: '3px' }}>
-                      {cat.dept}
-                    </div>
-                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                      {cat.desc}
-                    </p>
                   </div>
                 </Link>
               );
