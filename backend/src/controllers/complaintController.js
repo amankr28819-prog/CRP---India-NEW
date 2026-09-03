@@ -45,7 +45,14 @@ const createComplaint = async (req, res, next) => {
       });
     }
 
-    if (!category || !title || !description || !location || !ward || !city) {
+    if (!location || !location.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Location is required. Please provide the location of the issue.'
+      });
+    }
+
+    if (!category || !title || !description || !ward || !city) {
       return res.status(400).json({
         success: false,
         message: 'Please complete all required fields: category, title, description, location, ward, and city.'

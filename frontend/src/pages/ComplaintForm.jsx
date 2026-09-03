@@ -174,16 +174,20 @@ export default function ComplaintForm() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        const lat = position.coords.latitude.toFixed(6);
+        const lng = position.coords.longitude.toFixed(6);
         setFormData(prev => ({
           ...prev,
-          latitude: position.coords.latitude.toFixed(6),
-          longitude: position.coords.longitude.toFixed(6)
+          latitude: lat,
+          longitude: lng,
+          location: prev.location.trim() ? prev.location : `GPS: ${lat}, ${lng}`
         }));
+        setErrors(prev => ({ ...prev, location: '' }));
         setGpsLoading(false);
       },
       (error) => {
         setGpsLoading(false);
-        setGpsError('Unable to retrieve coordinates. Please enter the landmark manually.');
+        setGpsError('Unable to retrieve coordinates. Please enter the location manually.');
       },
       { timeout: 10000, enableHighAccuracy: true }
     );
@@ -193,7 +197,7 @@ export default function ComplaintForm() {
     const errs = {};
     if (!formData.title.trim()) errs.title = 'Complaint title is required.';
     if (!formData.description.trim()) errs.description = 'Please provide detailed description.';
-    if (!formData.location.trim()) errs.location = 'Specific address or landmark is required.';
+    if (!formData.location.trim()) errs.location = 'Location is required. Please provide the location of the issue.';
     if (!formData.ward.trim()) errs.ward = 'Ward identifier is required.';
     if (!formData.city.trim()) errs.city = 'City name is required.';
     if (!formData.citizenName.trim()) errs.citizenName = 'Your name is required for verification.';
@@ -497,18 +501,24 @@ export default function ComplaintForm() {
         {/* Location & Jurisdiction Row */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
           <div className="form-group">
-            <label className="form-label">
-              Locality / Street / Landmark <span className="required">*</span>
+            <label className="form-label" htmlFor="complaintLocation">
+              Location <span className="required">*</span>
             </label>
             <input
+              id="complaintLocation"
               type="text"
               name="location"
               value={formData.location}
               onChange={handleInputChange}
               placeholder="e.g. Opposite Pillar 142, Outer Ring Road"
-              className="form-input"
+              className={`form-input ${errors.location ? 'input-error' : ''}`}
+              required
             />
-            {errors.location && <div className="form-error">{errors.location}</div>}
+            {errors.location && (
+              <div className="form-error" style={{ color: 'var(--color-status-rejected)', fontSize: '0.8125rem', marginTop: '4px' }}>
+                {errors.location}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
