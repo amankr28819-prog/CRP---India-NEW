@@ -432,3 +432,67 @@ h1, h2, h3, h4, h5, h6 {
 [data-theme="dark"] .alert-info {
   color: #93C5FD;
 }
+/* Human-Designed Civic Service Strip (Replacing floating AI-style boxes) */
+.civic-service-strip {
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface);
+  margin: 0;
+}
+
+.civic-service-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+}
+
+.civic-service-item {
+  padding: 22px 28px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  border-right: 1px solid var(--border-subtle);
+}
+
+.civic-service-item:last-child {
+  border-right: none;
+}
+
+.civic-service-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.civic-service-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+  letter-spacing: -0.01em;
+}
+
+.civic-service-desc {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+@media (max-width: 860px) {
+  .civic-service-grid {
+    grid-template-columns: 1fr;
+  }
+  .civic-service-item {
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 18px 20px;
+  }
+  .civic-service-item:last-child {
+    border-bottom: none;
+  }
+}
