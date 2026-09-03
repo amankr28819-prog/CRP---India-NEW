@@ -16,7 +16,7 @@ router.get('/', optionalAuth, getComplaints);
 router.get('/:referenceId', getComplaintByRefId);
 
 // Authority protected routes
-router.patch('/:id/status', verifyToken, isAuthority, updateComplaintStatus);
+router.patch('/:id/status', verifyToken, isAuthority, upload.single('resolutionPhoto'), updateComplaintStatus);
 router.patch('/:id/assign', verifyToken, isAuthority, assignComplaint);
 
 module.exports = router;

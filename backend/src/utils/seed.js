@@ -16,13 +16,13 @@ const sampleComplaintsData = (citizen1) => [
     },
     category: 'Roads & Potholes',
     title: 'Deep pothole causing severe traffic congestion near Metro Pillar 142',
-    description: 'A crater-sized pothole has developed following last week heavy rainfall right next to the metro pillar. Multiple two-wheelers have slipped during peak hours. Urgent cold-mix patching required before monsoon intensifies.',
+    description: 'A crater-sized pothole has developed following heavy rainfall right next to the metro pillar. Multiple two-wheelers have slipped during peak hours. Urgent cold-mix patching required before monsoon intensifies.',
     location: 'Outer Ring Road, Opposite Sector 4 Bus Stop',
     ward: 'Ward 14 (Indiranagar)',
     city: 'Bengaluru',
     latitude: 12.9784,
     longitude: 77.6408,
-    images: [],
+    images: ['/uploads/demo-pothole-before.jpg'],
     status: 'In Progress',
     assignedDepartment: 'Public Works Department (Roads)',
     assignedOfficer: 'Rajesh Sharma (Executive Zonal Engineer)',
@@ -58,7 +58,8 @@ const sampleComplaintsData = (citizen1) => [
         author: 'Rajesh Sharma',
         createdAt: new Date(Date.now() - 1 * 86400000)
       }
-    ]
+    ],
+    agreedToTerms: true
   },
   {
     referenceId: 'CRP-2026-00102',
@@ -76,7 +77,7 @@ const sampleComplaintsData = (citizen1) => [
     city: 'Pune',
     latitude: 18.5074,
     longitude: 73.8077,
-    images: [],
+    images: ['/uploads/demo-garbage-before.jpg'],
     status: 'Assigned',
     assignedDepartment: 'Solid Waste & Sanitation Department',
     assignedOfficer: 'Priya Varma (Chief Sanitation Inspector)',
@@ -100,7 +101,8 @@ const sampleComplaintsData = (citizen1) => [
         author: 'Priya Varma',
         createdAt: new Date(Date.now() - 1 * 86400000)
       }
-    ]
+    ],
+    agreedToTerms: true
   },
   {
     referenceId: 'CRP-2026-00103',
@@ -118,7 +120,7 @@ const sampleComplaintsData = (citizen1) => [
     city: 'Noida',
     latitude: 28.6280,
     longitude: 77.3649,
-    images: [],
+    images: ['/uploads/demo-streetlight-before.jpg'],
     status: 'Under Review',
     assignedDepartment: 'Municipal Electrical & Lighting Division',
     assignedOfficer: 'Pending Allocation',
@@ -136,7 +138,8 @@ const sampleComplaintsData = (citizen1) => [
         timestamp: new Date(Date.now() - 12 * 3600000)
       }
     ],
-    remarks: []
+    remarks: [],
+    agreedToTerms: true
   },
   {
     referenceId: 'CRP-2026-00104',
@@ -147,14 +150,18 @@ const sampleComplaintsData = (citizen1) => [
       userId: citizen1._id
     },
     category: 'Water Supply',
-    title: 'Discolored drinking water supply with low pipeline pressure',
-    description: 'Morning municipal water supply had heavy brownish sedimentation and odor. Pipeline pressure was insufficient to reach first-floor storage tanks.',
+    title: 'Heavy water pipe leakage flooding street and causing water contamination',
+    description: 'A municipal water supply pipe junction burst near the street crossing, creating standing water and low water pressure for adjacent households.',
     location: 'Laxmi Nagar, Lane 3, House 45-B',
     ward: 'Ward 09 (Central Zone)',
     city: 'Jaipur',
     latitude: 26.9124,
     longitude: 75.7873,
-    images: [],
+    images: ['/uploads/demo-water-before.jpg'],
+    resolutionPhoto: '/uploads/demo-water-resolved.jpg',
+    resolutionNote: 'Main pipeline junction excavated, fractured pipe section replaced with a new industrial cast-iron shutoff valve fitting, and sealed with fresh concrete. Water pressure fully restored and street dried.',
+    resolvedAt: new Date(Date.now() - 1 * 86400000),
+    resolvedBy: 'M. K. Singhal (Water Works Engineer)',
     status: 'Resolved',
     assignedDepartment: 'Water Supply & Jal Board',
     assignedOfficer: 'M. K. Singhal (Water Works Engineer)',
@@ -162,35 +169,36 @@ const sampleComplaintsData = (citizen1) => [
       {
         status: 'Submitted',
         changedBy: 'Amit Kumar',
-        remark: 'Water contamination report submitted.',
+        remark: 'Water contamination and pipeline burst report submitted.',
         timestamp: new Date(Date.now() - 6 * 86400000)
       },
       {
         status: 'Assigned',
         changedBy: 'Jal Board Control',
-        remark: 'Pipeline inspection team assigned.',
+        remark: 'Pipeline emergency response team assigned.',
         timestamp: new Date(Date.now() - 5 * 86400000)
       },
       {
         status: 'In Progress',
         changedBy: 'M. K. Singhal',
-        remark: 'Detected minor hairline crack in feeder pipeline near junction valve. Repair underway.',
+        remark: 'Trench excavated, replacement valve assembly positioned.',
         timestamp: new Date(Date.now() - 3 * 86400000)
       },
       {
         status: 'Resolved',
-        changedBy: 'M. K. Singhal',
-        remark: 'Feeder pipe replaced, main line flushed and water quality test cleared.',
+        changedBy: 'M. K. Singhal (Water Works Engineer)',
+        remark: 'Resolved: Main pipeline junction excavated, fractured pipe section replaced with a new industrial cast-iron shutoff valve fitting, and sealed with fresh concrete.',
         timestamp: new Date(Date.now() - 1 * 86400000)
       }
     ],
     remarks: [
       {
-        text: 'Flushing complete. Tested potable water sample at PHED laboratory.',
+        text: 'Valve replacement complete. Water quality and pressure verified across all connections.',
         author: 'M. K. Singhal',
         createdAt: new Date(Date.now() - 1 * 86400000)
       }
-    ]
+    ],
+    agreedToTerms: true
   },
   {
     referenceId: 'CRP-2026-00105',
@@ -208,7 +216,7 @@ const sampleComplaintsData = (citizen1) => [
     city: 'Chennai',
     latitude: 13.0418,
     longitude: 80.2341,
-    images: [],
+    images: ['/uploads/demo-drain-before.jpg'],
     status: 'Submitted',
     assignedDepartment: 'Stormwater Drainage & Sewerage Board',
     assignedOfficer: 'Pending Allocation',
@@ -220,7 +228,188 @@ const sampleComplaintsData = (citizen1) => [
         timestamp: new Date()
       }
     ],
-    remarks: []
+    remarks: [],
+    agreedToTerms: true
+  },
+  {
+    referenceId: 'CRP-2026-00106',
+    citizen: {
+      name: 'Rohan Deshmukh',
+      phone: '+91 98230 45678',
+      email: 'rohan.d@example.com',
+      userId: null
+    },
+    category: 'Garbage & Sanitation',
+    title: 'Overflowing commercial waste bin obstructing pedestrian corner',
+    description: 'Large waste container overflowing on the sidewalk with domestic and market refuse. Waste spilling onto the pedestrian walking path and street corner.',
+    location: 'Commercial Street Junction, Near Central Market',
+    ward: 'Ward 12 (Central Zone)',
+    city: 'Pune',
+    latitude: 18.5204,
+    longitude: 73.8567,
+    images: ['/uploads/demo-garbage-before.jpg'],
+    resolutionPhoto: '/uploads/demo-garbage-resolved.jpg',
+    resolutionNote: 'Dumpster cleared by municipal compacting truck team. Sidewalk completely swept, sanitized, and waste container relocated to designated clean bay.',
+    resolvedAt: new Date(Date.now() - 12 * 3600000),
+    resolvedBy: 'Priya Varma (Chief Sanitation Inspector)',
+    status: 'Resolved',
+    assignedDepartment: 'Solid Waste & Sanitation Department',
+    assignedOfficer: 'Priya Varma (Chief Sanitation Inspector)',
+    statusHistory: [
+      {
+        status: 'Submitted',
+        changedBy: 'Rohan Deshmukh',
+        remark: 'Grievance submitted with photo of overflowing dumpster.',
+        timestamp: new Date(Date.now() - 3 * 86400000)
+      },
+      {
+        status: 'In Progress',
+        changedBy: 'Priya Varma',
+        remark: 'Compactor vehicle dispatched for site clearance.',
+        timestamp: new Date(Date.now() - 1 * 86400000)
+      },
+      {
+        status: 'Resolved',
+        changedBy: 'Priya Varma (Chief Sanitation Inspector)',
+        remark: 'Resolved: Dumpster cleared by municipal compacting truck team. Sidewalk completely swept, sanitized, and waste container relocated.',
+        timestamp: new Date(Date.now() - 12 * 3600000)
+      }
+    ],
+    remarks: [
+      {
+        text: 'Sanitation completed. Scheduled twice-daily clearance to prevent recurrence.',
+        author: 'Priya Varma',
+        createdAt: new Date(Date.now() - 12 * 3600000)
+      }
+    ],
+    agreedToTerms: true
+  },
+  {
+    referenceId: 'CRP-2026-00107',
+    citizen: {
+      name: 'Ananya Roy',
+      phone: '+91 98300 67890',
+      email: 'ananya.r@example.com',
+      userId: null
+    },
+    category: 'Public Spaces',
+    title: 'Broken concrete bench and damaged infrastructure in municipal park',
+    description: 'The concrete bench near the jogging track has collapsed with cracked supports and exposed iron frame, posing safety hazards for senior citizens.',
+    location: 'Children Public Park, Sector 5 Jogging Track',
+    ward: 'Ward 18 (Green Belt)',
+    city: 'Kolkata',
+    latitude: 22.5726,
+    longitude: 88.3639,
+    images: ['/uploads/demo-park-before.jpg'],
+    status: 'In Progress',
+    assignedDepartment: 'Parks & Public Amenities Directorate',
+    assignedOfficer: 'Suresh Sen (Horticulture & Civil Officer)',
+    statusHistory: [
+      {
+        status: 'Submitted',
+        changedBy: 'Ananya Roy',
+        remark: 'Park damage reported.',
+        timestamp: new Date(Date.now() - 2 * 86400000)
+      },
+      {
+        status: 'In Progress',
+        changedBy: 'Suresh Sen',
+        remark: 'Site inspected. Procurement request initiated for reinforced precast park benches.',
+        timestamp: new Date(Date.now() - 1 * 86400000)
+      }
+    ],
+    remarks: [],
+    agreedToTerms: true
+  },
+  {
+    referenceId: 'CRP-2026-00108',
+    citizen: {
+      name: 'Gaurav Patel',
+      phone: '+91 97250 12345',
+      email: 'gaurav.p@example.com',
+      userId: null
+    },
+    category: 'Other Issues',
+    title: 'Construction debris and broken bricks dumped on pedestrian walkway',
+    description: 'Demolition waste and masonry rubble dumped along the pavement forcing pedestrians to walk on the busy road with high speed traffic.',
+    location: 'Station Road, Near City Post Office',
+    ward: 'Ward 05 (East Zone)',
+    city: 'Ahmedabad',
+    latitude: 23.0225,
+    longitude: 72.5714,
+    images: ['/uploads/demo-debris-before.jpg'],
+    status: 'Under Review',
+    assignedDepartment: 'Central Civic Redressal Cell',
+    assignedOfficer: 'Pending Allocation',
+    statusHistory: [
+      {
+        status: 'Submitted',
+        changedBy: 'Gaurav Patel',
+        remark: 'Footpath encroachment reported.',
+        timestamp: new Date(Date.now() - 1 * 86400000)
+      },
+      {
+        status: 'Under Review',
+        changedBy: 'Encroachment Clearance Cell',
+        remark: 'Notice being drafted to property owner adjacent to site.',
+        timestamp: new Date(Date.now() - 8 * 3600000)
+      }
+    ],
+    remarks: [],
+    agreedToTerms: true
+  },
+  {
+    referenceId: 'CRP-2026-00109',
+    citizen: {
+      name: citizen1.name,
+      phone: citizen1.phone,
+      email: citizen1.email,
+      userId: citizen1._id
+    },
+    category: 'Roads & Potholes',
+    title: 'Deep road crater and collapsed asphalt near market entrance',
+    description: 'Large pothole and surface breakdown on primary commercial market access road causing vehicle damage and traffic hazards.',
+    location: 'Main Bazar Road, Near Old Clock Tower',
+    ward: 'Ward 25 (West Zone)',
+    city: 'Delhi',
+    latitude: 28.6139,
+    longitude: 77.2090,
+    images: ['/uploads/demo-pothole-before.jpg'],
+    resolutionPhoto: '/uploads/demo-pothole-resolved.jpg',
+    resolutionNote: 'Road crater filled with aggregate sub-base, hot asphalt bituminous mix applied, compacted with roller, and barricades removed. Road fully reopened.',
+    resolvedAt: new Date(Date.now() - 2 * 86400000),
+    resolvedBy: 'Rajesh Sharma (Executive Zonal Engineer)',
+    status: 'Resolved',
+    assignedDepartment: 'Public Works Department (Roads)',
+    assignedOfficer: 'Rajesh Sharma (Executive Zonal Engineer)',
+    statusHistory: [
+      {
+        status: 'Submitted',
+        changedBy: 'Amit Kumar',
+        remark: 'Road pothole reported with photos.',
+        timestamp: new Date(Date.now() - 5 * 86400000)
+      },
+      {
+        status: 'In Progress',
+        changedBy: 'Rajesh Sharma',
+        remark: 'PWD Road repair crew mobilized with asphalt mix.',
+        timestamp: new Date(Date.now() - 3 * 86400000)
+      },
+      {
+        status: 'Resolved',
+        changedBy: 'Rajesh Sharma (Executive Zonal Engineer)',
+        remark: 'Resolved: Road crater filled with aggregate sub-base, hot asphalt bituminous mix applied, compacted with roller.',
+        timestamp: new Date(Date.now() - 2 * 86400000)
+      }
+    ],
+    remarks: [
+      {
+        text: 'Repair finished and road inspection approved for traffic safety.',
+        author: 'Rajesh Sharma',
+        createdAt: new Date(Date.now() - 2 * 86400000)
+      }
+    ],
+    agreedToTerms: true
   }
 ];
 
@@ -241,7 +430,7 @@ const seedData = async (shouldExit = true) => {
     const currentYear = new Date().getFullYear();
     await Counter.create({
       _id: `complaints_${currentYear}`,
-      seq: 105
+      seq: 109
     });
 
     console.log('[SEED] Creating authority and citizen users...');
@@ -273,7 +462,7 @@ const seedData = async (shouldExit = true) => {
       role: 'citizen'
     });
 
-    console.log('[SEED] Creating sample complaints...');
+    console.log('[SEED] Creating sample complaints with realistic civic photos...');
     await Complaint.insertMany(sampleComplaintsData(citizen1));
 
     console.log('[SEED] Data seeding completed successfully!');

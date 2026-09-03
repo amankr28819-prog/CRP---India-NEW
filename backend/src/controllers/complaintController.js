@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Complaint = require('../models/Complaint');
 const { generateReferenceId } = require('../utils/referenceGenerator');
 
@@ -199,7 +200,7 @@ const getComplaints = async (req, res, next) => {
 const updateComplaintStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status, remark } = req.body;
+    const { status, remark, resolutionNote } = req.body;
 
     const allowedStatuses = ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved', 'Rejected'];
     if (!allowedStatuses.includes(status)) {
@@ -209,7 +210,10 @@ const updateComplaintStatus = async (req, res, next) => {
       });
     }
 
-    const complaint = await Complaint.findById(id);
+    const complaint = mongoose.Types.ObjectId.isValid(id)
+      ? await Complaint.findById(id)
+      : await Complaint.findOne({ referenceId: id });
+
     if (!complaint) {
       return res.status(404).json({
         success: false,
@@ -218,7 +222,26 @@ const updateComplaintStatus = async (req, res, next) => {
     }
 
     const officerName = req.user ? `${req.user.name} (${req.user.designation || 'Authority'})` : 'Municipal Authority';
-    const auditRemark = remark || `Status updated to ${status}.`;
+
+    // When status is "Resolved", resolution photo proof is strictly required
+    if (status === 'Resolved') {
+      if (req.file) {
+        complaint.resolutionPhoto = `/uploads/${req.file.filename}`;
+      } else if (!complaint.resolutionPhoto) {
+        return res.status(400).json({
+          success: false,
+          message: 'A photo showing proof of resolution is required when marking a complaint as Resolved.'
+        });
+      }
+
+      complaint.resolutionNote = (resolutionNote && resolutionNote.trim()) || (remark && remark.trim()) || complaint.resolutionNote || 'Civic defect resolved and verified by municipal authority.';
+      complaint.resolvedAt = new Date();
+      complaint.resolvedBy = officerName;
+    }
+
+    const auditRemark = (status === 'Resolved' && complaint.resolutionNote)
+      ? `Resolved: ${complaint.resolutionNote}`
+      : (remark || `Status updated to ${status}.`);
 
     complaint.status = status;
     complaint.statusHistory.push({
@@ -228,9 +251,9 @@ const updateComplaintStatus = async (req, res, next) => {
       timestamp: new Date()
     });
 
-    if (remark) {
+    if (remark || (status === 'Resolved' && complaint.resolutionNote)) {
       complaint.remarks.push({
-        text: remark,
+        text: remark || complaint.resolutionNote,
         author: officerName,
         createdAt: new Date()
       });

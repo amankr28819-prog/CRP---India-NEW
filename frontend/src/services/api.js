@@ -123,10 +123,11 @@ export const api = {
   },
 
   updateComplaintStatus: async (id, payload) => {
+    const isFormData = payload instanceof FormData;
     const res = await fetch(`${API_BASE_URL}/complaints/${id}/status`, {
       method: 'PATCH',
-      headers: getHeaders(),
-      body: JSON.stringify(payload)
+      headers: getHeaders(isFormData),
+      body: isFormData ? payload : JSON.stringify(payload)
     });
     return await handleResponse(res);
   },

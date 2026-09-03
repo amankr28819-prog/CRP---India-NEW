@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -8,11 +8,14 @@ import {
   User,
   Image,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   Send,
   UserCheck,
   Phone,
-  Mail
+  Mail,
+  Camera,
+  X
 } from 'lucide-react';
 import { api, getImageUrl } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -42,6 +45,11 @@ export default function AuthorityComplaintDetail() {
   // Status update form state
   const [newStatus, setNewStatus] = useState('');
   const [statusRemark, setStatusRemark] = useState('');
+  const [resolutionPhoto, setResolutionPhoto] = useState(null);
+  const [resolutionPreview, setResolutionPreview] = useState('');
+  const [resolutionNote, setResolutionNote] = useState('');
+  const [fullscreenImage, setFullscreenImage] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Assignment form state
   const [assignDept, setAssignDept] = useState('');
@@ -58,6 +66,9 @@ export default function AuthorityComplaintDetail() {
         setNewStatus(res.complaint.status);
         setAssignDept(res.complaint.assignedDepartment || DEPARTMENTS[0]);
         setAssignOfficer(res.complaint.assignedOfficer || '');
+        if (res.complaint.resolutionNote) {
+          setResolutionNote(res.complaint.resolutionNote);
+        }
       } else {
         setError('Complaint record not found.');
       }
@@ -72,25 +83,79 @@ export default function AuthorityComplaintDetail() {
     fetchComplaint();
   }, [id]);
 
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Only image files (JPG, JPEG, PNG, WEBP) are allowed.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Resolution image size exceeds maximum 5MB limit.');
+      return;
+    }
+
+    setError('');
+    setResolutionPhoto(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setResolutionPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeResolutionPhoto = () => {
+    setResolutionPhoto(null);
+    setResolutionPreview('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleStatusUpdate = async (e) => {
     e.preventDefault();
     if (!newStatus) return;
+
+    // Strict validation: Resolution photo required when marking as Resolved
+    if (newStatus === 'Resolved') {
+      if (!resolutionPhoto && !complaint.resolutionPhoto) {
+        setError('A photo showing proof of resolution is required when marking a complaint as Resolved.');
+        return;
+      }
+    }
 
     setActionLoading(true);
     setActionSuccess('');
     setError('');
 
     try {
-      const res = await api.updateComplaintStatus(complaint._id, {
-        status: newStatus,
-        remark: statusRemark.trim() || `Status updated to ${newStatus} by ${user?.name || 'Authority'}`
-      });
+      let payload;
+      if (resolutionPhoto || (newStatus === 'Resolved' && resolutionNote)) {
+        payload = new FormData();
+        payload.append('status', newStatus);
+        payload.append('remark', statusRemark.trim() || `Status updated to ${newStatus} by ${user?.name || 'Authority'}`);
+        if (resolutionPhoto) {
+          payload.append('resolutionPhoto', resolutionPhoto);
+        }
+        if (resolutionNote.trim()) {
+          payload.append('resolutionNote', resolutionNote.trim());
+        }
+      } else {
+        payload = {
+          status: newStatus,
+          remark: statusRemark.trim() || `Status updated to ${newStatus} by ${user?.name || 'Authority'}`,
+          resolutionNote: resolutionNote.trim()
+        };
+      }
+
+      const res = await api.updateComplaintStatus(complaint._id, payload);
 
       if (res.success) {
         setComplaint(res.complaint);
         setActionSuccess(`Complaint status successfully updated to ${newStatus}.`);
         setStatusRemark('');
-        setTimeout(() => setActionSuccess(''), 4000);
+        setResolutionPhoto(null);
+        setResolutionPreview('');
+        setTimeout(() => setActionSuccess(''), 5000);
       }
     } catch (err) {
       setError(err.message || 'Failed to update status.');
@@ -249,14 +314,103 @@ export default function AuthorityComplaintDetail() {
           {complaint.images && complaint.images.length > 0 && (
             <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border-subtle)' }}>
               <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '10px' }}>
-                Attached Photographic Evidence
+                Attached Photographic Evidence (Reported Issue)
               </h3>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 {complaint.images.map((img, idx) => (
-                  <a key={idx} href={getImageUrl(img)} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '100px', height: '100px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                  <div
+                    key={idx}
+                    onClick={() => setFullscreenImage({ url: getImageUrl(img), caption: `Initial Evidence Photo #${idx + 1}` })}
+                    style={{ cursor: 'pointer', width: '100px', height: '100px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}
+                    title="Click to view full size"
+                  >
                     <img src={getImageUrl(img)} alt="Evidence" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </a>
+                  </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Proof of Resolution Display */}
+          {(complaint.status === 'Resolved' || complaint.resolutionPhoto) && (
+            <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: 'var(--color-status-resolved-bg)', color: 'var(--color-status-resolved)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <CheckCircle2 size={15} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                    Proof of Resolution
+                  </h3>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-status-resolved)', fontWeight: 500 }}>
+                    Official Municipal Remediation Record
+                  </div>
+                </div>
+              </div>
+
+              {/* Before vs After Comparison */}
+              <div style={{ display: 'grid', gridTemplateColumns: complaint.images && complaint.images.length > 0 ? 'repeat(auto-fit, minmax(200px, 1fr))' : '1fr', gap: '14px', marginBottom: '14px' }}>
+                {complaint.images && complaint.images.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                      Reported Issue (Before)
+                    </div>
+                    <div
+                      onClick={() => setFullscreenImage({ url: getImageUrl(complaint.images[0]), caption: 'Reported Civic Issue (Before Resolution)' })}
+                      style={{ cursor: 'pointer', height: '180px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}
+                      title="Click to view full size"
+                    >
+                      <img
+                        src={getImageUrl(complaint.images[0])}
+                        alt="Before problem"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {complaint.resolutionPhoto && (
+                  <div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-status-resolved)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                      Work Completed (Resolution Proof)
+                    </div>
+                    <div
+                      onClick={() => setFullscreenImage({ url: getImageUrl(complaint.resolutionPhoto), caption: 'Official Resolution Photo Proof (After Work)' })}
+                      style={{ cursor: 'pointer', height: '180px', borderRadius: '6px', overflow: 'hidden', border: '2px solid var(--color-status-resolved)' }}
+                      title="Click to view full size"
+                    >
+                      <img
+                        src={getImageUrl(complaint.resolutionPhoto)}
+                        alt="Resolution proof"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {complaint.resolutionNote && (
+                <div style={{ backgroundColor: 'var(--bg-app)', padding: '12px 14px', borderRadius: '6px', borderLeft: '3px solid var(--color-status-resolved)', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '2px', fontWeight: 600 }}>
+                    Official Resolution Note:
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-primary)', fontStyle: 'italic', lineHeight: 1.5 }}>
+                    "{complaint.resolutionNote}"
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                {complaint.resolvedAt && (
+                  <div>
+                    <strong>Resolved on:</strong> {new Date(complaint.resolvedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                )}
+                {complaint.resolvedBy && (
+                  <div>
+                    <strong>Resolved by:</strong> {complaint.resolvedBy}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -295,12 +449,122 @@ export default function AuthorityComplaintDetail() {
                 </select>
               </div>
 
+              {/* Resolution Proof Section when marking as Resolved */}
+              {newStatus === 'Resolved' && (
+                <div style={{ padding: '16px', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-subtle)', borderRadius: '6px', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                    <CheckCircle2 size={16} color="var(--color-status-resolved)" />
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Photo Proof of Resolution
+                    </span>
+                  </div>
+
+                  {/* Resolution Note Field */}
+                  <div className="form-group" style={{ marginBottom: '12px' }}>
+                    <label className="form-label" style={{ fontSize: '0.8125rem' }}>
+                      Resolution Note
+                    </label>
+                    <textarea
+                      value={resolutionNote}
+                      onChange={(e) => setResolutionNote(e.target.value)}
+                      rows={2}
+                      placeholder="e.g. Road pothole repaired and damaged section resurfaced."
+                      className="form-textarea"
+                      style={{ fontSize: '0.8125rem' }}
+                    />
+                    <div className="form-hint">Summary of the physical repair or civic work performed.</div>
+                  </div>
+
+                  {/* Upload Photo of Resolved Issue */}
+                  <div className="form-group" style={{ marginBottom: '0' }}>
+                    <label className="form-label" style={{ fontSize: '0.8125rem' }}>
+                      Upload Photo of Resolved Issue <span style={{ color: 'var(--color-status-rejected)' }}>*</span>
+                    </label>
+
+                    {/* Existing Resolution Photo preview if already on file */}
+                    {complaint.resolutionPhoto && !resolutionPreview && (
+                      <div style={{ marginBottom: '10px', padding: '8px', border: '1px dashed var(--border-subtle)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <img
+                          src={getImageUrl(complaint.resolutionPhoto)}
+                          alt="Current Resolution"
+                          style={{ width: '48px', height: '48px', borderRadius: '4px', objectFit: 'cover' }}
+                        />
+                        <div style={{ flex: 1, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                          <strong>Existing Resolution Photo on record.</strong> Choose a new file below to replace it.
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Selected new file preview */}
+                    {resolutionPreview ? (
+                      <div style={{ position: 'relative', width: '100%', maxHeight: '180px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-subtle)', marginBottom: '8px' }}>
+                        <img
+                          src={resolutionPreview}
+                          alt="Resolution preview"
+                          style={{ width: '100%', height: '150px', objectFit: 'cover', display: 'block' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={removeResolutionPhoto}
+                          style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            backgroundColor: 'rgba(0,0,0,0.75)',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '26px',
+                            height: '26px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                          }}
+                          title="Remove photo"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{
+                          border: '1.5px dashed var(--border-subtle)',
+                          borderRadius: '6px',
+                          padding: '16px',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          backgroundColor: 'var(--bg-surface)'
+                        }}
+                      >
+                        <Camera size={22} style={{ color: 'var(--color-primary)', margin: '0 auto 6px auto' }} />
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                          Click to upload resolution photo
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          Supports JPG, JPEG, PNG (max 5MB)
+                        </div>
+                      </div>
+                    )}
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/jpg,image/webp"
+                      onChange={handlePhotoChange}
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="form-group">
                 <label className="form-label" style={{ fontSize: '0.8125rem' }}>Official Action Remark</label>
                 <textarea
                   value={statusRemark}
                   onChange={(e) => setStatusRemark(e.target.value)}
-                  rows={3}
+                  rows={2}
                   placeholder="e.g. Field inspection completed. Asphalt patching scheduled for 2 PM."
                   className="form-textarea"
                 />
@@ -372,6 +636,67 @@ export default function AuthorityComplaintDetail() {
           </div>
         </div>
       </div>
+
+      {/* Lightbox Modal for Large Image Inspection */}
+      {fullscreenImage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.88)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999,
+            padding: '20px',
+            backdropFilter: 'blur(3px)'
+          }}
+          onClick={() => setFullscreenImage(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            style={{ position: 'relative', maxWidth: '92vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setFullscreenImage(null)}
+              style={{
+                alignSelf: 'flex-end',
+                background: 'rgba(255,255,255,0.15)',
+                border: 'none',
+                color: '#fff',
+                padding: '6px 12px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.85rem',
+                marginBottom: '10px'
+              }}
+            >
+              <X size={16} />
+              <span>Close Preview</span>
+            </button>
+            <img
+              src={fullscreenImage.url}
+              alt={fullscreenImage.caption || 'Enlarged photo'}
+              style={{ maxWidth: '92vw', maxHeight: '78vh', objectFit: 'contain', borderRadius: '6px', boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }}
+            />
+            {fullscreenImage.caption && (
+              <div style={{ color: '#e5e7eb', marginTop: '12px', fontSize: '0.875rem', fontWeight: 500, textAlign: 'center' }}>
+                {fullscreenImage.caption}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -110,6 +110,24 @@ const complaintSchema = new mongoose.Schema(
       }
     ],
     statusHistory: [statusHistorySchema],
+    resolutionPhoto: {
+      type: String,
+      default: ''
+    },
+    resolutionNote: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    resolvedAt: {
+      type: Date,
+      default: null
+    },
+    resolvedBy: {
+      type: String,
+      trim: true,
+      default: ''
+    },
     agreedToTerms: {
       type: Boolean,
       default: false

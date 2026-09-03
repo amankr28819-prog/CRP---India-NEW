@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Building2, User, Image, AlertCircle, Copy } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Building2, User, Image, AlertCircle, Copy, CheckCircle2, X } from 'lucide-react';
 import { api, getImageUrl } from '../services/api';
 import StatusBadge from '../components/StatusBadge';
 import Timeline from '../components/Timeline';
@@ -11,6 +11,7 @@ export default function ComplaintDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState(null);
 
   useEffect(() => {
     const fetchComplaint = async () => {
@@ -159,14 +160,101 @@ export default function ComplaintDetails() {
         {complaint.images && complaint.images.length > 0 && (
           <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border-subtle)' }}>
             <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
-              Photographic Evidence
+              Photographic Evidence (Reported Problem)
             </h3>
             <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
               {complaint.images.map((img, idx) => (
-                <a key={idx} href={getImageUrl(img)} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '140px', height: '140px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                <div
+                  key={idx}
+                  onClick={() => setFullscreenImage({ url: getImageUrl(img), caption: `Initial Complaint Photo #${idx + 1}` })}
+                  style={{ cursor: 'pointer', width: '140px', height: '140px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}
+                  title="Click to view larger"
+                >
                   <img src={getImageUrl(img)} alt="Evidence photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </a>
+                </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Resolution Proof Section */}
+        {complaint.status === 'Resolved' && complaint.resolutionPhoto && (
+          <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: 'var(--color-status-resolved-bg)', color: 'var(--color-status-resolved)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <CheckCircle2 size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-status-resolved)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  ✓ Complaint Resolved
+                </div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                  Resolution Proof
+                </h3>
+              </div>
+            </div>
+
+            {/* Before vs After Visual Comparison */}
+            <div style={{ display: 'grid', gridTemplateColumns: complaint.images && complaint.images.length > 0 ? 'repeat(auto-fit, minmax(260px, 1fr))' : '1fr', gap: '18px', marginBottom: '18px' }}>
+              {complaint.images && complaint.images.length > 0 && (
+                <div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                    Before: Reported Issue
+                  </div>
+                  <div
+                    onClick={() => setFullscreenImage({ url: getImageUrl(complaint.images[0]), caption: 'Reported Issue (Before Resolution)' })}
+                    style={{ cursor: 'pointer', height: '220px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-subtle)' }}
+                    title="Click to view full size"
+                  >
+                    <img
+                      src={getImageUrl(complaint.images[0])}
+                      alt="Before"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-status-resolved)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  After: Resolution Proof (Work Done)
+                </div>
+                <div
+                  onClick={() => setFullscreenImage({ url: getImageUrl(complaint.resolutionPhoto), caption: 'Official Resolution Photo Proof' })}
+                  style={{ cursor: 'pointer', height: '220px', borderRadius: '8px', overflow: 'hidden', border: '2.5px solid var(--color-status-resolved)' }}
+                  title="Click to view full size"
+                >
+                  <img
+                    src={getImageUrl(complaint.resolutionPhoto)}
+                    alt="Resolution proof"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {complaint.resolutionNote && (
+              <div style={{ backgroundColor: 'var(--bg-app)', padding: '14px 18px', borderRadius: '6px', borderLeft: '4px solid var(--color-status-resolved)', marginBottom: '12px' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '3px', fontWeight: 600 }}>
+                  Municipal Resolution Note:
+                </div>
+                <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontStyle: 'italic', lineHeight: 1.5 }}>
+                  "{complaint.resolutionNote}"
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+              {complaint.resolvedAt && (
+                <div>
+                  <strong>Resolved on:</strong> {new Date(complaint.resolvedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </div>
+              )}
+              {complaint.resolvedBy && (
+                <div>
+                  <strong>Resolved by:</strong> {complaint.resolvedBy}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -179,6 +267,67 @@ export default function ComplaintDetails() {
           <Timeline history={complaint.statusHistory} />
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      {fullscreenImage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.88)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999,
+            padding: '20px',
+            backdropFilter: 'blur(3px)'
+          }}
+          onClick={() => setFullscreenImage(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            style={{ position: 'relative', maxWidth: '92vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setFullscreenImage(null)}
+              style={{
+                alignSelf: 'flex-end',
+                background: 'rgba(255,255,255,0.15)',
+                border: 'none',
+                color: '#fff',
+                padding: '6px 12px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.85rem',
+                marginBottom: '10px'
+              }}
+            >
+              <X size={16} />
+              <span>Close Preview</span>
+            </button>
+            <img
+              src={fullscreenImage.url}
+              alt={fullscreenImage.caption || 'Enlarged photo'}
+              style={{ maxWidth: '92vw', maxHeight: '78vh', objectFit: 'contain', borderRadius: '6px', boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }}
+            />
+            {fullscreenImage.caption && (
+              <div style={{ color: '#e5e7eb', marginTop: '12px', fontSize: '0.875rem', fontWeight: 500, textAlign: 'center' }}>
+                {fullscreenImage.caption}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

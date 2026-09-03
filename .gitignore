@@ -14,9 +14,10 @@ build/
 */dist/
 */build/
 
-# Uploaded complaint evidence files (keep .gitkeep)
+# Uploaded complaint evidence files (keep .gitkeep and demo images)
 backend/uploads/*
 !backend/uploads/.gitkeep
+!backend/uploads/demo-*.jpg
 
 # Logs and debug
 *.log
