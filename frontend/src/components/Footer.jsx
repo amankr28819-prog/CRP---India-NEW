@@ -9,16 +9,16 @@ export default function Footer() {
       <div className="container">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '32px', marginBottom: '32px', alignItems: 'start' }}>
           {/* Section 1: CRP India Branding */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '18px' }}>
             <img
               src={crpLogo}
               alt="CRP India Logo"
               style={{
-                width: '140px',
+                width: '220px',
                 maxWidth: '100%',
                 height: 'auto',
                 objectFit: 'contain',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 display: 'block'
               }}
             />
@@ -26,9 +26,9 @@ export default function Footer() {
               style={{
                 fontWeight: 800,
                 color: 'var(--text-footer-heading)',
-                fontSize: '1.75rem',
-                letterSpacing: '-0.02em',
-                lineHeight: 1.1
+                fontSize: '2rem',
+                letterSpacing: '-0.025em',
+                lineHeight: 1.15
               }}
             >
               CRP India
