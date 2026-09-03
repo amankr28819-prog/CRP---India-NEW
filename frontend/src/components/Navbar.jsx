@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, ShieldAlert, User, LogOut, Building2, ArrowRight } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../context/AuthContext';
+import crpLogo from '../assets/crp-logo.png';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -69,23 +70,18 @@ export default function Navbar() {
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '68px' }}>
         {/* Brand */}
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
-          <div
+          <img
+            src={crpLogo}
+            alt="CRP India Logo"
             style={{
-              width: '38px',
-              height: '38px',
-              backgroundColor: 'var(--color-primary)',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFFFFF',
-              fontWeight: 700,
-              fontSize: '1.05rem',
-              letterSpacing: '0.04em'
+              height: '44px',
+              width: 'auto',
+              maxHeight: '44px',
+              objectFit: 'contain',
+              borderRadius: '4px',
+              display: 'block'
             }}
-          >
-            CRP
-          </div>
+          />
           <div>
             <div style={{ fontWeight: 700, fontSize: '1.15rem', color: 'var(--text-primary)', lineHeight: 1.1 }}>
               CRP India
