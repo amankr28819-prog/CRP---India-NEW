@@ -1,4 +1,4 @@
-/* CRP India — Civic Reporting Platform Design System */
+/* CRP India â€” Civic Reporting Platform Design System */
 
 :root {
   /* Light Theme Defaults */
@@ -28,6 +28,9 @@
   --color-accent-blue-bg: #DBEAFE;
   --color-accent-amber-bg: #FEF3C7;
   --color-accent-red-bg: #FEE2E2;
+  --bg-feature-strip: #E7F0FA;       /* Distinct subtle civic contrast blue background */
+  --border-feature-strip: #CBDDF0;   /* Matching border */
+  --bg-feature-card: #FFFFFF;        /* Clean card surface inside */
 
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
@@ -68,6 +71,9 @@
   --color-accent-blue-bg: rgba(59, 130, 246, 0.15);
   --color-accent-amber-bg: rgba(245, 158, 11, 0.15);
   --color-accent-red-bg: rgba(239, 68, 68, 0.15);
+  --bg-feature-strip: #0A1222;       /* Distinct deep contrast navy background */
+  --border-feature-strip: #1E2E4A;   /* Matching border */
+  --bg-feature-card: #131E33;        /* Clean card surface inside */
 
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
@@ -494,5 +500,60 @@ h1, h2, h3, h4, h5, h6 {
   }
   .civic-service-item:last-child {
     border-bottom: none;
+  }
+}
+
+
+/* Separate Feature Section with Distinct Background */
+.civic-feature-section {
+  background-color: var(--bg-feature-strip);
+  border-top: 1px solid var(--border-feature-strip);
+  border-bottom: 1px solid var(--border-feature-strip);
+  padding: 28px 0;
+}
+
+.civic-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.civic-feature-card {
+  background-color: var(--bg-feature-card);
+  border: 1px solid var(--border-feature-strip);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.civic-feature-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.civic-feature-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.civic-feature-desc {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+@media (max-width: 860px) {
+  .civic-feature-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 }

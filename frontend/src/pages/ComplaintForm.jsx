@@ -255,7 +255,7 @@ export default function ComplaintForm() {
               className="btn btn-secondary"
               style={{ width: '100%' }}
             >
-              Lodge Another Complaint
+              Report Another Problem
             </button>
 
             <Link to="/" style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
@@ -274,10 +274,10 @@ export default function ComplaintForm() {
         <span>Back to Categories</span>
       </Link>
 
-      <div className="page-header" style={{ marginBottom: '28px', paddingTop: '8px' }}>
-        <h1 className="page-title">Civic Complaint Registration</h1>
+      <div className="page-header" style={{ marginBottom: '24px', paddingTop: '4px' }}>
+        <h1 className="page-title">Report an Issue</h1>
         <p className="page-subtitle">
-          Submit details regarding municipal service defects or infrastructure hazards.
+          Provide the details of the problem so the municipal team can fix it.
         </p>
       </div>
 
@@ -304,7 +304,7 @@ export default function ComplaintForm() {
               <option key={cat.slug} value={cat.name}>{cat.name}</option>
             ))}
           </select>
-          <div className="form-hint">Selected department will be automatically aligned based on category.</div>
+          <div className="form-hint">This issue will be sent to the responsible department.</div>
         </div>
 
         {/* Complaint Title */}
@@ -504,7 +504,7 @@ export default function ComplaintForm() {
         {/* Citizen Contact Section */}
         <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--border-subtle)' }}>
           <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '14px' }}>
-            Citizen Contact Information
+            Your Contact Details
           </h3>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
@@ -548,7 +548,7 @@ export default function ComplaintForm() {
             </div>
           </div>
           <div className="form-hint" style={{ marginTop: '8px' }}>
-            Contact details are utilized by field officers solely to verify location details if required.
+            Officers may use your contact info if they need help finding the location.
           </div>
         </div>
 
@@ -561,7 +561,7 @@ export default function ComplaintForm() {
             style={{ minWidth: '220px' }}
           >
             <span className="urgent-dot" />
-            <span>{isSubmitting ? 'Submitting Grievance...' : 'Submit Grievance'}</span>
+            <span>{isSubmitting ? 'Submitting...' : 'Submit Complaint'}</span>
           </button>
         </div>
       </form>

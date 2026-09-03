@@ -63,10 +63,10 @@ export default function TrackComplaint() {
 
   return (
     <div className="container" style={{ padding: '40px 20px 80px 20px', maxWidth: '820px' }}>
-      <div className="page-header" style={{ marginBottom: '28px' }}>
+      <div className="page-header" style={{ marginBottom: '24px' }}>
         <h1 className="page-title">Track your complaint</h1>
         <p className="page-subtitle">
-          Check live verification status, assigned municipal engineer, and resolution history.
+          Enter your Reference ID to see the latest updates on your problem.
         </p>
       </div>
 
@@ -97,7 +97,7 @@ export default function TrackComplaint() {
             </button>
           </div>
           <div className="form-hint">
-            Reference IDs are issued upon grievance registration in the format CRP-YYYY-XXXXX.
+            Your Reference ID was provided when you submitted your complaint (e.g. CRP-2026-00101).
           </div>
         </div>
       </form>
