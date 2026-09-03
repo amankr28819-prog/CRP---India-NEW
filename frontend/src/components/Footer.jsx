@@ -90,7 +90,12 @@ export default function Footer() {
               </li>
               <li style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}>
                 <Mail size={13} />
-                <span>grievance@crp.gov.in</span>
+                <a
+                  href="mailto:crpindianew@gmail.com"
+                  style={{ color: 'var(--text-footer)', textDecoration: 'none' }}
+                >
+                  crpindianew@gmail.com
+                </a>
               </li>
             </ul>
           </div>
