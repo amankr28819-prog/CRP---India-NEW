@@ -23,6 +23,7 @@ import CitizenRegister from './pages/CitizenRegister';
 import About from './pages/About';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import FAQs from './pages/FAQs';
 
 // Authority Pages
 import AuthorityLogin from './pages/authority/AuthorityLogin';
@@ -69,6 +70,7 @@ function AppLayout() {
           <Route path="/about" element={<About />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/faqs" element={<FAQs />} />
 
           {/* Municipal Authority Portal */}
           <Route path="/authority/login" element={<AuthorityLogin />} />
