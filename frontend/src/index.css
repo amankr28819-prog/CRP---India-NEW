@@ -22,6 +22,7 @@
   --color-primary-light: #EFF6FF;
   
   --color-accent-urgent: #DC2626; /* Restrained red/orange accent for warnings */
+  --color-status-rejected: #DC2626;
   --color-accent-amber: #D97706;
   --color-accent-green: #15803D;
   --color-accent-green-bg: #DCFCE7;
@@ -65,6 +66,7 @@
   --color-primary-light: #1E293B;
   
   --color-accent-urgent: #EF4444;
+  --color-status-rejected: #EF4444;
   --color-accent-amber: #F59E0B;
   --color-accent-green: #22C55E;
   --color-accent-green-bg: rgba(34, 197, 94, 0.15);
@@ -1119,5 +1121,63 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* ==========================================================================
+   Logout Confirmation Modal & Card Design
+   ========================================================================== */
+.logout-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  overflow-y: auto;
+}
 
+.logout-confirm-card {
+  position: relative;
+  background-color: #FFF6F6;
+  background-image: linear-gradient(180deg, rgba(254, 226, 226, 0.55) 0%, rgba(255, 245, 245, 0.88) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.24);
+  border-radius: 16px;
+  max-width: 440px;
+  width: 100%;
+  padding: 34px 28px;
+  box-shadow: 0 20px 45px -8px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(239, 68, 68, 0.1);
+  text-align: center;
+  box-sizing: border-box;
+  animation: logoutCardScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
+[data-theme="dark"] .logout-confirm-card {
+  background-color: #1F151C;
+  background-image: linear-gradient(180deg, rgba(239, 68, 68, 0.09) 0%, rgba(220, 38, 38, 0.04) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(239, 68, 68, 0.14), 0 8px 24px -4px rgba(239, 68, 68, 0.08);
+}
+
+@keyframes logoutCardScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (max-width: 480px) {
+  .logout-modal-backdrop {
+    padding: 16px;
+  }
+  .logout-confirm-card {
+    padding: 26px 20px;
+    border-radius: 15px;
+    max-width: 100%;
+  }
+}

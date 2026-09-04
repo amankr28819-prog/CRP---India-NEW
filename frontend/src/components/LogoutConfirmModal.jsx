@@ -43,21 +43,7 @@ export default function LogoutConfirmModal() {
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.65)',
-        backdropFilter: 'blur(3px)',
-        WebkitBackdropFilter: 'blur(3px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 9999,
-        padding: '20px'
-      }}
+      className="logout-modal-backdrop"
       onClick={(e) => {
         // Clicking backdrop closes modal safely without logging out
         if (e.target === e.currentTarget) {
@@ -69,16 +55,7 @@ export default function LogoutConfirmModal() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="logout-dialog-title"
-        style={{
-          backgroundColor: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: '12px',
-          maxWidth: '440px',
-          width: '100%',
-          padding: '28px 24px',
-          boxShadow: '0 20px 45px rgba(0, 0, 0, 0.35)',
-          textAlign: 'center'
-        }}
+        className="logout-confirm-card"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Logout Warning Icon */}
@@ -88,11 +65,12 @@ export default function LogoutConfirmModal() {
             height: '56px',
             borderRadius: '50%',
             backgroundColor: 'rgba(239, 68, 68, 0.12)',
-            color: 'var(--color-status-rejected)',
+            border: '1px solid rgba(239, 68, 68, 0.22)',
+            color: 'var(--color-status-rejected, #EF4444)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            margin: '0 auto 16px auto'
+            margin: '0 auto 18px auto'
           }}
         >
           <LogOut size={26} />
@@ -105,7 +83,8 @@ export default function LogoutConfirmModal() {
             fontSize: '1.25rem',
             fontWeight: 700,
             color: 'var(--text-primary)',
-            marginBottom: '8px'
+            marginBottom: '8px',
+            letterSpacing: '-0.01em'
           }}
         >
           Are you sure you want to log out?
@@ -116,8 +95,8 @@ export default function LogoutConfirmModal() {
           style={{
             fontSize: '0.875rem',
             color: 'var(--text-secondary)',
-            lineHeight: 1.5,
-            marginBottom: '24px'
+            lineHeight: 1.55,
+            marginBottom: '26px'
           }}
         >
           {isAuthority
@@ -135,7 +114,8 @@ export default function LogoutConfirmModal() {
               padding: '10px 16px',
               fontWeight: 600,
               justifyContent: 'center',
-              width: '100%'
+              width: '100%',
+              borderRadius: '8px'
             }}
             autoFocus
           >
@@ -146,12 +126,12 @@ export default function LogoutConfirmModal() {
             onClick={handleConfirm}
             className="btn"
             style={{
-              backgroundColor: 'var(--color-status-rejected)',
+              backgroundColor: 'var(--color-status-rejected, #DC2626)',
               color: '#FFFFFF',
               border: 'none',
               padding: '10px 16px',
               fontWeight: 600,
-              borderRadius: '6px',
+              borderRadius: '8px',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
