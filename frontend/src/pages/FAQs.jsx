@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   HelpCircle,
@@ -10,10 +10,15 @@ import {
   FileQuestion
 } from 'lucide-react';
 import BackButton from '../components/BackButton';
+import faqHeaderBg from '../assets/faq-header-bg.webp';
 
 export default function FAQs() {
-  const [openIndex, setOpenIndex] = useState(null);
+  const [clickedIndex, setClickedIndex] = useState(null);
+  const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [justClosedIndex, setJustClosedIndex] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
 
   const faqData = [
     {
@@ -89,7 +94,30 @@ export default function FAQs() {
   ];
 
   const toggleAccordion = (index) => {
-    setOpenIndex(prevIndex => (prevIndex === index ? null : index));
+    if (clickedIndex === index) {
+      setClickedIndex(null);
+      setJustClosedIndex(index);
+    } else {
+      setClickedIndex(index);
+      setJustClosedIndex(null);
+    }
+  };
+
+  const handleMouseEnter = (index) => {
+    if (!isTouch && justClosedIndex !== index) {
+      setHoveredIndex(index);
+    }
+  };
+
+  const handleMouseLeave = (index) => {
+    if (!isTouch) {
+      if (hoveredIndex === index) {
+        setHoveredIndex(null);
+      }
+      if (justClosedIndex === index) {
+        setJustClosedIndex(null);
+      }
+    }
   };
 
   const filteredFaqs = faqData.filter(faq => {
@@ -102,93 +130,139 @@ export default function FAQs() {
   });
 
   return (
-    <div style={{ padding: '36px 0 64px 0' }}>
-      <div className="container" style={{ maxWidth: '860px' }}>
-        <BackButton fallback="/" />
-
-        {/* Page Header */}
-        <div style={{ marginBottom: '32px' }}>
-          <div
+    <div className="faq-page-wrapper" style={{ paddingBottom: '64px' }}>
+      {/* Top Header / Hero Section with Glowing FAQ Background Graphic */}
+      <section
+        className="faq-hero-section"
+        style={{
+          backgroundImage: `
+            linear-gradient(
+              to right,
+              rgba(8, 16, 32, 0.78) 0%,
+              rgba(8, 16, 32, 0.60) 45%,
+              rgba(8, 16, 32, 0.45) 80%,
+              rgba(8, 16, 32, 0.48) 100%
+            ),
+            url(${faqHeaderBg})
+          `
+        }}
+      >
+        <div className="container" style={{ maxWidth: '960px' }}>
+          <BackButton
+            fallback="/"
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px',
-              backgroundColor: 'var(--color-primary-light)',
-              color: 'var(--color-primary)',
-              borderRadius: '4px',
-              fontSize: '0.8125rem',
-              fontWeight: 600,
-              marginBottom: '12px'
+              backgroundColor: 'rgba(15, 23, 42, 0.65)',
+              borderColor: 'rgba(255, 255, 255, 0.22)',
+              color: '#FFFFFF',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              marginBottom: '20px'
             }}
-          >
-            <HelpCircle size={15} />
-            <span>Help Center & Knowledge Base</span>
-          </div>
+          />
 
-          <h1
-            style={{
-              fontSize: '2.2rem',
-              fontWeight: 700,
-              color: 'var(--text-primary)',
-              letterSpacing: '-0.02em',
-              marginBottom: '10px'
-            }}
-          >
-            Frequently Asked Questions
-          </h1>
-          <p
-            style={{
-              fontSize: '1rem',
-              color: 'var(--text-secondary)',
-              lineHeight: 1.6
-            }}
-          >
-            Find quick answers to common questions about CRP India.
-          </p>
-
-          {/* Quick Search */}
-          <div style={{ position: 'relative', marginTop: '20px' }}>
-            <Search
-              size={18}
+          <div style={{ maxWidth: '620px' }}>
+            {/* Help Center Label */}
+            <div
               style={{
-                position: 'absolute',
-                left: '14px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: 'var(--text-muted)'
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 12px',
+                backgroundColor: 'rgba(37, 99, 235, 0.25)',
+                border: '1px solid rgba(96, 165, 250, 0.45)',
+                color: '#93C5FD',
+                borderRadius: '4px',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                marginBottom: '14px',
+                backdropFilter: 'blur(6px)',
+                WebkitBackdropFilter: 'blur(6px)'
               }}
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search frequently asked questions..."
-              className="form-input"
-              style={{ paddingLeft: '42px', height: '44px', fontSize: '0.9rem' }}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
+            >
+              <HelpCircle size={15} />
+              <span>Help Center & Knowledge Base</span>
+            </div>
+
+            {/* Page Heading */}
+            <h1
+              style={{
+                fontSize: '2.35rem',
+                fontWeight: 700,
+                color: '#FFFFFF',
+                letterSpacing: '-0.025em',
+                marginBottom: '10px',
+                lineHeight: 1.25,
+                textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)'
+              }}
+            >
+              Frequently Asked Questions
+            </h1>
+
+            {/* Subtitle */}
+            <p
+              style={{
+                fontSize: '1.05rem',
+                color: 'rgba(241, 245, 249, 0.92)',
+                lineHeight: 1.6,
+                marginBottom: '22px',
+                textShadow: '0 1px 4px rgba(0, 0, 0, 0.4)'
+              }}
+            >
+              Find quick answers to common questions about CRP India.
+            </p>
+
+            {/* Quick Search Bar */}
+            <div style={{ position: 'relative' }}>
+              <Search
+                size={18}
                 style={{
                   position: 'absolute',
-                  right: '12px',
+                  left: '14px',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  fontSize: '0.8125rem'
+                  color: 'var(--text-muted)'
                 }}
-              >
-                Clear
-              </button>
-            )}
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search frequently asked questions..."
+                className="form-input"
+                style={{
+                  paddingLeft: '42px',
+                  height: '46px',
+                  fontSize: '0.9rem',
+                  backgroundColor: 'var(--bg-surface)',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.25)'
+                }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: '0.8125rem'
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
         </div>
+      </section>
 
+      {/* Main FAQ Content Area (Clean CRP India Dark Theme, strictly NO background image) */}
+      <div className="container" style={{ maxWidth: '860px', paddingTop: '36px' }}>
         {/* Accordion List Container */}
         <div
           style={{
@@ -196,84 +270,47 @@ export default function FAQs() {
             border: '1px solid var(--border-subtle)',
             borderRadius: '8px',
             overflow: 'hidden',
-            marginBottom: '32px'
+            marginBottom: '32px',
+            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)'
           }}
         >
           {filteredFaqs.length > 0 ? (
             filteredFaqs.map((faq, index) => {
-              const isOpen = openIndex === index;
+              const isHovered = !isTouch && hoveredIndex === index && justClosedIndex !== index;
+              const isExpanded = clickedIndex === index || isHovered;
+
               return (
                 <div
                   key={faq.id}
-                  style={{
-                    borderBottom: index < filteredFaqs.length - 1 ? '1px solid var(--border-subtle)' : 'none'
-                  }}
+                  className={`faq-item ${isExpanded ? 'is-active' : ''}`}
+                  onMouseEnter={() => handleMouseEnter(index)}
+                  onMouseLeave={() => handleMouseLeave(index)}
                 >
                   <button
                     type="button"
                     onClick={() => toggleAccordion(index)}
-                    aria-expanded={isOpen}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '18px 20px',
-                      background: isOpen ? 'var(--bg-subtle)' : 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      color: 'var(--text-primary)',
-                      fontSize: '1rem',
-                      fontWeight: 600,
-                      gap: '16px',
-                      transition: 'background-color 0.15s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isOpen) e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isOpen) e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
+                    aria-expanded={isExpanded}
+                    className="faq-question-btn"
                   >
                     <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span
-                        style={{
-                          fontSize: '0.75rem',
-                          color: isOpen ? 'var(--color-primary)' : 'var(--text-muted)',
-                          fontWeight: 700,
-                          minWidth: '22px'
-                        }}
-                      >
+                      <span className="faq-num">
                         {String(faq.id).padStart(2, '0')}.
                       </span>
                       <span>{faq.question}</span>
                     </span>
                     <ChevronDown
                       size={18}
-                      style={{
-                        color: isOpen ? 'var(--color-primary)' : 'var(--text-muted)',
-                        transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.2s ease',
-                        flexShrink: 0
-                      }}
+                      className={`faq-chevron ${isExpanded ? 'is-open' : ''}`}
                     />
                   </button>
 
-                  {isOpen && (
-                    <div
-                      style={{
-                        padding: '12px 20px 20px 54px',
-                        color: 'var(--text-secondary)',
-                        fontSize: '0.925rem',
-                        lineHeight: 1.65,
-                        backgroundColor: 'var(--bg-subtle)',
-                        borderTop: '1px solid var(--border-subtle)'
-                      }}
-                    >
-                      {faq.answer}
+                  <div className={`faq-answer-wrapper ${isExpanded ? 'is-open' : ''}`}>
+                    <div className="faq-answer-inner">
+                      <div className="faq-answer-content">
+                        {faq.answer}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })

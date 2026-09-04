@@ -984,3 +984,113 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* ==========================================================================
+   CRP India FAQ Header & Accordion Hover/Click Animations
+   ========================================================================== */
+
+.faq-hero-section {
+  position: relative;
+  background-size: cover;
+  background-position: right center;
+  background-repeat: no-repeat;
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 38px 0 46px 0;
+  overflow: hidden;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color 0.2s ease;
+}
+
+.faq-item:last-child {
+  border-bottom: none;
+}
+
+.faq-question-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  gap: 16px;
+  transition: background-color 0.2s ease, color 0.15s ease;
+}
+
+.faq-item.is-active .faq-question-btn {
+  background-color: var(--bg-subtle);
+}
+
+.faq-chevron {
+  color: var(--text-muted);
+  transition: transform 260ms cubic-bezier(0.4, 0, 0.2, 1), color 200ms ease;
+  flex-shrink: 0;
+}
+
+.faq-item.is-active .faq-chevron {
+  color: var(--color-primary);
+  transform: rotate(180deg);
+}
+
+.faq-num {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  min-width: 22px;
+  transition: color 0.2s ease;
+}
+
+.faq-item.is-active .faq-num {
+  color: var(--color-primary);
+}
+
+/* Smooth Accordion Height Expansion + Fade Animation */
+.faq-answer-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 280ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.faq-answer-wrapper.is-open {
+  grid-template-rows: 1fr;
+}
+
+.faq-answer-inner {
+  overflow: hidden;
+}
+
+.faq-answer-content {
+  padding: 14px 20px 20px 54px;
+  color: var(--text-secondary);
+  font-size: 0.925rem;
+  line-height: 1.65;
+  background-color: var(--bg-subtle);
+  border-top: 1px solid var(--border-subtle);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 240ms ease 40ms, transform 240ms ease 40ms;
+}
+
+.faq-answer-wrapper.is-open .faq-answer-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 640px) {
+  .faq-answer-content {
+    padding: 12px 16px 18px 20px;
+  }
+  .faq-hero-section {
+    background-position: 80% center;
+    padding: 28px 0 36px 0;
+  }
+}
+
+
