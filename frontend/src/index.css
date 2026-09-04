@@ -1140,8 +1140,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .logout-confirm-card {
   position: relative;
-  background-color: #FFF6F6;
-  background-image: linear-gradient(180deg, rgba(254, 226, 226, 0.55) 0%, rgba(255, 245, 245, 0.88) 100%);
+  background-color: var(--bg-surface);
   border: 1px solid rgba(239, 68, 68, 0.24);
   border-radius: 16px;
   max-width: 440px;
@@ -1154,8 +1153,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 [data-theme="dark"] .logout-confirm-card {
-  background-color: #1F151C;
-  background-image: linear-gradient(180deg, rgba(239, 68, 68, 0.09) 0%, rgba(220, 38, 38, 0.04) 100%);
+  background-color: var(--bg-surface);
   border: 1px solid rgba(239, 68, 68, 0.28);
   box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(239, 68, 68, 0.14), 0 8px 24px -4px rgba(239, 68, 68, 0.08);
 }
