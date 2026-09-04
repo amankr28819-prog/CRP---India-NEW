@@ -118,8 +118,8 @@ export default function Home() {
           borderBottom: '1px solid var(--border-subtle)',
           backgroundImage: `
             linear-gradient(
-              rgba(10, 18, 34, 0.35),
-              rgba(10, 18, 34, 0.38)
+              rgba(10, 18, 34, 0.12),
+              rgba(10, 18, 34, 0.14)
             ),
             url(${heroBg})
           `,
