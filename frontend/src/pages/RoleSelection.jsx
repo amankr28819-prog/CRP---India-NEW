@@ -4,8 +4,6 @@ import { Users, Building2, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
 
-import BackButton from '../components/BackButton';
-
 import crpLogo from '../assets/crp-logo-transparent.png';
 import crpInfrastructure from '../assets/crpInfrastructure.jpg';
 
@@ -85,11 +83,6 @@ const boxLeave = (e) => {
         position: 'relative'
       }}
     >
-      {/* Top left back button */}
-      <div style={{ position: 'absolute', top: '20px', left: '20px' }}>
-        <BackButton fallback="/" style={{ marginBottom: 0 }} />
-      </div>
-
       {/* Top right theme toggle */}
       <div style={{ position: 'absolute', top: '20px', right: '20px' }}>
         <ThemeToggle />
