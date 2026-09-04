@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Building2, Lock, Mail, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useToast } from '../../context/ToastContext';
 import BackButton from '../../components/BackButton';
+import AuthTransition from '../../components/AuthTransition';
 import authorityBg from '../../assets/authority-login-bg.jpg';
 
 export default function AuthorityLogin() {
@@ -11,8 +11,8 @@ export default function AuthorityLogin() {
   const [password, setPassword] = useState('Authority@123');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const { login } = useAuth();
-  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -27,15 +27,10 @@ export default function AuthorityLogin() {
     try {
       const res = await login(email, password, 'authority');
       if (res.success) {
-        showToast({
-          title: 'Login Successful',
-          message: 'Welcome back! Redirecting to your Authority Portal...',
-          type: 'success',
-          duration: 3500
-        });
+        setIsTransitioning(true);
         setTimeout(() => {
-          navigate('/authority/dashboard');
-        }, 850);
+          navigate('/authority/dashboard', { replace: true });
+        }, 1200);
         return;
       }
     } catch (err) {
@@ -146,11 +141,11 @@ export default function AuthorityLogin() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || isTransitioning}
             className="btn btn-primary btn-lg"
             style={{ width: '100%', marginTop: '10px' }}
           >
-            {loading ? 'Verifying Authorization...' : 'Sign In to Authority Portal'}
+            {isTransitioning ? 'Signing In...' : loading ? 'Verifying Authorization...' : 'Sign In to Authority Portal'}
           </button>
         </form>
 
@@ -176,6 +171,13 @@ export default function AuthorityLogin() {
         </div>
       </div>
     </div>
+
+    <AuthTransition
+      isOpen={isTransitioning}
+      title="Signing In..."
+      redirectText="Redirecting to Municipal Authority Dashboard..."
+      type="authority"
+    />
   </div>
 );
 }

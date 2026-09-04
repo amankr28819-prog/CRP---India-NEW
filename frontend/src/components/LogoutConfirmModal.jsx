@@ -1,36 +1,45 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useToast } from '../context/ToastContext';
+import AuthTransition from './AuthTransition';
 
 export default function LogoutConfirmModal() {
   const navigate = useNavigate();
   const { showLogoutModal, cancelLogout, confirmLogout, user, isAuthority } = useAuth();
-  const { showToast } = useToast();
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && showLogoutModal) {
+      if (e.key === 'Escape' && showLogoutModal && !isTransitioning) {
         cancelLogout();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showLogoutModal, cancelLogout]);
+  }, [showLogoutModal, cancelLogout, isTransitioning]);
 
-  if (!showLogoutModal) return null;
+  if (!showLogoutModal && !isTransitioning) return null;
 
   const handleConfirm = () => {
-    confirmLogout();
-    navigate('/');
-    showToast({
-      title: 'Logout Successful',
-      message: 'You have been safely signed out.',
-      type: 'success',
-      duration: 3500
-    });
+    setIsTransitioning(true);
+    setTimeout(() => {
+      confirmLogout();
+      setIsTransitioning(false);
+      navigate('/', { replace: true });
+    }, 1200);
   };
+
+  if (isTransitioning) {
+    return (
+      <AuthTransition
+        isOpen={true}
+        title="Signing Out..."
+        redirectText="Redirecting to Home..."
+        type="logout"
+      />
+    );
+  }
 
   return (
     <div

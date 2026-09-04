@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { User, Lock, AlertCircle, Building2, ArrowRight, Info, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useToast } from '../context/ToastContext';
 import BackButton from '../components/BackButton';
+import AuthTransition from '../components/AuthTransition';
 import loginBg from '../assets/citizen-login-bg.jpg';
 
 export default function CitizenLogin() {
@@ -12,8 +12,8 @@ export default function CitizenLogin() {
   const [voterId, setVoterId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const { login, isAuthenticated, isAuthority } = useAuth();
-  const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const isRedirectingRef = React.useRef(false);
@@ -47,15 +47,10 @@ export default function CitizenLogin() {
       const res = await login(email, password, 'citizen', cleanVoterId);
       if (res.success) {
         isRedirectingRef.current = true;
-        showToast({
-          title: 'Login Successful',
-          message: 'Welcome back! Redirecting to your Citizen Portal...',
-          type: 'success',
-          duration: 3500
-        });
+        setIsTransitioning(true);
         setTimeout(() => {
           navigate(redirectTarget, { replace: true });
-        }, 850);
+        }, 1200);
         return;
       }
     } catch (err) {
@@ -176,11 +171,11 @@ export default function CitizenLogin() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isTransitioning}
               className="btn btn-primary btn-lg"
               style={{ width: '100%', marginTop: '8px' }}
             >
-              {loading ? 'Authenticating...' : 'Sign In as Citizen'}
+              {isTransitioning ? 'Signing In...' : loading ? 'Authenticating...' : 'Sign In as Citizen'}
             </button>
           </form>
 
@@ -243,6 +238,13 @@ export default function CitizenLogin() {
           </div>
         </div>
       </div>
+
+      <AuthTransition
+        isOpen={isTransitioning}
+        title="Signing In..."
+        redirectText="Redirecting to Citizen Portal..."
+        type="login"
+      />
     </div>
   );
 }

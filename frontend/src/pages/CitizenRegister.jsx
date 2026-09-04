@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { UserPlus, AlertCircle, Info } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BackButton from '../components/BackButton';
+import AuthTransition from '../components/AuthTransition';
 import loginBg from '../assets/citizen-login-bg.jpg';
 
 export default function CitizenRegister() {
@@ -16,16 +17,18 @@ export default function CitizenRegister() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const { register, isAuthenticated, isAuthority } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const isRedirectingRef = React.useRef(false);
 
   const rawFrom = location.state?.from?.pathname || location.state?.from;
   const redirectTarget = (rawFrom && rawFrom !== '/' && rawFrom !== '/select-role') ? rawFrom : '/home';
   const redirectMessage = location.state?.message;
 
   React.useEffect(() => {
-    if (isAuthenticated && !isAuthority) {
+    if (isAuthenticated && !isAuthority && !isRedirectingRef.current) {
       navigate('/home', { replace: true });
     }
   }, [isAuthenticated, isAuthority, navigate]);
@@ -59,11 +62,15 @@ export default function CitizenRegister() {
     try {
       const res = await register({ ...formData, voterId: cleanVoterId, agreedToTerms });
       if (res.success) {
-        navigate(redirectTarget, { replace: true });
+        isRedirectingRef.current = true;
+        setIsTransitioning(true);
+        setTimeout(() => {
+          navigate(redirectTarget, { replace: true });
+        }, 1300);
+        return;
       }
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
@@ -266,16 +273,16 @@ export default function CitizenRegister() {
 
           <button
             type="submit"
-            disabled={loading || !agreedToTerms}
+            disabled={loading || isTransitioning || !agreedToTerms}
             className="btn btn-primary btn-lg"
             style={{
               width: '100%',
               marginTop: '8px',
-              opacity: (!agreedToTerms || loading) ? 0.6 : 1,
-              cursor: (!agreedToTerms || loading) ? 'not-allowed' : 'pointer'
+              opacity: (!agreedToTerms || loading || isTransitioning) ? 0.6 : 1,
+              cursor: (!agreedToTerms || loading || isTransitioning) ? 'not-allowed' : 'pointer'
             }}
           >
-            {loading ? 'Creating Account...' : 'Complete Registration'}
+            {isTransitioning ? 'Registering...' : loading ? 'Creating Account...' : 'Complete Registration'}
           </button>
         </form>
 
@@ -291,6 +298,14 @@ export default function CitizenRegister() {
         </div>
       </div>
     </div>
+
+    <AuthTransition
+      isOpen={isTransitioning}
+      title="Registration Successful"
+      subtitle="Signing You In..."
+      redirectText="Redirecting to Citizen Portal..."
+      type="register"
+    />
   </div>
 );
 }
