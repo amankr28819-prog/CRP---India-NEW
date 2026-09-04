@@ -118,15 +118,19 @@ export default function Footer() {
           display: block;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 640px) {
           .footer-crp-logo {
             width: 180px;
+            max-width: 100%;
+            height: auto;
           }
         }
 
-        @media (max-width: 480px) {
+        @media (max-width: 360px) {
           .footer-crp-logo {
-            width: 170px;
+            width: 160px;
+            max-width: 100%;
+            height: auto;
           }
         }
       `}</style>
