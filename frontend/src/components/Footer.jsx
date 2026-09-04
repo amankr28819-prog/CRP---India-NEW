@@ -13,14 +13,7 @@ export default function Footer() {
             <img
               src={crpLogo}
               alt="CRP India Logo"
-              style={{
-                width: '220px',
-                maxWidth: '100%',
-                height: 'auto',
-                objectFit: 'contain',
-                borderRadius: '8px',
-                display: 'block'
-              }}
+              className="footer-crp-logo"
             />
           </div>
 
@@ -114,6 +107,29 @@ export default function Footer() {
           </div>
         </div>
       </div>
+
+      <style>{`
+        .footer-crp-logo {
+          width: 220px;
+          max-width: 100%;
+          height: auto;
+          object-fit: contain;
+          border-radius: 8px;
+          display: block;
+        }
+
+        @media (max-width: 768px) {
+          .footer-crp-logo {
+            width: 180px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .footer-crp-logo {
+            width: 170px;
+          }
+        }
+      `}</style>
     </footer>
   );
 }
