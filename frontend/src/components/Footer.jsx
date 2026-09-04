@@ -2,8 +2,18 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, Phone, Mail, MapPin } from 'lucide-react';
 import crpLogo from '../assets/crp-logo.png';
+import { useAuth } from '../context/AuthContext';
 
 export default function Footer() {
+  const { isAuthenticated, isAuthority, requestPortalSwitch } = useAuth();
+
+  const handleCitizenLinkClick = (e) => {
+    if (isAuthenticated && isAuthority) {
+      e.preventDefault();
+      requestPortalSwitch();
+    }
+  };
+
   return (
     <footer style={{ backgroundColor: 'var(--bg-footer)', color: 'var(--text-footer)', borderTop: '1px solid rgba(255, 255, 255, 0.08)', padding: '40px 0 24px 0', fontSize: '0.875rem' }}>
       <div className="container">
@@ -24,13 +34,13 @@ export default function Footer() {
             </h4>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <li>
-                <Link to="/home" style={{ color: 'var(--text-footer)', transition: 'color 0.15s' }}>Home</Link>
+                <Link to="/home" onClick={handleCitizenLinkClick} style={{ color: 'var(--text-footer)', transition: 'color 0.15s' }}>Home</Link>
               </li>
               <li>
-                <Link to="/report" style={{ color: 'var(--text-footer)', transition: 'color 0.15s' }}>Report an Issue</Link>
+                <Link to="/report" onClick={handleCitizenLinkClick} style={{ color: 'var(--text-footer)', transition: 'color 0.15s' }}>Report an Issue</Link>
               </li>
               <li>
-                <Link to="/track" style={{ color: 'var(--text-footer)', transition: 'color 0.15s' }}>Track Complaint</Link>
+                <Link to="/track" onClick={handleCitizenLinkClick} style={{ color: 'var(--text-footer)', transition: 'color 0.15s' }}>Track Complaint</Link>
               </li>
               <li>
                 <Link to="/about" style={{ color: 'var(--text-footer)', transition: 'color 0.15s' }}>About Platform</Link>
@@ -48,19 +58,19 @@ export default function Footer() {
             </h4>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <li>
-                <Link to="/report/roads-potholes" style={{ color: 'var(--text-footer)' }}>Roads & Potholes</Link>
+                <Link to="/report/roads-potholes" onClick={handleCitizenLinkClick} style={{ color: 'var(--text-footer)' }}>Roads & Potholes</Link>
               </li>
               <li>
-                <Link to="/report/garbage-sanitation" style={{ color: 'var(--text-footer)' }}>Garbage & Sanitation</Link>
+                <Link to="/report/garbage-sanitation" onClick={handleCitizenLinkClick} style={{ color: 'var(--text-footer)' }}>Garbage & Sanitation</Link>
               </li>
               <li>
-                <Link to="/report/streetlights" style={{ color: 'var(--text-footer)' }}>Streetlights</Link>
+                <Link to="/report/streetlights" onClick={handleCitizenLinkClick} style={{ color: 'var(--text-footer)' }}>Streetlights</Link>
               </li>
               <li>
-                <Link to="/report/water-supply" style={{ color: 'var(--text-footer)' }}>Water Supply</Link>
+                <Link to="/report/water-supply" onClick={handleCitizenLinkClick} style={{ color: 'var(--text-footer)' }}>Water Supply</Link>
               </li>
               <li>
-                <Link to="/report/drainage" style={{ color: 'var(--text-footer)' }}>Drainage & Sewerage</Link>
+                <Link to="/report/drainage" onClick={handleCitizenLinkClick} style={{ color: 'var(--text-footer)' }}>Drainage & Sewerage</Link>
               </li>
             </ul>
           </div>

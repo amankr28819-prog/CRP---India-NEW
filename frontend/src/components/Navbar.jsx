@@ -14,7 +14,8 @@ import {
   Settings,
   Lock,
   HelpCircle,
-  ShieldCheck
+  ShieldCheck,
+  Users
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../context/AuthContext';
@@ -29,7 +30,7 @@ export default function Navbar() {
 
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, isAuthority, requestLogout, selectPortal, unreadNotificationsCount } = useAuth();
+  const { user, isAuthenticated, isAuthority, requestLogout, requestPortalSwitch, selectPortal, unreadNotificationsCount } = useAuth();
 
   // Hover handlers with debounce grace period to allow smooth mouse transition
   const handleDropdownMouseEnter = () => {
@@ -75,9 +76,15 @@ export default function Navbar() {
     setAccountDropdownOpen(false);
   }, [location.pathname]);
 
-  const isAuthorityMode = Boolean(
-    location.pathname.startsWith('/authority') || (isAuthenticated && isAuthority)
-  );
+  const isAuthorityMode = location.pathname.startsWith('/authority');
+
+  const handleCitizenPortalClick = () => {
+    if (isAuthenticated && isAuthority) {
+      requestPortalSwitch();
+    } else {
+      navigate('/home');
+    }
+  };
 
   const handleLogout = () => {
     requestLogout();
@@ -127,9 +134,20 @@ export default function Navbar() {
       {/* Top Utility Bar (Role Switcher only) */}
       <div className="gov-top-bar">
         <div className="container" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-          <Link
-            to="/"
+          <button
+            type="button"
+            onClick={() => {
+              if (isAuthenticated && isAuthority) {
+                requestPortalSwitch();
+              } else {
+                navigate('/');
+              }
+            }}
             style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '4px',
@@ -140,7 +158,7 @@ export default function Navbar() {
           >
             <Building2 size={12} />
             <span>Change Portal / Role</span>
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -236,20 +254,24 @@ export default function Navbar() {
           <div style={{ display: 'none', alignItems: 'center', gap: '12px' }} className="desktop-actions">
             <ThemeToggle />
 
-            {/* Authority Dashboard indicator/button */}
-            <Link
-              to="/authority/dashboard"
+            {/* Citizen Portal Switcher */}
+            <button
+              type="button"
+              onClick={handleCitizenPortalClick}
               className="btn btn-secondary btn-sm"
+              title="Switch to Citizen Portal"
               style={{
-                borderColor: 'var(--color-primary)',
+                borderColor: 'var(--border-subtle)',
                 color: 'var(--text-primary)',
                 fontWeight: 500,
-                gap: '6px'
+                fontSize: '0.8125rem',
+                gap: '6px',
+                cursor: 'pointer'
               }}
             >
-              <Building2 size={15} style={{ color: 'var(--color-primary)' }} />
-              <span>Authority Dashboard</span>
-            </Link>
+              <Users size={14} style={{ color: 'var(--color-primary)' }} />
+              <span>Citizen Portal</span>
+            </button>
 
             {/* Logged-in authority officer info and Sign Out */}
             {isAuthenticated ? (
@@ -725,15 +747,18 @@ export default function Navbar() {
               })}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                <Link
-                  to="/authority/dashboard"
-                  onClick={() => setMobileMenuOpen(false)}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleCitizenPortalClick();
+                  }}
                   className="btn btn-secondary"
-                  style={{ width: '100%', borderColor: 'var(--color-primary)' }}
+                  style={{ width: '100%', borderColor: 'var(--border-subtle)', justifyContent: 'center' }}
                 >
-                  <Building2 size={16} style={{ color: 'var(--color-primary)' }} />
-                  <span>Authority Dashboard</span>
-                </Link>
+                  <Users size={16} style={{ color: 'var(--color-primary)' }} />
+                  <span>Citizen Portal</span>
+                </button>
 
                 {isAuthenticated ? (
                   <button

@@ -10,17 +10,22 @@ import crpInfrastructure from '../assets/crpInfrastructure.jpg';
 
 export default function RoleSelection() {
   const navigate = useNavigate();
-  const { selectPortal, isAuthority, isAuthenticated } = useAuth();
+  const { selectPortal, isAuthority, isAuthenticated, requestPortalSwitch } = useAuth();
   const isLightMode = document.documentElement.classList.contains('light');
   const [isCitizenHovered, setIsCitizenHovered] = React.useState(false);
   const [isAuthorityHovered, setIsAuthorityHovered] = React.useState(false);
   const [isHeadingHovered, setIsHeadingHovered] = React.useState(false);
 
   const handleSelectRole = (role) => {
-    selectPortal(role);
     if (role === 'citizen') {
+      if (isAuthenticated && isAuthority) {
+        requestPortalSwitch();
+        return;
+      }
+      selectPortal('citizen');
       navigate('/home');
     } else {
+      selectPortal(role);
       if (isAuthenticated && isAuthority) {
         navigate('/authority/dashboard');
       } else {

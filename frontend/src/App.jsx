@@ -11,6 +11,7 @@ import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from './components/ProtectedRoute';
 import CitizenProtectedRoute from './components/CitizenProtectedRoute';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
+import PortalSwitchModal from './components/PortalSwitchModal';
 
 // Citizen Pages
 import RoleSelection from './pages/RoleSelection';
@@ -147,6 +148,7 @@ function AppLayout() {
       </main>
       {!isRoleSelection && <Footer />}
       <LogoutConfirmModal />
+      <PortalSwitchModal />
     </div>
   );
 }

@@ -104,11 +104,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showPortalSwitchModal, setShowPortalSwitchModal] = useState(false);
 
   const logout = () => {
     localStorage.removeItem('crp_token');
+    localStorage.removeItem('crp_portal_role');
     setToken(null);
     setUser(null);
+    setPortalRole('citizen');
     setUnreadNotificationsCount(0);
   };
 
@@ -123,6 +126,19 @@ export const AuthProvider = ({ children }) => {
   const confirmLogout = () => {
     logout();
     setShowLogoutModal(false);
+  };
+
+  const requestPortalSwitch = () => {
+    setShowPortalSwitchModal(true);
+  };
+
+  const cancelPortalSwitch = () => {
+    setShowPortalSwitchModal(false);
+  };
+
+  const confirmPortalSwitch = () => {
+    logout();
+    setShowPortalSwitchModal(false);
   };
 
   const selectPortal = (role) => {
@@ -146,6 +162,10 @@ export const AuthProvider = ({ children }) => {
         requestLogout,
         cancelLogout,
         confirmLogout,
+        showPortalSwitchModal,
+        requestPortalSwitch,
+        cancelPortalSwitch,
+        confirmPortalSwitch,
         selectPortal,
         updateUser,
         refreshUser,
