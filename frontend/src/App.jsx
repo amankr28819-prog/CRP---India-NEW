@@ -31,6 +31,8 @@ import AuthorityLogin from './pages/authority/AuthorityLogin';
 import AuthorityDashboard from './pages/authority/AuthorityDashboard';
 import AuthorityComplaints from './pages/authority/AuthorityComplaints';
 import AuthorityComplaintDetail from './pages/authority/AuthorityComplaintDetail';
+import AuthorityAssignedComplaints from './pages/authority/AuthorityAssignedComplaints';
+import AuthorityReports from './pages/authority/AuthorityReports';
 
 // Wrapper to conditionally render Navbar and Footer (hidden on standalone role selection screen)
 function AppLayout() {
@@ -103,6 +105,22 @@ function AppLayout() {
             element={
               <ProtectedRoute>
                 <AuthorityComplaintDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/authority/assigned"
+            element={
+              <ProtectedRoute>
+                <AuthorityAssignedComplaints />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/authority/reports"
+            element={
+              <ProtectedRoute>
+                <AuthorityReports />
               </ProtectedRoute>
             }
           />

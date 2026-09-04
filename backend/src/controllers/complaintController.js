@@ -187,7 +187,7 @@ const getComplaintByRefId = async (req, res, next) => {
 // @route GET /api/complaints
 const getComplaints = async (req, res, next) => {
   try {
-    const { status, category, ward, search, page = 1, limit = 20, myReports } = req.query;
+    const { status, category, ward, search, page = 1, limit = 20, myReports, assignedOfficer, assignedOnly } = req.query;
     const query = {};
 
     if (status && status !== 'All') {
@@ -200,6 +200,14 @@ const getComplaints = async (req, res, next) => {
 
     if (ward && ward !== 'All') {
       query.ward = ward;
+    }
+
+    if (assignedOnly === 'true') {
+      query.assignedOfficer = { $ne: 'Unassigned' };
+    }
+
+    if (assignedOfficer && assignedOfficer !== 'All') {
+      query.assignedOfficer = { $regex: assignedOfficer, $options: 'i' };
     }
 
     if (search) {
