@@ -1,15 +1,59 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, ShieldAlert, User, LogOut, Building2, ArrowRight } from 'lucide-react';
+import {
+  Menu,
+  X,
+  ShieldAlert,
+  User,
+  LogOut,
+  Building2,
+  ArrowRight,
+  ChevronDown,
+  FileText,
+  Bell,
+  Settings,
+  Lock,
+  HelpCircle,
+  ShieldCheck
+} from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../context/AuthContext';
+import { getImageUrl } from '../services/api';
 import crpLogo from '../assets/crp-logo.png';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
+  const accountDropdownRef = useRef(null);
+
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, isAuthority, requestLogout, selectPortal } = useAuth();
+  const { user, isAuthenticated, isAuthority, requestLogout, selectPortal, unreadNotificationsCount } = useAuth();
+
+  // Close dropdown on outside click or escape
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (accountDropdownRef.current && !accountDropdownRef.current.contains(e.target)) {
+        setAccountDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setAccountDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Close dropdown on route change
+  useEffect(() => {
+    setAccountDropdownOpen(false);
+  }, [location.pathname]);
 
   const isAuthorityMode = Boolean(
     location.pathname.startsWith('/authority') || (isAuthenticated && isAuthority)
@@ -238,20 +282,352 @@ export default function Navbar() {
               </Link>
             )}
 
-            {/* Citizen Login / User Info */}
+            {/* Citizen Login / Account Dropdown */}
             {isAuthenticated ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
-                  {user?.name?.split(' ')[0]}
-                </span>
+              <div style={{ position: 'relative' }} ref={accountDropdownRef}>
                 <button
-                  onClick={handleLogout}
-                  className="btn btn-secondary btn-sm"
-                  title="Sign Out"
-                  style={{ padding: '6px 10px' }}
+                  type="button"
+                  onClick={() => setAccountDropdownOpen(!accountDropdownOpen)}
+                  aria-expanded={accountDropdownOpen}
+                  aria-label="Citizen account menu"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '4px 10px 4px 6px',
+                    borderRadius: '24px',
+                    border: '1px solid var(--border-subtle)',
+                    backgroundColor: accountDropdownOpen ? 'var(--bg-subtle)' : 'var(--bg-surface)',
+                    cursor: 'pointer',
+                    color: 'var(--text-primary)',
+                    transition: 'all 0.15s ease'
+                  }}
                 >
-                  <LogOut size={15} />
+                  {/* Avatar / Initials with Notification Badge */}
+                  <div style={{ position: 'relative', width: '28px', height: '28px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
+                    {user?.avatar ? (
+                      <img
+                        src={getImageUrl(user.avatar)}
+                        alt={user?.name || 'Account'}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          backgroundColor: 'var(--color-primary)',
+                          color: '#FFFFFF',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        {(user?.name || 'C')[0].toUpperCase()}
+                      </div>
+                    )}
+
+                    {unreadNotificationsCount > 0 && (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          top: '-1px',
+                          right: '-1px',
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--color-status-rejected, #DC2626)',
+                          border: '1.5px solid var(--bg-surface)'
+                        }}
+                        title={`${unreadNotificationsCount} unread notifications`}
+                      />
+                    )}
+                  </div>
+
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user?.name?.split(' ')[0] || 'Citizen'}
+                  </span>
+
+                  <ChevronDown
+                    size={14}
+                    style={{
+                      color: 'var(--text-muted)',
+                      transform: accountDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.15s ease'
+                    }}
+                  />
                 </button>
+
+                {/* Account Dropdown Card */}
+                {accountDropdownOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 8px)',
+                      right: 0,
+                      width: '270px',
+                      backgroundColor: 'var(--bg-surface)',
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: '12px',
+                      boxShadow: 'var(--shadow-md)',
+                      zIndex: 100,
+                      overflow: 'hidden'
+                    }}
+                  >
+                    {/* Header Profile Summary */}
+                    <div
+                      style={{
+                        padding: '16px',
+                        borderBottom: '1px solid var(--border-subtle)',
+                        backgroundColor: 'var(--bg-subtle)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '42px', height: '42px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
+                          {user?.avatar ? (
+                            <img
+                              src={getImageUrl(user.avatar)}
+                              alt={user?.name || 'Avatar'}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                backgroundColor: 'var(--color-primary)',
+                                color: '#FFFFFF',
+                                fontSize: '1rem',
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              {(user?.name || 'C')[0].toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {user?.name}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {user?.email}
+                          </div>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              marginTop: '4px',
+                              fontSize: '0.68rem',
+                              fontWeight: 600,
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              backgroundColor: 'var(--color-accent-green-bg, #DCFCE7)',
+                              color: 'var(--color-accent-green, #15803D)'
+                            }}
+                          >
+                            <ShieldCheck size={10} /> Verified Citizen
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Menu Options (8 Items) */}
+                    <div style={{ padding: '6px' }}>
+                      <Link
+                        to="/account/profile"
+                        onClick={() => setAccountDropdownOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '9px 12px',
+                          borderRadius: '6px',
+                          fontSize: '0.85rem',
+                          color: 'var(--text-primary)',
+                          textDecoration: 'none',
+                          fontWeight: 500
+                        }}
+                        className="nav-dropdown-item"
+                      >
+                        <User size={15} style={{ color: 'var(--text-muted)' }} />
+                        <span>Personal Information</span>
+                      </Link>
+
+                      <Link
+                        to="/account/complaints"
+                        onClick={() => setAccountDropdownOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '9px 12px',
+                          borderRadius: '6px',
+                          fontSize: '0.85rem',
+                          color: 'var(--text-primary)',
+                          textDecoration: 'none',
+                          fontWeight: 500
+                        }}
+                        className="nav-dropdown-item"
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <FileText size={15} style={{ color: 'var(--text-muted)' }} />
+                          <span>My Complaints</span>
+                        </div>
+                      </Link>
+
+                      <Link
+                        to="/account/notifications"
+                        onClick={() => setAccountDropdownOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '9px 12px',
+                          borderRadius: '6px',
+                          fontSize: '0.85rem',
+                          color: 'var(--text-primary)',
+                          textDecoration: 'none',
+                          fontWeight: 500
+                        }}
+                        className="nav-dropdown-item"
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <Bell size={15} style={{ color: 'var(--text-muted)' }} />
+                          <span>Notifications</span>
+                        </div>
+                        {unreadNotificationsCount > 0 && (
+                          <span
+                            style={{
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              padding: '1px 6px',
+                              borderRadius: '9999px',
+                              backgroundColor: 'var(--color-status-rejected, #DC2626)',
+                              color: '#FFFFFF'
+                            }}
+                          >
+                            {unreadNotificationsCount}
+                          </span>
+                        )}
+                      </Link>
+
+                      <Link
+                        to="/account/settings"
+                        onClick={() => setAccountDropdownOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '9px 12px',
+                          borderRadius: '6px',
+                          fontSize: '0.85rem',
+                          color: 'var(--text-primary)',
+                          textDecoration: 'none',
+                          fontWeight: 500
+                        }}
+                        className="nav-dropdown-item"
+                      >
+                        <Settings size={15} style={{ color: 'var(--text-muted)' }} />
+                        <span>Settings</span>
+                      </Link>
+
+                      <Link
+                        to="/account/change-password"
+                        onClick={() => setAccountDropdownOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '9px 12px',
+                          borderRadius: '6px',
+                          fontSize: '0.85rem',
+                          color: 'var(--text-primary)',
+                          textDecoration: 'none',
+                          fontWeight: 500
+                        }}
+                        className="nav-dropdown-item"
+                      >
+                        <Lock size={15} style={{ color: 'var(--text-muted)' }} />
+                        <span>Change Password</span>
+                      </Link>
+
+                      <Link
+                        to="/account/support"
+                        onClick={() => setAccountDropdownOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '9px 12px',
+                          borderRadius: '6px',
+                          fontSize: '0.85rem',
+                          color: 'var(--text-primary)',
+                          textDecoration: 'none',
+                          fontWeight: 500
+                        }}
+                        className="nav-dropdown-item"
+                      >
+                        <HelpCircle size={15} style={{ color: 'var(--text-muted)' }} />
+                        <span>Help & Support</span>
+                      </Link>
+
+                      <Link
+                        to="/account/privacy-security"
+                        onClick={() => setAccountDropdownOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '9px 12px',
+                          borderRadius: '6px',
+                          fontSize: '0.85rem',
+                          color: 'var(--text-primary)',
+                          textDecoration: 'none',
+                          fontWeight: 500
+                        }}
+                        className="nav-dropdown-item"
+                      >
+                        <ShieldCheck size={15} style={{ color: 'var(--text-muted)' }} />
+                        <span>Privacy & Security</span>
+                      </Link>
+
+                      <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAccountDropdownOpen(false);
+                          handleLogout();
+                        }}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '9px 12px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          background: 'none',
+                          fontSize: '0.85rem',
+                          color: 'var(--color-status-rejected, #DC2626)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          fontWeight: 600
+                        }}
+                        className="nav-dropdown-item"
+                      >
+                        <LogOut size={15} />
+                        <span>Log Out</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <Link to="/login" className="btn btn-secondary btn-sm">
@@ -414,17 +790,141 @@ export default function Navbar() {
                 </Link>
 
                 {isAuthenticated ? (
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="btn btn-secondary"
-                    style={{ width: '100%' }}
-                  >
-                    <LogOut size={16} />
-                    <span>Sign Out ({user?.name})</span>
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
+                    {/* Citizen Mobile Profile Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0' }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
+                        {user?.avatar ? (
+                          <img
+                            src={getImageUrl(user.avatar)}
+                            alt={user?.name || 'Avatar'}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              backgroundColor: 'var(--color-primary)',
+                              color: '#FFFFFF',
+                              fontSize: '0.85rem',
+                              fontWeight: 700,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                          >
+                            {(user?.name || 'C')[0].toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                          {user?.name}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {user?.email}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Account Links */}
+                    <Link
+                      to="/account/profile"
+                      onClick={() => setMobileMenuOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 4px',
+                        color: 'var(--text-primary)',
+                        fontSize: '0.9rem',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <User size={16} style={{ color: 'var(--text-muted)' }} />
+                      <span>Personal Information</span>
+                    </Link>
+
+                    <Link
+                      to="/account/complaints"
+                      onClick={() => setMobileMenuOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 4px',
+                        color: 'var(--text-primary)',
+                        fontSize: '0.9rem',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <FileText size={16} style={{ color: 'var(--text-muted)' }} />
+                      <span>My Complaints</span>
+                    </Link>
+
+                    <Link
+                      to="/account/notifications"
+                      onClick={() => setMobileMenuOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 4px',
+                        color: 'var(--text-primary)',
+                        fontSize: '0.9rem',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <Bell size={16} style={{ color: 'var(--text-muted)' }} />
+                        <span>Notifications</span>
+                      </div>
+                      {unreadNotificationsCount > 0 && (
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '1px 6px',
+                            borderRadius: '9999px',
+                            backgroundColor: 'var(--color-status-rejected, #DC2626)',
+                            color: '#FFFFFF'
+                          }}
+                        >
+                          {unreadNotificationsCount}
+                        </span>
+                      )}
+                    </Link>
+
+                    <Link
+                      to="/account/settings"
+                      onClick={() => setMobileMenuOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 4px',
+                        color: 'var(--text-primary)',
+                        fontSize: '0.9rem',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <Settings size={16} style={{ color: 'var(--text-muted)' }} />
+                      <span>Settings</span>
+                    </Link>
+
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="btn btn-secondary"
+                      style={{ width: '100%', marginTop: '6px', color: 'var(--color-status-rejected)' }}
+                    >
+                      <LogOut size={16} />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
                 ) : (
                   <Link
                     to="/login"
@@ -443,6 +943,9 @@ export default function Navbar() {
       )}
 
       <style>{`
+        .nav-dropdown-item:hover {
+          background-color: var(--bg-subtle) !important;
+        }
         @media (min-width: 860px) {
           .desktop-nav { display: flex !important; }
           .desktop-actions { display: flex !important; }

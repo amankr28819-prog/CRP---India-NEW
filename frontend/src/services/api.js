@@ -155,6 +155,132 @@ export const api = {
       }
       throw err;
     }
+  },
+
+  // Citizen Account & Profile APIs
+  updateProfile: async (data) => {
+    const res = await fetch(`${API_BASE_URL}/auth/profile`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
+    return await handleResponse(res);
+  },
+
+  uploadProfilePicture: async (formData) => {
+    const res = await fetch(`${API_BASE_URL}/auth/profile-picture`, {
+      method: 'PATCH',
+      headers: getHeaders(true),
+      body: formData
+    });
+    return await handleResponse(res);
+  },
+
+  removeProfilePicture: async () => {
+    const res = await fetch(`${API_BASE_URL}/auth/profile-picture`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    return await handleResponse(res);
+  },
+
+  verifyPasswordForVoterId: async (password) => {
+    const res = await fetch(`${API_BASE_URL}/auth/verify-password`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ password })
+    });
+    return await handleResponse(res);
+  },
+
+  changePassword: async (currentPassword, newPassword, confirmPassword) => {
+    const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
+    });
+    return await handleResponse(res);
+  },
+
+  updateSettings: async (settings) => {
+    const res = await fetch(`${API_BASE_URL}/auth/settings`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(settings)
+    });
+    return await handleResponse(res);
+  },
+
+  // Citizen My Complaints API
+  getMyComplaints: async (params = {}) => {
+    try {
+      const query = new URLSearchParams(params).toString();
+      const url = `${API_BASE_URL}/complaints/my${query ? `?${query}` : ''}`;
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: getHeaders()
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please ensure the backend is running.');
+      }
+      throw err;
+    }
+  },
+
+  // Citizen Notifications API
+  getNotifications: async (params = {}) => {
+    try {
+      const query = new URLSearchParams(params).toString();
+      const url = `${API_BASE_URL}/notifications${query ? `?${query}` : ''}`;
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: getHeaders()
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please ensure the backend is running.');
+      }
+      throw err;
+    }
+  },
+
+  getUnreadNotificationCount: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/notifications/unread-count`, {
+        method: 'GET',
+        headers: getHeaders()
+      });
+      return await handleResponse(res);
+    } catch {
+      return { success: false, count: 0 };
+    }
+  },
+
+  markNotificationRead: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
+      method: 'PATCH',
+      headers: getHeaders()
+    });
+    return await handleResponse(res);
+  },
+
+  markAllNotificationsRead: async () => {
+    const res = await fetch(`${API_BASE_URL}/notifications/read-all`, {
+      method: 'PATCH',
+      headers: getHeaders()
+    });
+    return await handleResponse(res);
+  },
+
+  deleteNotification: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/notifications/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    return await handleResponse(res);
   }
 };
 

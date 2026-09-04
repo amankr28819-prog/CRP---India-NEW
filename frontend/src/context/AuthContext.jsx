@@ -9,6 +9,41 @@ export const AuthProvider = ({ children }) => {
   const [portalRole, setPortalRole] = useState(() => localStorage.getItem('crp_portal_role') || null);
   const [loading, setLoading] = useState(true);
 
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+
+  const fetchUnreadNotifications = async () => {
+    if (!localStorage.getItem('crp_token')) return;
+    try {
+      const res = await api.getUnreadNotificationCount();
+      if (res && res.success) {
+        setUnreadNotificationsCount(res.count || 0);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const refreshUser = async () => {
+    const savedToken = localStorage.getItem('crp_token');
+    if (savedToken) {
+      try {
+        const res = await api.getMe();
+        if (res.success && res.user) {
+          setUser(res.user);
+          fetchUnreadNotifications();
+          return res.user;
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return null;
+  };
+
+  const updateUser = (dataOrFn) => {
+    setUser(prev => (typeof dataOrFn === 'function' ? dataOrFn(prev) : { ...prev, ...dataOrFn }));
+  };
+
   useEffect(() => {
     const initAuth = async () => {
       const savedToken = localStorage.getItem('crp_token');
@@ -17,6 +52,7 @@ export const AuthProvider = ({ children }) => {
           const res = await api.getMe();
           if (res.success && res.user) {
             setUser(res.user);
+            fetchUnreadNotifications();
           } else {
             logout();
           }
@@ -30,6 +66,14 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
+  // Periodic check for notifications when logged in as citizen
+  useEffect(() => {
+    if (!token || !user || user.role !== 'citizen') return;
+    fetchUnreadNotifications();
+    const interval = setInterval(fetchUnreadNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [token, user?.role]);
+
   const login = async (email, password, expectedRole, voterId) => {
     const payload = { email, password, expectedRole };
     if (voterId) payload.voterId = voterId;
@@ -41,6 +85,7 @@ export const AuthProvider = ({ children }) => {
       const activeRole = res.user.role === 'authority' ? 'authority' : 'citizen';
       localStorage.setItem('crp_portal_role', activeRole);
       setPortalRole(activeRole);
+      fetchUnreadNotifications();
     }
     return res;
   };
@@ -53,6 +98,7 @@ export const AuthProvider = ({ children }) => {
       setUser(res.user);
       localStorage.setItem('crp_portal_role', 'citizen');
       setPortalRole('citizen');
+      fetchUnreadNotifications();
     }
     return res;
   };
@@ -63,6 +109,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('crp_token');
     setToken(null);
     setUser(null);
+    setUnreadNotificationsCount(0);
   };
 
   const requestLogout = () => {
@@ -99,7 +146,12 @@ export const AuthProvider = ({ children }) => {
         requestLogout,
         cancelLogout,
         confirmLogout,
-        selectPortal
+        selectPortal,
+        updateUser,
+        refreshUser,
+        unreadNotificationsCount,
+        setUnreadNotificationsCount,
+        fetchUnreadNotifications
       }}
     >
       {children}

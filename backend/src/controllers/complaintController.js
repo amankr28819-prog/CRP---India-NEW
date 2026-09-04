@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Complaint = require('../models/Complaint');
+const Notification = require('../models/Notification');
 const { generateReferenceId } = require('../utils/referenceGenerator');
 
 const categoryDepartmentMap = {
@@ -141,6 +142,20 @@ const createComplaint = async (req, res, next) => {
       ],
       agreedToTerms: true
     });
+
+    // Create confirmation notification for the citizen
+    try {
+      await Notification.create({
+        recipient: userId,
+        title: 'Complaint Registered',
+        message: `Your grievance regarding "${complaint.title}" has been registered successfully with Reference ID ${complaint.referenceId}.`,
+        type: 'submission',
+        complaintId: complaint._id,
+        referenceId: complaint.referenceId
+      });
+    } catch (notifErr) {
+      console.error('[NOTIFICATION] Failed to create submission notification:', notifErr);
+    }
 
     res.status(201).json({
       success: true,
@@ -310,6 +325,25 @@ const updateComplaintStatus = async (req, res, next) => {
 
     await complaint.save();
 
+    // Notify citizen of status update / resolution
+    if (complaint.citizen && complaint.citizen.userId) {
+      try {
+        const isResolved = status === 'Resolved';
+        await Notification.create({
+          recipient: complaint.citizen.userId,
+          title: isResolved ? 'Complaint Resolved' : `Status Updated: ${status}`,
+          message: isResolved
+            ? `Your grievance ${complaint.referenceId} has been marked as Resolved by municipal authorities.`
+            : `Status of grievance ${complaint.referenceId} has been updated to "${status}". Remark: ${auditRemark}`,
+          type: isResolved ? 'resolution' : 'status_change',
+          complaintId: complaint._id,
+          referenceId: complaint.referenceId
+        });
+      } catch (notifErr) {
+        console.error('[NOTIFICATION] Failed to create status notification:', notifErr);
+      }
+    }
+
     res.json({
       success: true,
       message: `Complaint status updated to ${status}.`,
@@ -363,6 +397,22 @@ const assignComplaint = async (req, res, next) => {
 
     await complaint.save();
 
+    // Notify citizen of department/officer assignment
+    if (complaint.citizen && complaint.citizen.userId) {
+      try {
+        await Notification.create({
+          recipient: complaint.citizen.userId,
+          title: 'Department Assigned',
+          message: `Your grievance ${complaint.referenceId} has been assigned to ${complaint.assignedDepartment} (Officer: ${complaint.assignedOfficer}).`,
+          type: 'assignment',
+          complaintId: complaint._id,
+          referenceId: complaint.referenceId
+        });
+      } catch (notifErr) {
+        console.error('[NOTIFICATION] Failed to create assignment notification:', notifErr);
+      }
+    }
+
     res.json({
       success: true,
       message: 'Complaint assignment updated successfully.',
@@ -373,10 +423,59 @@ const assignComplaint = async (req, res, next) => {
   }
 };
 
+// @desc Get complaints filed by the logged-in citizen
+// @route GET /api/complaints/my
+const getMyComplaints = async (req, res, next) => {
+  try {
+    const { status, search, sort = 'newest' } = req.query;
+    const userId = req.user._id;
+    const userEmail = (req.user.email || '').toLowerCase();
+
+    const query = {
+      $or: [
+        { 'citizen.userId': userId },
+        { 'citizen.email': userEmail }
+      ]
+    };
+
+    if (status && status !== 'All') {
+      query.status = status;
+    }
+
+    if (search && search.trim()) {
+      const clean = search.trim();
+      query.$and = [
+        {
+          $or: [
+            { referenceId: { $regex: clean, $options: 'i' } },
+            { title: { $regex: clean, $options: 'i' } },
+            { category: { $regex: clean, $options: 'i' } },
+            { location: { $regex: clean, $options: 'i' } },
+            { ward: { $regex: clean, $options: 'i' } },
+            { city: { $regex: clean, $options: 'i' } }
+          ]
+        }
+      ];
+    }
+
+    const sortOption = sort === 'oldest' ? { createdAt: 1 } : { createdAt: -1 };
+    const complaints = await Complaint.find(query).sort(sortOption);
+
+    res.json({
+      success: true,
+      count: complaints.length,
+      complaints
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createComplaint,
   getComplaintByRefId,
   getComplaints,
+  getMyComplaints,
   updateComplaintStatus,
   assignComplaint
 };

@@ -4,6 +4,7 @@ const {
   createComplaint,
   getComplaintByRefId,
   getComplaints,
+  getMyComplaints,
   updateComplaintStatus,
   assignComplaint
 } = require('../controllers/complaintController');
@@ -13,6 +14,7 @@ const upload = require('../middleware/upload');
 // Public or Citizen routes
 router.post('/', verifyToken, upload.array('images', 3), createComplaint);
 router.get('/', optionalAuth, getComplaints);
+router.get('/my', verifyToken, getMyComplaints);
 router.get('/:referenceId', getComplaintByRefId);
 
 // Authority protected routes

@@ -4,6 +4,7 @@ const { connectDB } = require('../config/db');
 const User = require('../models/User');
 const Complaint = require('../models/Complaint');
 const Counter = require('../models/Counter');
+const Notification = require('../models/Notification');
 
 const sampleComplaintsData = (citizen1) => [
   {
@@ -425,6 +426,7 @@ const seedData = async (shouldExit = true) => {
     await User.deleteMany({});
     await Complaint.deleteMany({});
     await Counter.deleteMany({});
+    await Notification.deleteMany({});
 
     console.log('[SEED] Initializing Counter...');
     const currentYear = new Date().getFullYear();
@@ -465,6 +467,46 @@ const seedData = async (shouldExit = true) => {
 
     console.log('[SEED] Creating sample complaints with realistic civic photos...');
     await Complaint.insertMany(sampleComplaintsData(citizen1));
+
+    console.log('[SEED] Creating sample notifications for citizen...');
+    await Notification.insertMany([
+      {
+        recipient: citizen1._id,
+        title: 'Complaint Registered',
+        message: 'Your grievance regarding "Deep pothole causing severe traffic congestion near Metro Pillar 142" has been registered with Reference ID CRP-2026-00101.',
+        type: 'submission',
+        referenceId: 'CRP-2026-00101',
+        isRead: true,
+        createdAt: new Date(Date.now() - 4 * 86400000)
+      },
+      {
+        recipient: citizen1._id,
+        title: 'Department Assigned',
+        message: 'Your grievance CRP-2026-00101 has been assigned to Public Works Department (Roads) (Officer: Rajesh Sharma).',
+        type: 'assignment',
+        referenceId: 'CRP-2026-00101',
+        isRead: true,
+        createdAt: new Date(Date.now() - 2 * 86400000)
+      },
+      {
+        recipient: citizen1._id,
+        title: 'Status Updated: In Progress',
+        message: 'Status of grievance CRP-2026-00101 has been updated to "In Progress". Remark: Asphalt cold patch mix dispatched.',
+        type: 'status_change',
+        referenceId: 'CRP-2026-00101',
+        isRead: false,
+        createdAt: new Date(Date.now() - 1 * 86400000)
+      },
+      {
+        recipient: citizen1._id,
+        title: 'Complaint Resolved',
+        message: 'Your grievance CRP-2026-00109 has been marked as Resolved by municipal authorities. Road crater filled and traffic restored.',
+        type: 'resolution',
+        referenceId: 'CRP-2026-00109',
+        isRead: false,
+        createdAt: new Date(Date.now() - 3600000)
+      }
+    ]);
 
     console.log('[SEED] Data seeding completed successfully!');
     if (shouldExit) {

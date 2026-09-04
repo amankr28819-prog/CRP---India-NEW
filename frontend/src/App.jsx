@@ -25,6 +25,7 @@ import About from './pages/About';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import FAQs from './pages/FAQs';
+import AccountLayout from './pages/account/AccountLayout';
 
 // Authority Pages
 import AuthorityLogin from './pages/authority/AuthorityLogin';
@@ -79,6 +80,14 @@ function AppLayout() {
             element={
               <CitizenProtectedRoute>
                 <ComplaintDetails />
+              </CitizenProtectedRoute>
+            }
+          />
+          <Route
+            path="/account/*"
+            element={
+              <CitizenProtectedRoute>
+                <AccountLayout />
               </CitizenProtectedRoute>
             }
           />

@@ -52,6 +52,25 @@ const userSchema = new mongoose.Schema(
     agreedToTerms: {
       type: Boolean,
       default: false
+    },
+    avatar: {
+      type: String,
+      default: ''
+    },
+    settings: {
+      notifications: {
+        emailUpdates: { type: Boolean, default: true },
+        complaintStatus: { type: Boolean, default: true }
+      },
+      theme: {
+        type: String,
+        enum: ['light', 'dark', 'system'],
+        default: 'light'
+      },
+      accessibility: {
+        reducedMotion: { type: Boolean, default: false },
+        highContrast: { type: Boolean, default: false }
+      }
     }
   },
   {
