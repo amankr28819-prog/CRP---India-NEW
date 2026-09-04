@@ -212,7 +212,11 @@ export default function Home() {
                 <span className="urgent-dot" />
                 <span>Report an Issue</span>
               </Link>
-              <Link to="/track" className="btn btn-secondary btn-lg">
+              <Link
+                to={!isAuthenticated ? '/login' : '/track'}
+                state={!isAuthenticated ? { from: '/track', message: 'Please log in or register to track your complaints.' } : undefined}
+                className="btn btn-secondary btn-lg"
+              >
                 <Search size={18} />
                 <span>Track Complaint</span>
               </Link>

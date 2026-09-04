@@ -49,14 +49,7 @@ function AppLayout() {
           <Route path="/select-role" element={<RoleSelection />} />
 
           {/* Citizen Portal */}
-          <Route
-            path="/home"
-            element={
-              <CitizenProtectedRoute>
-                <Home />
-              </CitizenProtectedRoute>
-            }
-          />
+          <Route path="/home" element={<Home />} />
           <Route
             path="/report"
             element={
@@ -73,8 +66,22 @@ function AppLayout() {
               </CitizenProtectedRoute>
             }
           />
-          <Route path="/track" element={<TrackComplaint />} />
-          <Route path="/complaint/:id" element={<ComplaintDetails />} />
+          <Route
+            path="/track"
+            element={
+              <CitizenProtectedRoute>
+                <TrackComplaint />
+              </CitizenProtectedRoute>
+            }
+          />
+          <Route
+            path="/complaint/:id"
+            element={
+              <CitizenProtectedRoute>
+                <ComplaintDetails />
+              </CitizenProtectedRoute>
+            }
+          />
           <Route path="/login" element={<CitizenLogin />} />
           <Route path="/register" element={<CitizenRegister />} />
           <Route path="/about" element={<About />} />

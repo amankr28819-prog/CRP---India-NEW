@@ -136,13 +136,13 @@ export default function Navbar() {
           ) : (
             citizenNavLinks.map((link) => {
               const isReport = link.path === '/report';
-              const isHome = link.path === '/home';
-              const isProtected = isReport || isHome;
+              const isTrack = link.path === '/track';
+              const isProtected = isReport || isTrack;
               const targetTo = !isAuthenticated && isProtected ? '/login' : link.path;
               const targetState = !isAuthenticated && isProtected ? {
                 from: link.path,
-                message: isHome
-                  ? 'Please log in or register to access the Citizen Portal.'
+                message: isTrack
+                  ? 'Please log in or register to track your complaints.'
                   : 'Please log in or register to report a civic issue.'
               } : undefined;
               const active = isCitizenActive(link.path);
@@ -362,13 +362,13 @@ export default function Navbar() {
             <>
               {citizenNavLinks.map((link) => {
                 const isReport = link.path === '/report';
-                const isHome = link.path === '/home';
-                const isProtected = isReport || isHome;
+                const isTrack = link.path === '/track';
+                const isProtected = isReport || isTrack;
                 const targetTo = !isAuthenticated && isProtected ? '/login' : link.path;
                 const targetState = !isAuthenticated && isProtected ? {
                   from: link.path,
-                  message: isHome
-                    ? 'Please log in or register to access the Citizen Portal.'
+                  message: isTrack
+                    ? 'Please log in or register to track your complaints.'
                     : 'Please log in or register to report a civic issue.'
                 } : undefined;
                 const active = isCitizenActive(link.path);

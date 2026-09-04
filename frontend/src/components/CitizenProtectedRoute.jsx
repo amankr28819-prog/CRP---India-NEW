@@ -15,14 +15,14 @@ export default function CitizenProtectedRoute({ children }) {
   }
 
   if (!isAuthenticated) {
-    const isAccessingPortal = location.pathname === '/home';
+    const isTrack = location.pathname.startsWith('/track') || location.pathname.startsWith('/complaint');
     return (
       <Navigate
         to="/login"
         state={{
           from: location,
-          message: isAccessingPortal
-            ? 'Please log in or register to access the Citizen Portal.'
+          message: isTrack
+            ? 'Please log in or register to track your complaints.'
             : 'Please log in or register to report a civic issue.'
         }}
         replace
