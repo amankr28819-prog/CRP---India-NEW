@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 
 // Components
 import Navbar from './components/Navbar';
@@ -120,10 +121,12 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <Router>
-          <ScrollToTop />
-          <AppLayout />
-        </Router>
+        <ToastProvider>
+          <Router>
+            <ScrollToTop />
+            <AppLayout />
+          </Router>
+        </ToastProvider>
       </AuthProvider>
     </ThemeProvider>
   );

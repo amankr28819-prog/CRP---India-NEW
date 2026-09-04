@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Building2, Lock, Mail, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import BackButton from '../../components/BackButton';
 import authorityBg from '../../assets/authority-login-bg.jpg';
 
@@ -11,6 +12,7 @@ export default function AuthorityLogin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -25,11 +27,19 @@ export default function AuthorityLogin() {
     try {
       const res = await login(email, password, 'authority');
       if (res.success) {
-        navigate('/authority/dashboard');
+        showToast({
+          title: 'Login Successful',
+          message: 'Welcome back! Redirecting to your Authority Portal...',
+          type: 'success',
+          duration: 3500
+        });
+        setTimeout(() => {
+          navigate('/authority/dashboard');
+        }, 850);
+        return;
       }
     } catch (err) {
       setError(err.message || 'Authentication failed. Please verify credentials.');
-    } finally {
       setLoading(false);
     }
   };

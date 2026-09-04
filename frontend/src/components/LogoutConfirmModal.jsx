@@ -2,10 +2,12 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 export default function LogoutConfirmModal() {
   const navigate = useNavigate();
   const { showLogoutModal, cancelLogout, confirmLogout, user, isAuthority } = useAuth();
+  const { showToast } = useToast();
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -22,6 +24,12 @@ export default function LogoutConfirmModal() {
   const handleConfirm = () => {
     confirmLogout();
     navigate('/');
+    showToast({
+      title: 'Logout Successful',
+      message: 'You have been safely signed out.',
+      type: 'success',
+      duration: 3500
+    });
   };
 
   return (

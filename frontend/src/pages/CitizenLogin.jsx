@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { User, Lock, AlertCircle, Building2, ArrowRight, Info, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import BackButton from '../components/BackButton';
 import loginBg from '../assets/citizen-login-bg.jpg';
 
@@ -12,15 +13,17 @@ export default function CitizenLogin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated, isAuthority } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const isRedirectingRef = React.useRef(false);
 
   const rawFrom = location.state?.from?.pathname || location.state?.from;
   const redirectTarget = (rawFrom && rawFrom !== '/' && rawFrom !== '/select-role') ? rawFrom : '/home';
   const redirectMessage = location.state?.message;
 
   React.useEffect(() => {
-    if (isAuthenticated && !isAuthority) {
+    if (isAuthenticated && !isAuthority && !isRedirectingRef.current) {
       navigate('/home', { replace: true });
     }
   }, [isAuthenticated, isAuthority, navigate]);
@@ -43,11 +46,20 @@ export default function CitizenLogin() {
     try {
       const res = await login(email, password, 'citizen', cleanVoterId);
       if (res.success) {
-        navigate(redirectTarget, { replace: true });
+        isRedirectingRef.current = true;
+        showToast({
+          title: 'Login Successful',
+          message: 'Welcome back! Redirecting to your Citizen Portal...',
+          type: 'success',
+          duration: 3500
+        });
+        setTimeout(() => {
+          navigate(redirectTarget, { replace: true });
+        }, 850);
+        return;
       }
     } catch (err) {
       setError(err.message || 'Authentication failed. Please verify credentials.');
-    } finally {
       setLoading(false);
     }
   };
