@@ -25,10 +25,29 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
   const accountDropdownRef = useRef(null);
+  const hoverTimeoutRef = useRef(null);
 
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, isAuthority, requestLogout, selectPortal, unreadNotificationsCount } = useAuth();
+
+  // Hover handlers with debounce grace period to allow smooth mouse transition
+  const handleDropdownMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setAccountDropdownOpen(true);
+  };
+
+  const handleDropdownMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setAccountDropdownOpen(false);
+    }, 180);
+  };
 
   // Close dropdown on outside click or escape
   useEffect(() => {
@@ -47,6 +66,7 @@ export default function Navbar() {
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
       document.removeEventListener('keydown', handleKeyDown);
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
     };
   }, []);
 
@@ -284,7 +304,12 @@ export default function Navbar() {
 
             {/* Citizen Login / Account Dropdown */}
             {isAuthenticated ? (
-              <div style={{ position: 'relative' }} ref={accountDropdownRef}>
+              <div
+                style={{ position: 'relative' }}
+                ref={accountDropdownRef}
+                onMouseEnter={handleDropdownMouseEnter}
+                onMouseLeave={handleDropdownMouseLeave}
+              >
                 <button
                   type="button"
                   onClick={() => setAccountDropdownOpen(!accountDropdownOpen)}
@@ -363,6 +388,7 @@ export default function Navbar() {
                 {/* Account Dropdown Card */}
                 {accountDropdownOpen && (
                   <div
+                    className="account-dropdown-menu"
                     style={{
                       position: 'absolute',
                       top: 'calc(100% + 8px)',
@@ -943,6 +969,28 @@ export default function Navbar() {
       )}
 
       <style>{`
+        @keyframes accountDropdownFadeSlide {
+          from {
+            opacity: 0;
+            transform: translateY(-6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .account-dropdown-menu {
+          animation: accountDropdownFadeSlide 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        /* Invisible hover bridge to prevent any gap flicker when moving cursor from button to menu */
+        .account-dropdown-menu::before {
+          content: '';
+          position: absolute;
+          top: -12px;
+          left: 0;
+          right: 0;
+          height: 12px;
+        }
         .nav-dropdown-item:hover {
           background-color: var(--bg-subtle) !important;
         }
