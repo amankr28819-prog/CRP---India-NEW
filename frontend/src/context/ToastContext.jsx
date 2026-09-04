@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
-import { CheckCircle2, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 const ToastContext = createContext(null);
 
@@ -15,12 +15,34 @@ export function ToastProvider({ children }) {
     exitTimerRef.current = setTimeout(() => {
       setToast(null);
       setIsExiting(false);
-    }, 240);
+    }, 220);
   }, []);
 
-  const showToast = useCallback(({ title, message, type = 'success', duration = 3500 }) => {
+  const showToast = useCallback((arg, maybeType = 'success', duration = 3500) => {
     if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
     if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+
+    let message = '';
+    let title = '';
+    let type = 'success';
+    let dur = 3500;
+
+    if (typeof arg === 'string') {
+      message = arg;
+      if (typeof maybeType === 'string') {
+        type = maybeType;
+      }
+      if (typeof maybeType === 'number') {
+        dur = maybeType;
+      } else if (typeof duration === 'number') {
+        dur = duration;
+      }
+    } else if (arg && typeof arg === 'object') {
+      message = arg.message || '';
+      title = arg.title || '';
+      type = arg.type || 'success';
+      dur = arg.duration || 3500;
+    }
 
     setIsExiting(false);
     setToast({
@@ -28,12 +50,12 @@ export function ToastProvider({ children }) {
       title,
       message,
       type,
-      duration
+      duration: dur
     });
 
     dismissTimerRef.current = setTimeout(() => {
       hideToast();
-    }, duration);
+    }, dur);
   }, [hideToast]);
 
   return (
@@ -41,12 +63,20 @@ export function ToastProvider({ children }) {
       {children}
       {toast && (
         <div className="toast-container" role="status" aria-live="polite">
-          <div className={`crp-toast ${isExiting ? 'is-exiting' : ''}`}>
+          <div className={`crp-toast crp-toast--${toast.type} ${isExiting ? 'is-exiting' : ''}`}>
             <div className="toast-icon-badge">
-              <CheckCircle2 size={20} strokeWidth={2.5} />
+              {toast.type === 'error' ? (
+                <AlertCircle size={18} strokeWidth={2.5} />
+              ) : toast.type === 'warning' ? (
+                <AlertTriangle size={18} strokeWidth={2.5} />
+              ) : toast.type === 'info' ? (
+                <Info size={18} strokeWidth={2.5} />
+              ) : (
+                <CheckCircle2 size={18} strokeWidth={2.5} />
+              )}
             </div>
             <div className="toast-content">
-              <div className="toast-title">{toast.title}</div>
+              {toast.title && <div className="toast-title">{toast.title}</div>}
               <p className="toast-message">{toast.message}</p>
             </div>
             <button
@@ -55,7 +85,7 @@ export function ToastProvider({ children }) {
               onClick={hideToast}
               aria-label="Dismiss notification"
             >
-              <X size={16} />
+              <X size={15} />
             </button>
             <div
               className="toast-progress-bar"

@@ -92,10 +92,12 @@ export default function ProfileView() {
       const res = await api.uploadProfilePicture(formData);
       if (res.success && res.user) {
         updateUser(res.user);
-        showToast('Profile photo updated successfully', 'success');
+        showToast('Profile picture updated successfully.', 'success');
+      } else {
+        showToast('Failed to update profile picture. Please try again.', 'error');
       }
     } catch (err) {
-      showToast(err.message || 'Failed to upload photo', 'error');
+      showToast(err.message || 'Failed to update profile picture. Please try again.', 'error');
     } finally {
       setIsUploadingPhoto(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -109,10 +111,12 @@ export default function ProfileView() {
       const res = await api.removeProfilePicture();
       if (res.success && res.user) {
         updateUser(res.user);
-        showToast('Profile photo reset to default', 'info');
+        showToast('Profile picture deleted successfully.', 'success');
+      } else {
+        showToast('Failed to delete profile picture. Please try again.', 'error');
       }
     } catch (err) {
-      showToast(err.message || 'Failed to remove photo', 'error');
+      showToast(err.message || 'Failed to delete profile picture. Please try again.', 'error');
     } finally {
       setIsRemovingPhoto(false);
     }
