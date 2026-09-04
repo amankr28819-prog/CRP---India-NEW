@@ -1,4 +1,16 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = (() => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  // If an explicit remote URL is configured in environment, use it
+  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+    return envUrl;
+  }
+  // In production builds (like on Render), default to the live deployed backend
+  if (import.meta.env.PROD) {
+    return 'https://crp-india-new.onrender.com/api';
+  }
+  // In local development, default to local backend
+  return envUrl || 'http://localhost:5000/api';
+})();
 
 const getHeaders = (isFormData = false) => {
   const token = localStorage.getItem('crp_token');

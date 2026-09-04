@@ -46,6 +46,8 @@ app.use(helmet({
 // 2. Strict / Configurable CORS
 const allowedOrigins = [
   process.env.CLIENT_URL,
+  process.env.CLIENT_URL ? process.env.CLIENT_URL.replace(/\/+$/, '') : null,
+  'https://crp-india-frontend.onrender.com',
   'http://localhost:5173',
   'http://127.0.0.1:5173'
 ].filter(Boolean);
