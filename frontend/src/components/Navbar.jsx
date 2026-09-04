@@ -84,8 +84,10 @@ export default function Navbar() {
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '68px' }}>
         {/* Brand */}
         <Link
-          to={isAuthorityMode ? (isAuthenticated ? '/authority/dashboard' : '/authority/login') : '/home'}
-          style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}
+          to="/"
+          onClick={() => setMobileMenuOpen(false)}
+          style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none', cursor: 'pointer' }}
+          title="Return to Portal Selection"
         >
           <img
             src={crpLogo}
