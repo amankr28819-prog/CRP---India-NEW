@@ -19,7 +19,11 @@ export default function RoleSelection() {
   const handleSelectRole = (role) => {
     selectPortal(role);
     if (role === 'citizen') {
-      navigate('/home');
+      if (isAuthenticated && !isAuthority) {
+        navigate('/home');
+      } else {
+        navigate('/login', { state: { from: '/home' } });
+      }
     } else {
       if (isAuthenticated && isAuthority) {
         navigate('/authority/dashboard');

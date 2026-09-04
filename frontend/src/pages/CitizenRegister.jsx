@@ -16,12 +16,19 @@ export default function CitizenRegister() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, isAuthenticated, isAuthority } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || location.state?.from || '/';
+  const rawFrom = location.state?.from?.pathname || location.state?.from;
+  const redirectTarget = (rawFrom && rawFrom !== '/' && rawFrom !== '/select-role') ? rawFrom : '/home';
   const redirectMessage = location.state?.message;
+
+  React.useEffect(() => {
+    if (isAuthenticated && !isAuthority) {
+      navigate('/home', { replace: true });
+    }
+  }, [isAuthenticated, isAuthority, navigate]);
 
   const handleInputChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -52,7 +59,7 @@ export default function CitizenRegister() {
     try {
       const res = await register({ ...formData, voterId: cleanVoterId, agreedToTerms });
       if (res.success) {
-        navigate(from, { replace: true });
+        navigate(redirectTarget, { replace: true });
       }
     } catch (err) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -276,7 +283,7 @@ export default function CitizenRegister() {
           Already have an account?{' '}
           <Link
             to="/login"
-            state={{ from, message: redirectMessage }}
+            state={{ from: redirectTarget, message: redirectMessage }}
             style={{ color: 'var(--color-primary)', fontWeight: 600 }}
           >
             Sign in

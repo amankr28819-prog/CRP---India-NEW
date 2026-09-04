@@ -82,8 +82,15 @@ export default function Navbar() {
         <nav style={{ display: 'none', alignItems: 'center', gap: '28px' }} className="desktop-nav">
           {navLinks.map((link) => {
             const isReport = link.path === '/report';
-            const targetTo = !isAuthenticated && isReport ? '/login' : link.path;
-            const targetState = !isAuthenticated && isReport ? { from: '/report', message: 'Please log in or register to report a civic issue.' } : undefined;
+            const isHome = link.path === '/home';
+            const isProtected = isReport || isHome;
+            const targetTo = !isAuthenticated && isProtected ? '/login' : link.path;
+            const targetState = !isAuthenticated && isProtected ? {
+              from: link.path,
+              message: isHome
+                ? 'Please log in or register to access the Citizen Portal.'
+                : 'Please log in or register to report a civic issue.'
+            } : undefined;
             return (
               <Link
                 key={link.path}
@@ -189,8 +196,15 @@ export default function Navbar() {
         >
           {navLinks.map((link) => {
             const isReport = link.path === '/report';
-            const targetTo = !isAuthenticated && isReport ? '/login' : link.path;
-            const targetState = !isAuthenticated && isReport ? { from: '/report', message: 'Please log in or register to report a civic issue.' } : undefined;
+            const isHome = link.path === '/home';
+            const isProtected = isReport || isHome;
+            const targetTo = !isAuthenticated && isProtected ? '/login' : link.path;
+            const targetState = !isAuthenticated && isProtected ? {
+              from: link.path,
+              message: isHome
+                ? 'Please log in or register to access the Citizen Portal.'
+                : 'Please log in or register to report a civic issue.'
+            } : undefined;
             return (
               <Link
                 key={link.path}

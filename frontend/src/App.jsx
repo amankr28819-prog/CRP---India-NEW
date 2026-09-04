@@ -46,7 +46,14 @@ function AppLayout() {
           <Route path="/select-role" element={<RoleSelection />} />
 
           {/* Citizen Portal */}
-          <Route path="/home" element={<Home />} />
+          <Route
+            path="/home"
+            element={
+              <CitizenProtectedRoute>
+                <Home />
+              </CitizenProtectedRoute>
+            }
+          />
           <Route
             path="/report"
             element={

@@ -31,7 +31,7 @@ export default function Footer() {
             </h4>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <li>
-                <Link to="/" style={{ color: 'var(--text-footer)', transition: 'color 0.15s' }}>Home</Link>
+                <Link to="/home" style={{ color: 'var(--text-footer)', transition: 'color 0.15s' }}>Home</Link>
               </li>
               <li>
                 <Link to="/report" style={{ color: 'var(--text-footer)', transition: 'color 0.15s' }}>Report an Issue</Link>

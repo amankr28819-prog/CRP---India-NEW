@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function CitizenProtectedRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, isAuthority, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -15,16 +15,23 @@ export default function CitizenProtectedRoute({ children }) {
   }
 
   if (!isAuthenticated) {
+    const isAccessingPortal = location.pathname === '/home';
     return (
       <Navigate
         to="/login"
         state={{
           from: location,
-          message: 'Please log in or register to report a civic issue.'
+          message: isAccessingPortal
+            ? 'Please log in or register to access the Citizen Portal.'
+            : 'Please log in or register to report a civic issue.'
         }}
         replace
       />
     );
+  }
+
+  if (isAuthority) {
+    return <Navigate to="/authority/dashboard" replace />;
   }
 
   return children;

@@ -11,12 +11,19 @@ export default function CitizenLogin() {
   const [voterId, setVoterId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated, isAuthority } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || location.state?.from || '/';
+  const rawFrom = location.state?.from?.pathname || location.state?.from;
+  const redirectTarget = (rawFrom && rawFrom !== '/' && rawFrom !== '/select-role') ? rawFrom : '/home';
   const redirectMessage = location.state?.message;
+
+  React.useEffect(() => {
+    if (isAuthenticated && !isAuthority) {
+      navigate('/home', { replace: true });
+    }
+  }, [isAuthenticated, isAuthority, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,7 +43,7 @@ export default function CitizenLogin() {
     try {
       const res = await login(email, password, 'citizen', cleanVoterId);
       if (res.success) {
-        navigate(from, { replace: true });
+        navigate(redirectTarget, { replace: true });
       }
     } catch (err) {
       setError(err.message || 'Authentication failed. Please verify credentials.');
@@ -169,7 +176,7 @@ export default function CitizenLogin() {
             Don't have an account?{' '}
             <Link
               to="/register"
-              state={{ from, message: redirectMessage }}
+              state={{ from: redirectTarget, message: redirectMessage }}
               style={{ color: 'var(--color-primary)', fontWeight: 600 }}
             >
               Register here
