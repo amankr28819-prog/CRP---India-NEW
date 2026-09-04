@@ -1,6 +1,17 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('[SECURITY FATAL] JWT_SECRET must be defined in production environment variables.');
+    }
+    return 'crp_india_super_secret_jwt_key_2026_dev_secure';
+  }
+  return secret;
+};
+
 const generateToken = (user) => {
   return jwt.sign(
     {
@@ -9,7 +20,7 @@ const generateToken = (user) => {
       email: user.email,
       name: user.name
     },
-    process.env.JWT_SECRET || 'crp_india_super_secret_jwt_key_2026_dev_secure',
+    getJwtSecret(),
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
 };
@@ -27,12 +38,58 @@ const register = async (req, res, next) => {
       });
     }
 
+    if (
+      typeof name !== 'string' ||
+      typeof email !== 'string' ||
+      typeof password !== 'string' ||
+      typeof voterId !== 'string'
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'All form fields must be valid text.'
+      });
+    }
+
+    const trimmedName = name.trim();
+    if (trimmedName.length < 2 || trimmedName.length > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Full name must be between 2 and 100 characters in length.'
+      });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail) || cleanEmail.length > 254) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid email address.'
+      });
+    }
+
+    if (password.length < 6 || password.length > 128) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be between 6 and 128 characters long.'
+      });
+    }
+
     const cleanVoterId = voterId.trim().toUpperCase();
     if (!/^[A-Z0-9]{10}$/.test(cleanVoterId)) {
       return res.status(400).json({
         success: false,
         message: 'Voter ID must be a 10-digit alphanumeric code (e.g. ABC1234567).'
       });
+    }
+
+    if (phone && typeof phone === 'string') {
+      const cleanPhone = phone.trim();
+      if (cleanPhone && !/^[+]?[0-9\s\-()]{7,20}$/.test(cleanPhone)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please enter a valid telephone or mobile number.'
+        });
+      }
     }
 
     if (agreedToTerms !== true && agreedToTerms !== 'true') {
@@ -42,7 +99,7 @@ const register = async (req, res, next) => {
       });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -59,10 +116,10 @@ const register = async (req, res, next) => {
     }
 
     const user = await User.create({
-      name,
-      email: email.toLowerCase(),
+      name: trimmedName,
+      email: cleanEmail,
       password,
-      phone: phone || '',
+      phone: (typeof phone === 'string' ? phone.trim() : '') || '',
       voterId: cleanVoterId,
       role: 'citizen',
       agreedToTerms: true
@@ -105,9 +162,18 @@ const login = async (req, res, next) => {
       });
     }
 
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password must be valid text.'
+      });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
     // Citizen login requires a 10-digit alphanumeric Voter ID
     if (expectedRole === 'citizen') {
-      if (!voterId) {
+      if (!voterId || typeof voterId !== 'string') {
         return res.status(400).json({
           success: false,
           message: 'Voter ID is required for citizen sign in.'
@@ -122,7 +188,7 @@ const login = async (req, res, next) => {
       }
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    const user = await User.findOne({ email: cleanEmail }).select('+password');
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -209,10 +275,18 @@ const getMe = async (req, res) => {
 const updateProfile = async (req, res, next) => {
   try {
     const { name } = req.body;
-    if (!name || !name.trim()) {
+    if (!name || typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Name cannot be empty.'
+        message: 'Name is required and must be text.'
+      });
+    }
+
+    const cleanName = name.trim();
+    if (cleanName.length < 2 || cleanName.length > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name must be between 2 and 100 characters in length.'
       });
     }
 
@@ -224,7 +298,7 @@ const updateProfile = async (req, res, next) => {
       });
     }
 
-    user.name = name.trim();
+    user.name = cleanName;
     await user.save();
 
     res.json({
@@ -334,10 +408,17 @@ const removeProfilePicture = async (req, res, next) => {
 const verifyPassword = async (req, res, next) => {
   try {
     const { password } = req.body;
-    if (!password) {
+    if (!password || typeof password !== 'string') {
       return res.status(400).json({
         success: false,
-        message: 'Password is required to verify identity.'
+        message: 'Password is required and must be text.'
+      });
+    }
+
+    if (password.length > 128) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password exceeds maximum length.'
       });
     }
 
@@ -373,17 +454,23 @@ const changePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword, confirmPassword } = req.body;
 
-    if (!currentPassword || !newPassword) {
+    if (
+      !currentPassword ||
+      !newPassword ||
+      typeof currentPassword !== 'string' ||
+      typeof newPassword !== 'string' ||
+      (confirmPassword && typeof confirmPassword !== 'string')
+    ) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide both current and new password.'
+        message: 'Please provide both current and new password as valid text.'
       });
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 6 || newPassword.length > 128) {
       return res.status(400).json({
         success: false,
-        message: 'New password must be at least 6 characters long.'
+        message: 'New password must be between 6 and 128 characters long.'
       });
     }
 

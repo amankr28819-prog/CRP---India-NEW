@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Complaint = require('../models/Complaint');
 const Notification = require('../models/Notification');
 const { generateReferenceId } = require('../utils/referenceGenerator');
+const { escapeRegex } = require('../middleware/sanitize');
 
 const categoryDepartmentMap = {
   'Roads & Potholes': 'Public Works Department (Roads)',
@@ -11,6 +12,42 @@ const categoryDepartmentMap = {
   'Drainage': 'Stormwater Drainage & Sewerage Board',
   'Public Spaces': 'Parks & Public Amenities Directorate',
   'Other Issues': 'Central Civic Redressal Cell'
+};
+
+/**
+ * Data Minimization / Privacy Masking
+ * Masks citizen contact details for public and unauthorized requests
+ */
+const maskCitizenPii = (complaint, reqUser) => {
+  if (!complaint) return null;
+  const compObj = complaint.toObject ? complaint.toObject() : { ...complaint };
+
+  const isAuthority = reqUser && reqUser.role === 'authority';
+  const isOwner = reqUser && compObj.citizen?.userId && reqUser._id && compObj.citizen.userId.toString() === reqUser._id.toString();
+
+  if (!isAuthority && !isOwner && compObj.citizen) {
+    const rawPhone = compObj.citizen.phone || '';
+    const rawEmail = compObj.citizen.email || '';
+
+    let maskedPhone = 'Confidential';
+    if (rawPhone.length > 4) {
+      maskedPhone = '*'.repeat(Math.max(0, rawPhone.length - 4)) + rawPhone.slice(-4);
+    }
+
+    let maskedEmail = 'Confidential';
+    if (rawEmail.includes('@')) {
+      const [local, domain] = rawEmail.split('@');
+      maskedEmail = (local[0] || '') + '***@' + (domain || '');
+    }
+
+    compObj.citizen = {
+      name: compObj.citizen.name || 'Citizen',
+      phone: maskedPhone,
+      email: maskedEmail
+    };
+  }
+
+  return compObj;
 };
 
 // @desc Create a new civic complaint
@@ -83,6 +120,38 @@ const createComplaint = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'Please complete all required fields: category, title, description, location, ward, and city.'
+      });
+    }
+
+    if (!categoryDepartmentMap[category]) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid complaint category selected.'
+      });
+    }
+
+    if (typeof title !== 'string' || title.trim().length < 3 || title.trim().length > 150) {
+      return res.status(400).json({
+        success: false,
+        message: 'Complaint title must be between 3 and 150 characters.'
+      });
+    }
+
+    if (typeof description !== 'string' || description.trim().length < 10 || description.trim().length > 2000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Complaint description must be between 10 and 2000 characters.'
+      });
+    }
+
+    if (
+      typeof location !== 'string' || location.trim().length > 200 ||
+      typeof ward !== 'string' || ward.trim().length > 100 ||
+      typeof city !== 'string' || city.trim().length > 100
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Location, ward, and city must be valid text within length limits.'
       });
     }
 
@@ -173,11 +242,26 @@ const createComplaint = async (req, res, next) => {
 const getComplaintByRefId = async (req, res, next) => {
   try {
     const { referenceId } = req.params;
+    if (!referenceId || typeof referenceId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Reference ID is required.'
+      });
+    }
+
     const cleanRef = referenceId.trim();
+    if (cleanRef.length > 50) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid Reference ID format.'
+      });
+    }
+
+    const escapedRef = escapeRegex(cleanRef);
 
     // Query either by human reference ID (e.g., CRP-2026-00101) or Mongo ObjectId
     const query = cleanRef.startsWith('CRP-')
-      ? { referenceId: { $regex: new RegExp(`^${cleanRef}$`, 'i') } }
+      ? { referenceId: { $regex: new RegExp(`^${escapedRef}$`, 'i') } }
       : { $or: [{ referenceId: cleanRef }, { _id: cleanRef.match(/^[0-9a-fA-F]{24}$/) ? cleanRef : null }] };
 
     const complaint = await Complaint.findOne(query);
@@ -191,7 +275,7 @@ const getComplaintByRefId = async (req, res, next) => {
 
     res.json({
       success: true,
-      complaint
+      complaint: maskCitizenPii(complaint, req.user)
     });
   } catch (err) {
     next(err);
@@ -209,29 +293,35 @@ const getComplaints = async (req, res, next) => {
       query.status = status;
     }
 
-    if (category && category !== 'All') {
+    if (category && category !== 'All' && categoryDepartmentMap[category]) {
       query.category = category;
     }
 
-    if (ward && ward !== 'All') {
-      query.ward = ward;
+    if (ward && ward !== 'All' && typeof ward === 'string' && ward.length <= 100) {
+      query.ward = ward.trim();
     }
 
     if (assignedOnly === 'true') {
       query.assignedOfficer = { $ne: 'Unassigned' };
     }
 
-    if (assignedOfficer && assignedOfficer !== 'All') {
-      query.assignedOfficer = { $regex: assignedOfficer, $options: 'i' };
+    if (assignedOfficer && assignedOfficer !== 'All' && typeof assignedOfficer === 'string') {
+      const cleanOfficer = escapeRegex(assignedOfficer.trim());
+      if (cleanOfficer) {
+        query.assignedOfficer = { $regex: cleanOfficer, $options: 'i' };
+      }
     }
 
-    if (search) {
-      query.$or = [
-        { referenceId: { $regex: search, $options: 'i' } },
-        { title: { $regex: search, $options: 'i' } },
-        { location: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
+    if (search && typeof search === 'string') {
+      const cleanSearch = escapeRegex(search.trim());
+      if (cleanSearch) {
+        query.$or = [
+          { referenceId: { $regex: cleanSearch, $options: 'i' } },
+          { title: { $regex: cleanSearch, $options: 'i' } },
+          { location: { $regex: cleanSearch, $options: 'i' } },
+          { description: { $regex: cleanSearch, $options: 'i' } }
+        ];
+      }
     }
 
     // Filter to user's complaints if requested and authenticated
@@ -239,20 +329,23 @@ const getComplaints = async (req, res, next) => {
       query['citizen.userId'] = req.user._id;
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const cleanPage = Math.max(1, parseInt(page) || 1);
+    const cleanLimit = Math.min(100, Math.max(1, parseInt(limit) || 20));
+    const skip = (cleanPage - 1) * cleanLimit;
+
     const total = await Complaint.countDocuments(query);
     const complaints = await Complaint.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit));
+      .limit(cleanLimit);
 
     res.json({
       success: true,
       count: complaints.length,
       total,
-      page: parseInt(page),
-      pages: Math.ceil(total / parseInt(limit)),
-      complaints
+      page: cleanPage,
+      pages: Math.ceil(total / cleanLimit),
+      complaints: complaints.map(c => maskCitizenPii(c, req.user))
     });
   } catch (err) {
     next(err);
@@ -361,7 +454,17 @@ const assignComplaint = async (req, res, next) => {
     const { id } = req.params;
     const { assignedDepartment, assignedOfficer, remark } = req.body;
 
-    const complaint = await Complaint.findById(id);
+    if (!id || (typeof id !== 'string') || (!mongoose.Types.ObjectId.isValid(id) && !id.startsWith('CRP-'))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid complaint identifier.'
+      });
+    }
+
+    const complaint = mongoose.Types.ObjectId.isValid(id)
+      ? await Complaint.findById(id)
+      : await Complaint.findOne({ referenceId: id });
+
     if (!complaint) {
       return res.status(404).json({
         success: false,
@@ -369,8 +472,12 @@ const assignComplaint = async (req, res, next) => {
       });
     }
 
-    if (assignedDepartment) complaint.assignedDepartment = assignedDepartment;
-    if (assignedOfficer) complaint.assignedOfficer = assignedOfficer;
+    if (assignedDepartment && typeof assignedDepartment === 'string') {
+      complaint.assignedDepartment = assignedDepartment.trim().slice(0, 150);
+    }
+    if (assignedOfficer && typeof assignedOfficer === 'string') {
+      complaint.assignedOfficer = assignedOfficer.trim().slice(0, 100);
+    }
 
     // Transition status to Assigned if it was Submitted or Under Review
     if (complaint.status === 'Submitted' || complaint.status === 'Under Review') {
@@ -378,7 +485,8 @@ const assignComplaint = async (req, res, next) => {
     }
 
     const officerName = req.user ? `${req.user.name} (${req.user.designation || 'Authority'})` : 'Municipal Authority';
-    const assignRemark = remark || `Assigned to ${complaint.assignedDepartment} - Officer: ${complaint.assignedOfficer}.`;
+    const cleanRemark = (remark && typeof remark === 'string') ? remark.trim().slice(0, 1000) : '';
+    const assignRemark = cleanRemark || `Assigned to ${complaint.assignedDepartment} - Officer: ${complaint.assignedOfficer}.`;
 
     complaint.statusHistory.push({
       status: complaint.status,
@@ -387,9 +495,9 @@ const assignComplaint = async (req, res, next) => {
       timestamp: new Date()
     });
 
-    if (remark) {
+    if (cleanRemark) {
       complaint.remarks.push({
-        text: remark,
+        text: cleanRemark,
         author: officerName,
         createdAt: new Date()
       });
@@ -438,28 +546,30 @@ const getMyComplaints = async (req, res, next) => {
       ]
     };
 
-    if (status && status !== 'All') {
+    if (status && status !== 'All' && typeof status === 'string' && status.length <= 50) {
       query.status = status;
     }
 
-    if (search && search.trim()) {
-      const clean = search.trim();
-      query.$and = [
-        {
-          $or: [
-            { referenceId: { $regex: clean, $options: 'i' } },
-            { title: { $regex: clean, $options: 'i' } },
-            { category: { $regex: clean, $options: 'i' } },
-            { location: { $regex: clean, $options: 'i' } },
-            { ward: { $regex: clean, $options: 'i' } },
-            { city: { $regex: clean, $options: 'i' } }
-          ]
-        }
-      ];
+    if (search && typeof search === 'string' && search.trim()) {
+      const clean = escapeRegex(search.trim().slice(0, 100));
+      if (clean) {
+        query.$and = [
+          {
+            $or: [
+              { referenceId: { $regex: clean, $options: 'i' } },
+              { title: { $regex: clean, $options: 'i' } },
+              { category: { $regex: clean, $options: 'i' } },
+              { location: { $regex: clean, $options: 'i' } },
+              { ward: { $regex: clean, $options: 'i' } },
+              { city: { $regex: clean, $options: 'i' } }
+            ]
+          }
+        ];
+      }
     }
 
     const sortOption = sort === 'oldest' ? { createdAt: 1 } : { createdAt: -1 };
-    const complaints = await Complaint.find(query).sort(sortOption);
+    const complaints = await Complaint.find(query).sort(sortOption).limit(200);
 
     res.json({
       success: true,
