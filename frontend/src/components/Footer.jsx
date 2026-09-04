@@ -72,13 +72,13 @@ export default function Footer() {
             </h4>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <li>
+                <Link to="/faqs" style={{ color: 'var(--text-footer)' }}>FAQs</Link>
+              </li>
+              <li>
                 <Link to="/privacy" style={{ color: 'var(--text-footer)' }}>Privacy Policy</Link>
               </li>
               <li>
                 <Link to="/terms" style={{ color: 'var(--text-footer)' }}>Terms of Service</Link>
-              </li>
-              <li>
-                <Link to="/faqs" style={{ color: 'var(--text-footer)' }}>FAQs</Link>
               </li>
               <li style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontSize: '0.8125rem' }}>
                 <Phone size={13} />
