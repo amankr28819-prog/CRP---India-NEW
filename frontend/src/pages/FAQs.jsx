@@ -13,12 +13,8 @@ import BackButton from '../components/BackButton';
 import faqHeaderBg from '../assets/faq-header-bg.webp';
 
 export default function FAQs() {
-  const [clickedIndex, setClickedIndex] = useState(null);
-  const [hoveredIndex, setHoveredIndex] = useState(null);
-  const [justClosedIndex, setJustClosedIndex] = useState(null);
+  const [collapsedIds, setCollapsedIds] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState('');
-
-  const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
 
   const faqData = [
     {
@@ -93,31 +89,16 @@ export default function FAQs() {
     }
   ];
 
-  const toggleAccordion = (index) => {
-    if (clickedIndex === index) {
-      setClickedIndex(null);
-      setJustClosedIndex(index);
-    } else {
-      setClickedIndex(index);
-      setJustClosedIndex(null);
-    }
-  };
-
-  const handleMouseEnter = (index) => {
-    if (!isTouch && justClosedIndex !== index) {
-      setHoveredIndex(index);
-    }
-  };
-
-  const handleMouseLeave = (index) => {
-    if (!isTouch) {
-      if (hoveredIndex === index) {
-        setHoveredIndex(null);
+  const toggleAccordion = (id) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
       }
-      if (justClosedIndex === index) {
-        setJustClosedIndex(null);
-      }
-    }
+      return next;
+    });
   };
 
   const filteredFaqs = faqData.filter(faq => {
@@ -275,20 +256,17 @@ export default function FAQs() {
           }}
         >
           {filteredFaqs.length > 0 ? (
-            filteredFaqs.map((faq, index) => {
-              const isHovered = !isTouch && hoveredIndex === index && justClosedIndex !== index;
-              const isExpanded = clickedIndex === index || isHovered;
+            filteredFaqs.map((faq) => {
+              const isExpanded = !collapsedIds.has(faq.id);
 
               return (
                 <div
                   key={faq.id}
                   className={`faq-item ${isExpanded ? 'is-active' : ''}`}
-                  onMouseEnter={() => handleMouseEnter(index)}
-                  onMouseLeave={() => handleMouseLeave(index)}
                 >
                   <button
                     type="button"
-                    onClick={() => toggleAccordion(index)}
+                    onClick={() => toggleAccordion(faq.id)}
                     aria-expanded={isExpanded}
                     className="faq-question-btn"
                   >
