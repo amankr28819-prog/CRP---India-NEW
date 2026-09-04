@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -105,7 +105,7 @@ export default function LogoutConfirmModal() {
         >
           {isAuthority
             ? `You are signed in as ${user?.name || 'Municipal Officer'} (${user?.designation || 'Authority'}). You will need to sign in again to access the Executive Authority Dashboard.`
-            : `You are signed in as ${user?.name || 'Citizen'}. You will need to sign in again to report civic issues or track grievance updates.`}
+            : `You are signed in as ${user?.name || 'Citizen'}. You will need to sign in again to report civic issues.`}
         </p>
 
         {/* Modal Actions */}
