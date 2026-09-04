@@ -19,6 +19,9 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust reverse proxy for accurate IP resolution in rate limiting
+app.set('trust proxy', 1);
+
 // Enforce environment validation in production
 if (process.env.NODE_ENV === 'production') {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32 || process.env.JWT_SECRET.includes('super_secret_jwt_key') || process.env.JWT_SECRET.includes('your_jwt_secret')) {

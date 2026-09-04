@@ -11,7 +11,7 @@ const connectDB = async () => {
     console.log(`[DB] Connected to MongoDB: ${conn.connection.host}`);
     return conn;
   } catch (err) {
-    console.warn(`[DB] Could not connect to primary MongoDB URI (${uri}): ${err.message}`);
+    console.warn(`[DB] Could not connect to primary MongoDB instance: ${err.message}`);
     
     // In development or test environments, fallback gracefully to in-memory MongoDB
     if (process.env.NODE_ENV !== 'production') {
