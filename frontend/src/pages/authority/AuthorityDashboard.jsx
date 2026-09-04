@@ -12,7 +12,8 @@ import {
   TrendingUp,
   MapPin,
   RefreshCw,
-  Building2
+  Building2,
+  LogOut
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -20,7 +21,7 @@ import StatusBadge from '../../components/StatusBadge';
 import BackButton from '../../components/BackButton';
 
 export default function AuthorityDashboard() {
-  const { user } = useAuth();
+  const { user, requestLogout } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -87,7 +88,7 @@ export default function AuthorityDashboard() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={fetchDashboard} className="btn btn-secondary btn-sm" title="Refresh metrics">
             <RefreshCw size={14} />
             <span>Refresh</span>
@@ -97,6 +98,16 @@ export default function AuthorityDashboard() {
             <span>View All Complaints</span>
             <ArrowRight size={14} />
           </Link>
+
+          <button
+            onClick={requestLogout}
+            className="btn btn-secondary btn-sm"
+            title="Sign Out of Authority Portal"
+            style={{ color: 'var(--color-status-rejected)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+          >
+            <LogOut size={14} />
+            <span>Sign Out</span>
+          </button>
         </div>
       </div>
 

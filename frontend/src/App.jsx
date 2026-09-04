@@ -9,6 +9,7 @@ import Footer from './components/Footer';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from './components/ProtectedRoute';
 import CitizenProtectedRoute from './components/CitizenProtectedRoute';
+import LogoutConfirmModal from './components/LogoutConfirmModal';
 
 // Citizen Pages
 import RoleSelection from './pages/RoleSelection';
@@ -101,6 +102,7 @@ function AppLayout() {
         </Routes>
       </main>
       {!isRoleSelection && <Footer />}
+      <LogoutConfirmModal />
     </div>
   );
 }

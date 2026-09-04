@@ -9,13 +9,12 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, isAuthority, logout, selectPortal } = useAuth();
+  const { user, isAuthenticated, isAuthority, requestLogout, selectPortal } = useAuth();
 
   const isAuthPage = location.pathname.startsWith('/authority');
 
   const handleLogout = () => {
-    logout();
-    navigate('/');
+    requestLogout();
   };
 
   const navLinks = [

@@ -57,10 +57,25 @@ export const AuthProvider = ({ children }) => {
     return res;
   };
 
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+
   const logout = () => {
     localStorage.removeItem('crp_token');
     setToken(null);
     setUser(null);
+  };
+
+  const requestLogout = () => {
+    setShowLogoutModal(true);
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutModal(false);
+  };
+
+  const confirmLogout = () => {
+    logout();
+    setShowLogoutModal(false);
   };
 
   const selectPortal = (role) => {
@@ -80,6 +95,10 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        showLogoutModal,
+        requestLogout,
+        cancelLogout,
+        confirmLogout,
         selectPortal
       }}
     >
