@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Building2, Lock, Mail, AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Building2, Lock, Mail, AlertCircle, ArrowRight, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
 import AuthTransition from '../../components/AuthTransition';
 import authorityBg from '../../assets/authority-login-bg.jpg';
 
 export default function AuthorityLogin() {
-  const [email, setEmail] = useState('authority@crp.gov.in');
-  const [password, setPassword] = useState('Authority@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -41,6 +42,7 @@ export default function AuthorityLogin() {
 
   return (
     <div
+      className="authority-login-wrapper"
       style={{
         minHeight: 'calc(100vh - 70px)',
         backgroundImage: `
@@ -128,15 +130,43 @@ export default function AuthorityLogin() {
             <label className="form-label" htmlFor="authorityPassword">
               Portal Password
             </label>
-            <input
-              id="authorityPassword"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="form-input"
-              required
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                id="authorityPassword"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="form-input"
+                style={{ paddingRight: '44px' }}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                onMouseDown={(e) => e.preventDefault()}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                title={showPassword ? 'Hide password' : 'Show password'}
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  padding: '8px',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted, #94a3b8)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '4px',
+                  lineHeight: 1
+                }}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
           <button
@@ -148,19 +178,6 @@ export default function AuthorityLogin() {
             {isTransitioning ? 'Signing In...' : loading ? 'Verifying Authorization...' : 'Sign In to Authority Portal'}
           </button>
         </form>
-
-        {/* Test / Evaluation Accounts Box */}
-        <div style={{ marginTop: '28px', padding: '14px', backgroundColor: 'var(--bg-subtle)', borderRadius: '6px', fontSize: '0.8125rem', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
-          <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
-            Pre-configured Test Authority Accounts:
-          </div>
-          <div>
-            • <strong>PWD Zonal Officer:</strong> <code>authority@crp.gov.in</code> / <code>Authority@123</code>
-          </div>
-          <div style={{ marginTop: '3px' }}>
-            • <strong>Sanitation Inspector:</strong> <code>sanitation.officer@crp.gov.in</code> / <code>Authority@123</code>
-          </div>
-        </div>
 
         {/* Return to Citizen Site */}
         <div style={{ marginTop: '24px', textAlign: 'center' }}>

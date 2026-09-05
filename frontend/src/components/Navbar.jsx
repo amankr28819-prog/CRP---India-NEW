@@ -5,6 +5,7 @@ import {
   X,
   ShieldAlert,
   User,
+  UserCheck,
   LogOut,
   Building2,
   ArrowRight,
@@ -24,8 +25,10 @@ import crpLogo from '../assets/crp-logo.png';
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileAccountOpen, setMobileAccountOpen] = useState(false);
   const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
   const accountDropdownRef = useRef(null);
+  const mobileAccountRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
 
   const location = useLocation();
@@ -56,10 +59,19 @@ export default function Navbar() {
       if (accountDropdownRef.current && !accountDropdownRef.current.contains(e.target)) {
         setAccountDropdownOpen(false);
       }
+      if (
+        mobileAccountRef.current &&
+        !mobileAccountRef.current.contains(e.target) &&
+        !e.target.closest('.mobile-account-btn')
+      ) {
+        setMobileAccountOpen(false);
+      }
     };
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setAccountDropdownOpen(false);
+        setMobileMenuOpen(false);
+        setMobileAccountOpen(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
@@ -74,6 +86,8 @@ export default function Navbar() {
   // Close dropdown on route change
   useEffect(() => {
     setAccountDropdownOpen(false);
+    setMobileMenuOpen(false);
+    setMobileAccountOpen(false);
   }, [location.pathname]);
 
   const isAuthorityMode = location.pathname.startsWith('/authority');
@@ -163,31 +177,33 @@ export default function Navbar() {
       </div>
 
       {/* Main Navbar */}
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '68px' }}>
+      <div className="container navbar-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '68px' }}>
         {/* Brand */}
         <Link
           to="/"
           onClick={() => setMobileMenuOpen(false)}
-          style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none', cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', cursor: 'pointer', minWidth: 0 }}
           title="Return to Portal Selection"
         >
           <img
             src={crpLogo}
             alt="CRP India Logo"
+            className="navbar-brand-logo"
             style={{
               height: '44px',
               width: 'auto',
               maxHeight: '44px',
               objectFit: 'contain',
               borderRadius: '4px',
-              display: 'block'
+              display: 'block',
+              flexShrink: 0
             }}
           />
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '1.15rem', color: 'var(--text-primary)', lineHeight: 1.1 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: '1.15rem', color: 'var(--text-primary)', lineHeight: 1.1, whiteSpace: 'nowrap' }}>
               CRP India
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+            <div className="brand-subtitle" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
               {isAuthorityMode ? 'Municipal Authority' : 'Civic Reporting Platform'}
             </div>
           </div>
@@ -696,13 +712,50 @@ export default function Navbar() {
           </div>
         )}
 
-        {/* Mobile menu and theme button */}
+        {/* Mobile menu, account, and theme controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} className="mobile-controls">
           <ThemeToggle />
           <button
             type="button"
+            className={`btn btn-secondary btn-sm mobile-account-btn ${mobileAccountOpen ? 'active' : ''}`}
+            onClick={() => {
+              setMobileMenuOpen(false);
+              setMobileAccountOpen(!mobileAccountOpen);
+            }}
+            aria-label="Account menu"
+            aria-expanded={mobileAccountOpen}
+            title="Account"
+            style={{
+              padding: '6px 10px',
+              borderRadius: '6px',
+              position: 'relative',
+              backgroundColor: mobileAccountOpen ? 'var(--bg-subtle)' : undefined,
+              borderColor: mobileAccountOpen ? 'var(--color-primary)' : undefined
+            }}
+          >
+            <User size={18} />
+            {isAuthenticated && unreadNotificationsCount > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '2px',
+                  width: '7px',
+                  height: '7px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--color-status-rejected, #DC2626)',
+                  border: '1.5px solid var(--bg-surface)'
+                }}
+              />
+            )}
+          </button>
+          <button
+            type="button"
             className="btn btn-secondary btn-sm"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            onClick={() => {
+              setMobileAccountOpen(false);
+              setMobileMenuOpen(!mobileMenuOpen);
+            }}
             aria-label="Toggle navigation menu"
             style={{ padding: '6px 10px' }}
           >
@@ -710,6 +763,456 @@ export default function Navbar() {
           </button>
         </div>
       </div>
+
+      {/* Mobile Account Drawer */}
+      {mobileAccountOpen && (
+        <div
+          ref={mobileAccountRef}
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            borderBottom: '1px solid var(--border-subtle)',
+            padding: '16px 20px 24px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            boxShadow: 'var(--shadow-md)'
+          }}
+          className="mobile-drawer mobile-account-drawer"
+        >
+          {isAuthenticated ? (
+            isAuthority ? (
+              /* Municipal Authority Authenticated Account Menu */
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--color-primary)',
+                      color: '#FFFFFF',
+                      fontSize: '1.1rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                  >
+                    {(user?.name || 'O')[0].toUpperCase()}
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user?.name}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user?.email}
+                    </div>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        marginTop: '4px',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        padding: '1px 8px',
+                        borderRadius: '4px',
+                        backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                        color: 'var(--color-primary)'
+                      }}
+                    >
+                      <Building2 size={11} />
+                      <span>{user?.department || 'Municipal Authority'}</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <Link
+                    to="/authority/dashboard"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="nav-dropdown-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 8px',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      textDecoration: 'none',
+                      fontWeight: 500
+                    }}
+                  >
+                    <Building2 size={16} style={{ color: 'var(--text-muted)' }} />
+                    <span>Authority Dashboard</span>
+                  </Link>
+
+                  <Link
+                    to="/authority/complaints"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="nav-dropdown-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 8px',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      textDecoration: 'none',
+                      fontWeight: 500
+                    }}
+                  >
+                    <FileText size={16} style={{ color: 'var(--text-muted)' }} />
+                    <span>Grievance Management</span>
+                  </Link>
+
+                  <Link
+                    to="/authority/assigned"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="nav-dropdown-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 8px',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      textDecoration: 'none',
+                      fontWeight: 500
+                    }}
+                  >
+                    <ShieldCheck size={16} style={{ color: 'var(--text-muted)' }} />
+                    <span>Assigned Complaints</span>
+                  </Link>
+
+                  <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileAccountOpen(false);
+                      handleCitizenPortalClick();
+                    }}
+                    className="btn btn-secondary"
+                    style={{ width: '100%', justifyContent: 'center', gap: '8px', fontSize: '0.85rem' }}
+                  >
+                    <Users size={16} style={{ color: 'var(--color-primary)' }} />
+                    <span>Switch to Citizen Portal</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileAccountOpen(false);
+                      handleLogout();
+                    }}
+                    className="btn btn-secondary"
+                    style={{ width: '100%', justifyContent: 'center', gap: '8px', marginTop: '6px', color: 'var(--color-status-rejected)' }}
+                  >
+                    <LogOut size={16} />
+                    <span>Sign Out ({user?.name?.split(' ')[0] || 'Officer'})</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Citizen Authenticated Account Menu */
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0 }}>
+                    {user?.avatar ? (
+                      <img
+                        src={getImageUrl(user.avatar)}
+                        alt={user?.name || 'Avatar'}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          backgroundColor: 'var(--color-primary)',
+                          color: '#FFFFFF',
+                          fontSize: '1rem',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        {(user?.name || 'C')[0].toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user?.name}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user?.email}
+                    </div>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        marginTop: '4px',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        padding: '1px 8px',
+                        borderRadius: '4px',
+                        backgroundColor: 'var(--color-accent-green-bg, #DCFCE7)',
+                        color: 'var(--color-accent-green, #15803D)'
+                      }}
+                    >
+                      <ShieldCheck size={11} />
+                      <span>Verified Citizen</span>
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <Link
+                    to="/account/profile"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="nav-dropdown-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 8px',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      textDecoration: 'none',
+                      fontWeight: 500
+                    }}
+                  >
+                    <User size={16} style={{ color: 'var(--text-muted)' }} />
+                    <span>Personal Information</span>
+                  </Link>
+
+                  <Link
+                    to="/account/complaints"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="nav-dropdown-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 8px',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      textDecoration: 'none',
+                      fontWeight: 500
+                    }}
+                  >
+                    <FileText size={16} style={{ color: 'var(--text-muted)' }} />
+                    <span>My Complaints</span>
+                  </Link>
+
+                  <Link
+                    to="/account/notifications"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="nav-dropdown-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '9px 8px',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      textDecoration: 'none',
+                      fontWeight: 500
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Bell size={16} style={{ color: 'var(--text-muted)' }} />
+                      <span>Notifications</span>
+                    </div>
+                    {unreadNotificationsCount > 0 && (
+                      <span
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '1px 6px',
+                          borderRadius: '9999px',
+                          backgroundColor: 'var(--color-status-rejected, #DC2626)',
+                          color: '#FFFFFF'
+                        }}
+                      >
+                        {unreadNotificationsCount}
+                      </span>
+                    )}
+                  </Link>
+
+                  <Link
+                    to="/account/settings"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="nav-dropdown-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 8px',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      textDecoration: 'none',
+                      fontWeight: 500
+                    }}
+                  >
+                    <Settings size={16} style={{ color: 'var(--text-muted)' }} />
+                    <span>Account Settings</span>
+                  </Link>
+
+                  <Link
+                    to="/account/change-password"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="nav-dropdown-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 8px',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      textDecoration: 'none',
+                      fontWeight: 500
+                    }}
+                  >
+                    <Lock size={16} style={{ color: 'var(--text-muted)' }} />
+                    <span>Change Password</span>
+                  </Link>
+
+                  <Link
+                    to="/account/support"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="nav-dropdown-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 8px',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      textDecoration: 'none',
+                      fontWeight: 500
+                    }}
+                  >
+                    <HelpCircle size={16} style={{ color: 'var(--text-muted)' }} />
+                    <span>Help & Support</span>
+                  </Link>
+
+                  <Link
+                    to="/account/privacy-security"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="nav-dropdown-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 8px',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      textDecoration: 'none',
+                      fontWeight: 500
+                    }}
+                  >
+                    <ShieldCheck size={16} style={{ color: 'var(--text-muted)' }} />
+                    <span>Privacy & Security</span>
+                  </Link>
+
+                  <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileAccountOpen(false);
+                      handleLogout();
+                    }}
+                    className="btn btn-secondary"
+                    style={{ width: '100%', justifyContent: 'center', gap: '8px', marginTop: '6px', color: 'var(--color-status-rejected)' }}
+                  >
+                    <LogOut size={16} />
+                    <span>Log Out</span>
+                  </button>
+                </div>
+              </>
+            )
+          ) : (
+            /* Unauthenticated Mobile Account Access */
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-subtle)' }}>
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--bg-subtle)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--text-secondary)'
+                  }}
+                >
+                  <User size={22} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                    Account Access
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    Sign in to file, track and manage complaints
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '4px' }}>
+                <Link
+                  to="/login"
+                  onClick={() => setMobileAccountOpen(false)}
+                  className="btn btn-primary"
+                  style={{ width: '100%', justifyContent: 'center', gap: '8px' }}
+                >
+                  <User size={16} />
+                  <span>Citizen Login</span>
+                </Link>
+
+                <Link
+                  to="/register"
+                  onClick={() => setMobileAccountOpen(false)}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', justifyContent: 'center', gap: '8px' }}
+                >
+                  <UserCheck size={16} />
+                  <span>Citizen Register</span>
+                </Link>
+
+                <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
+
+                <Link
+                  to="/authority/login"
+                  onClick={() => setMobileAccountOpen(false)}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', justifyContent: 'center', gap: '8px', fontSize: '0.85rem' }}
+                >
+                  <Building2 size={16} />
+                  <span>Municipal Officer Sign In</span>
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
@@ -1024,6 +1527,28 @@ export default function Navbar() {
           .desktop-actions { display: flex !important; }
           .mobile-controls { display: none !important; }
           .mobile-drawer { display: none !important; }
+        }
+        @media (max-width: 640px) {
+          .navbar-container {
+            padding-left: 14px !important;
+            padding-right: 14px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .navbar-container {
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+          }
+          .brand-subtitle {
+            display: none !important;
+          }
+          .navbar-brand-logo {
+            height: 38px !important;
+            max-height: 38px !important;
+          }
+          .mobile-controls {
+            gap: 6px !important;
+          }
         }
       `}</style>
     </header>

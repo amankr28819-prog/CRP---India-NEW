@@ -9,7 +9,6 @@ import loginBg from '../assets/citizen-login-bg.jpg';
 export default function CitizenLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [voterId, setVoterId] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -30,21 +29,15 @@ export default function CitizenLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password || !voterId) {
-      setError('Please enter your email address, password, and 10-digit Voter ID.');
-      return;
-    }
-
-    const cleanVoterId = voterId.trim().toUpperCase();
-    if (cleanVoterId.length !== 10 || !/^[A-Z0-9]{10}$/.test(cleanVoterId)) {
-      setError('Voter ID must be a 10-digit alphanumeric code (e.g. ABC1234567).');
+    if (!email || !password) {
+      setError('Please enter both your email address and password.');
       return;
     }
 
     setLoading(true);
     setError('');
     try {
-      const res = await login(email, password, 'citizen', cleanVoterId);
+      const res = await login(email, password, 'citizen');
       if (res.success) {
         isRedirectingRef.current = true;
         setIsTransitioning(true);
@@ -61,6 +54,7 @@ export default function CitizenLogin() {
 
   return (
     <div
+      className="citizen-login-wrapper"
       style={{
         minHeight: 'calc(100vh - 70px)',
         backgroundImage: `
@@ -149,26 +143,6 @@ export default function CitizenLogin() {
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="citizenVoterId">
-                Voter ID (EPIC Number) <span style={{ color: 'var(--color-accent-urgent)' }}>*</span>
-              </label>
-              <input
-                id="citizenVoterId"
-                type="text"
-                value={voterId}
-                onChange={(e) => setVoterId(e.target.value.toUpperCase())}
-                placeholder="e.g. ABC1234567"
-                className="form-input"
-                maxLength={10}
-                style={{ textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}
-                required
-              />
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                10-digit alphanumeric code
-              </span>
-            </div>
-
             <button
               type="submit"
               disabled={loading || isTransitioning}
@@ -188,45 +162,6 @@ export default function CitizenLogin() {
             >
               Register here
             </Link>
-          </div>
-
-          {/* Demo Credentials Tip */}
-          <div
-            style={{
-              marginTop: '24px',
-              padding: '14px',
-              backgroundColor: 'var(--bg-subtle)',
-              borderRadius: '8px',
-              fontSize: '0.8125rem',
-              color: 'var(--text-secondary)',
-              border: '1px solid var(--border-subtle)'
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <strong style={{ color: 'var(--text-primary)' }}>Demo Citizen Login:</strong>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('citizen@example.com');
-                  setPassword('Citizen@123');
-                  setVoterId('ABC1234567');
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--color-primary)',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textDecoration: 'underline'
-                }}
-              >
-                Auto-fill
-              </button>
-            </div>
-            <div>Email: <code>citizen@example.com</code></div>
-            <div>Password: <code>Citizen@123</code></div>
-            <div>Voter ID: <code>ABC1234567</code></div>
           </div>
 
           {/* Municipal Authority Portal Switch */}

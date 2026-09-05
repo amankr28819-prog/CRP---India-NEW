@@ -77,6 +77,7 @@ export default function CitizenRegister() {
 
   return (
     <div
+      className="citizen-register-wrapper"
       style={{
         minHeight: 'calc(100vh - 70px)',
         backgroundImage: `

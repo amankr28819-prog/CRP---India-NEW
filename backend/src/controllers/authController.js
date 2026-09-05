@@ -171,23 +171,6 @@ const login = async (req, res, next) => {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // Citizen login requires a 10-digit alphanumeric Voter ID
-    if (expectedRole === 'citizen') {
-      if (!voterId || typeof voterId !== 'string') {
-        return res.status(400).json({
-          success: false,
-          message: 'Voter ID is required for citizen sign in.'
-        });
-      }
-      const cleanVoterId = voterId.trim().toUpperCase();
-      if (!/^[A-Z0-9]{10}$/.test(cleanVoterId)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Voter ID must be a 10-digit alphanumeric code (e.g. ABC1234567).'
-        });
-      }
-    }
-
     const user = await User.findOne({ email: cleanEmail }).select('+password');
     if (!user) {
       return res.status(401).json({
@@ -204,34 +187,19 @@ const login = async (req, res, next) => {
       });
     }
 
-    // Validate citizen Voter ID against record
-    if (user.role === 'citizen') {
-      if (!voterId) {
-        return res.status(400).json({
-          success: false,
-          message: 'Voter ID is required for citizen sign in.'
-        });
-      }
-      const cleanVoterId = voterId.trim().toUpperCase();
-      if (!/^[A-Z0-9]{10}$/.test(cleanVoterId)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Voter ID must be a 10-digit alphanumeric code (e.g. ABC1234567).'
-        });
-      }
-      if (user.voterId && user.voterId.toUpperCase() !== cleanVoterId) {
-        return res.status(401).json({
-          success: false,
-          message: 'Voter ID does not match the registered citizen record.'
-        });
-      }
-    }
-
     // If logging in through authority portal, ensure the account has authority privileges
     if (expectedRole === 'authority' && user.role !== 'authority') {
       return res.status(403).json({
         success: false,
         message: 'Access restricted: This account does not have Municipal Authority clearance.'
+      });
+    }
+
+    // If logging in through citizen portal, ensure authority accounts use the authority portal
+    if (expectedRole === 'citizen' && user.role !== 'citizen') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access restricted: Authority accounts must sign in through the Municipal Authority Portal.'
       });
     }
 

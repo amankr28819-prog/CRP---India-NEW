@@ -36,7 +36,7 @@ import AuthorityComplaintDetail from './pages/authority/AuthorityComplaintDetail
 import AuthorityAssignedComplaints from './pages/authority/AuthorityAssignedComplaints';
 import AuthorityReports from './pages/authority/AuthorityReports';
 
-// Wrapper to conditionally render Navbar and Footer (hidden on standalone role selection screen)
+// Wrapper to conditionally render Navbar (hidden on standalone role selection screen)
 function AppLayout() {
   const location = useLocation();
   const isRoleSelection = location.pathname === '/' || location.pathname === '/select-role';
@@ -146,7 +146,7 @@ function AppLayout() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      {!isRoleSelection && <Footer />}
+      <Footer />
       <LogoutConfirmModal />
       <PortalSwitchModal />
     </div>

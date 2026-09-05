@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import heroBg from '../assets/hero-bg.png';
+import heroBgMobile from '../assets/hero-bg-mobile.jpg';
 import crpLogo from '../assets/crp-logo-transparent.png';
 
 export default function Home() {
@@ -111,21 +112,15 @@ export default function Home() {
       {/* Hero Section */}
 
       <section
+        className="home-hero-section"
         style={{
+          '--hero-bg-desktop': `url(${heroBg})`,
+          '--hero-bg-mobile': `url(${heroBgMobile})`,
           position: 'relative',
+          width: '100%',
           minHeight: '580px',
           overflow: 'hidden',
           borderBottom: '1px solid var(--border-subtle)',
-          backgroundImage: `
-            linear-gradient(
-              rgba(10, 18, 34, 0.12),
-              rgba(10, 18, 34, 0.14)
-            ),
-            url(${heroBg})
-          `,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
           display: 'flex',
           alignItems: 'center',
           padding: '52px 0 60px 0'

@@ -67,6 +67,7 @@ const boxLeave = (e) => {
 
   return (
     <div
+      className="role-selection-wrapper"
       style={{
         minHeight: '100vh',
         backgroundImage: `

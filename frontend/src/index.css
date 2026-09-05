@@ -1263,3 +1263,125 @@ h1, h2, h3, h4, h5, h6 {
     max-width: 100%;
   }
 }
+
+/* ==========================================================================
+   Responsive Background Image Adjustments across CRP India
+   Preserves desktop presentation 100% while optimizing mobile viewports
+   ========================================================================== */
+
+/* 1. Home Page Hero Section */
+.home-hero-section {
+  width: 100%;
+  background-image: linear-gradient(
+    rgba(10, 18, 34, 0.12),
+    rgba(10, 18, 34, 0.14)
+  ), var(--hero-bg-desktop, url('./assets/hero-bg.png'));
+  background-size: 115% auto;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+@media (max-width: 991px) {
+  .home-hero-section {
+    background-position: 30% center !important;
+    background-size: cover !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-hero-section {
+    background-image: linear-gradient(
+      rgba(8, 20, 38, 0.62),
+      rgba(8, 20, 38, 0.68)
+    ), var(--hero-bg-mobile, url('./assets/hero-bg-mobile.jpg')) !important;
+    min-height: auto !important;
+    padding: 40px 0 48px 0 !important;
+    background-position: center 30% !important;
+    background-size: cover !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .home-hero-section {
+    padding: 32px 0 40px 0 !important;
+    background-position: center 25% !important;
+    background-size: cover !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .home-hero-section {
+    padding: 28px 0 36px 0 !important;
+    background-position: center 20% !important;
+    background-size: cover !important;
+  }
+}
+
+/* 2. Role Selection Gateway */
+@media (max-width: 768px) {
+  .role-selection-wrapper {
+    background-position: center 18% !important;
+    background-size: cover !important;
+    background-attachment: scroll !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .role-selection-wrapper {
+    background-position: center 14% !important;
+    padding: 20px 12px;
+  }
+}
+
+/* 3. Citizen Login & Register Backgrounds */
+@media (max-width: 768px) {
+  .citizen-login-wrapper,
+  .citizen-register-wrapper {
+    background-position: center 16% !important;
+    background-size: cover !important;
+    padding: 28px 14px 44px 14px;
+    min-height: calc(100vh - 60px);
+  }
+}
+
+@media (max-width: 480px) {
+  .citizen-login-wrapper,
+  .citizen-register-wrapper {
+    background-position: center 12% !important;
+    padding: 20px 12px 36px 12px;
+  }
+}
+
+/* 4. Municipal Authority Login Background */
+@media (max-width: 768px) {
+  .authority-login-wrapper {
+    background-position: center 12% !important;
+    background-size: cover !important;
+    padding: 28px 14px 44px 14px;
+    min-height: calc(100vh - 60px);
+  }
+}
+
+@media (max-width: 480px) {
+  .authority-login-wrapper {
+    background-position: center 8% !important;
+    padding: 20px 12px 36px 12px;
+  }
+}
+
+/* 5. FAQ Header Banner */
+@media (max-width: 640px) {
+  .faq-hero-section {
+    background-position: 95% center !important;
+    background-size: cover !important;
+    padding: 28px 0 36px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .faq-hero-section {
+    background-position: 100% center !important;
+    background-size: cover !important;
+    padding: 24px 0 32px 0;
+  }
+}
