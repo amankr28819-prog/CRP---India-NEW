@@ -59,6 +59,32 @@ const isAuthority = (req, res, next) => {
   next();
 };
 
+const isCitizen = (req, res, next) => {
+  if (!req.user || req.user.role !== 'citizen') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied: Citizen role required. Municipal Authorities cannot perform this action.'
+    });
+  }
+  next();
+};
+
+const checkSuspension = (req, res, next) => {
+  if (req.user && req.user.isSuspended) {
+    if (req.user.suspendedUntil && new Date(req.user.suspendedUntil) > new Date()) {
+      return res.status(403).json({
+        success: false,
+        message: `Your account is suspended until ${new Date(req.user.suspendedUntil).toLocaleDateString()} due to receiving 3 warnings. You cannot perform this action while suspended.`
+      });
+    } else {
+      req.user.isSuspended = false;
+      req.user.suspendedUntil = null;
+      req.user.save().catch(err => console.error('[AUTH] Failed to clear expired suspension:', err));
+    }
+  }
+  next();
+};
+
 const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -76,4 +102,4 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
-module.exports = { verifyToken, isAuthority, optionalAuth };
+module.exports = { verifyToken, isAuthority, isCitizen, checkSuspension, optionalAuth };

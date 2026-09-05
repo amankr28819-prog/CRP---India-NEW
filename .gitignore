@@ -35,3 +35,6 @@ Desktop.ini
 .idea/
 *.swp
 *.swo
+
+# Temporary scratch folder
+scratch/

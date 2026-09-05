@@ -74,7 +74,17 @@ export default function CitizenLogin() {
       }}
     >
       <div style={{ width: '100%', maxWidth: '460px' }}>
-        <BackButton fallback="/" style={{ color: '#FFFFFF', marginBottom: '16px' }} />
+        <BackButton
+          fallback="/"
+          style={{
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            color: '#F8FAFC',
+            borderColor: 'rgba(255, 255, 255, 0.25)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            marginBottom: '16px'
+          }}
+        />
         <div
           style={{
             backgroundColor: 'var(--bg-surface)',
@@ -119,7 +129,9 @@ export default function CitizenLogin() {
               </label>
               <input
                 id="citizenEmail"
+                name="email"
                 type="email"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="e.g. citizen@example.com"
@@ -134,7 +146,9 @@ export default function CitizenLogin() {
               </label>
               <input
                 id="citizenPassword"
+                name="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

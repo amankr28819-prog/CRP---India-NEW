@@ -17,7 +17,8 @@ import {
   HelpCircle,
   ShieldCheck,
   Users,
-  Trash2
+  Trash2,
+  Info
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../context/AuthContext';
@@ -28,8 +29,12 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileAccountOpen, setMobileAccountOpen] = useState(false);
   const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
+  const [authorityHamburgerOpen, setAuthorityHamburgerOpen] = useState(false);
+  const [citizenHamburgerOpen, setCitizenHamburgerOpen] = useState(false);
   const accountDropdownRef = useRef(null);
   const mobileAccountRef = useRef(null);
+  const authorityHamburgerRef = useRef(null);
+  const citizenHamburgerRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
 
   const location = useLocation();
@@ -67,12 +72,20 @@ export default function Navbar() {
       ) {
         setMobileAccountOpen(false);
       }
+      if (authorityHamburgerRef.current && !authorityHamburgerRef.current.contains(e.target)) {
+        setAuthorityHamburgerOpen(false);
+      }
+      if (citizenHamburgerRef.current && !citizenHamburgerRef.current.contains(e.target)) {
+        setCitizenHamburgerOpen(false);
+      }
     };
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setAccountDropdownOpen(false);
         setMobileMenuOpen(false);
         setMobileAccountOpen(false);
+        setAuthorityHamburgerOpen(false);
+        setCitizenHamburgerOpen(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
@@ -89,15 +102,25 @@ export default function Navbar() {
     setAccountDropdownOpen(false);
     setMobileMenuOpen(false);
     setMobileAccountOpen(false);
+    setAuthorityHamburgerOpen(false);
+    setCitizenHamburgerOpen(false);
   }, [location.pathname]);
 
   const isAuthorityMode = location.pathname.startsWith('/authority');
 
   const handleCitizenPortalClick = () => {
-    if (isAuthenticated && isAuthority) {
-      requestPortalSwitch();
+    if (isAuthenticated) {
+      requestPortalSwitch('/home', 'Citizen Portal');
     } else {
       navigate('/home');
+    }
+  };
+
+  const handleAuthorityPortalClick = () => {
+    if (isAuthenticated) {
+      requestPortalSwitch('/authority/login', 'Municipal Authority Portal');
+    } else {
+      navigate('/authority/login');
     }
   };
 
@@ -105,12 +128,33 @@ export default function Navbar() {
     requestLogout();
   };
 
-  const citizenNavLinks = [
+  const citizenPrimaryNavLinks = [
     { name: 'Home', path: '/home' },
-    { name: 'Dashboard', path: '/dashboard' },
-    { name: 'Report an Issue', path: '/report' },
-    { name: 'Track Complaint', path: '/track' },
-    { name: 'About', path: '/about' }
+    { name: 'Dashboard', path: '/dashboard' }
+  ];
+
+  const citizenMenuLinks = [
+    { name: 'Report an Issue', path: '/report', icon: <FileText size={16} /> },
+    { name: 'Track Complaint', path: '/track', icon: <ShieldAlert size={16} /> },
+    { name: 'Citizen Directory', path: '/citizens', icon: <Users size={16} /> },
+    { name: 'About CRP India', path: '/about', icon: <Info size={16} /> },
+    { name: 'Frequently Asked Questions', path: '/faqs', icon: <HelpCircle size={16} /> },
+    { name: 'Privacy Policy', path: '/privacy', icon: <ShieldCheck size={16} /> },
+    { name: 'Terms of Service', path: '/terms', icon: <FileText size={16} /> }
+  ];
+
+  const citizenNavLinks = citizenPrimaryNavLinks;
+
+  const authorityPrimaryNavLinks = [
+    { name: 'Dashboard', path: '/authority/dashboard' },
+    { name: 'Complaints', path: '/authority/complaints' },
+    { name: 'Reports & Analytics', path: '/authority/reports' }
+  ];
+
+  const authoritySecondaryNavLinks = [
+    { name: 'Assigned Complaints', path: '/authority/assigned', icon: <ShieldCheck size={16} /> },
+    { name: 'Deleted Complaints', path: '/authority/deleted-complaints', icon: <Trash2 size={16} /> },
+    { name: 'Citizen Directory', path: '/citizens', icon: <Users size={16} /> }
   ];
 
   const authorityNavLinks = [
@@ -118,7 +162,8 @@ export default function Navbar() {
     { name: 'Complaints', path: '/authority/complaints' },
     { name: 'Assigned Complaints', path: '/authority/assigned' },
     { name: 'Deleted Complaints', path: '/authority/deleted-complaints' },
-    { name: 'Reports & Analytics', path: '/authority/reports' }
+    { name: 'Reports & Analytics', path: '/authority/reports' },
+    { name: 'Officer Account & Profile', path: '/authority/account' }
   ];
 
   const isCitizenActive = (path) => {
@@ -147,6 +192,9 @@ export default function Navbar() {
     if (path === '/authority/reports') {
       return location.pathname === '/authority/reports';
     }
+    if (path === '/authority/account') {
+      return location.pathname === '/authority/account';
+    }
     return location.pathname.startsWith(path);
   };
 
@@ -158,8 +206,8 @@ export default function Navbar() {
           <button
             type="button"
             onClick={() => {
-              if (isAuthenticated && isAuthority) {
-                requestPortalSwitch();
+              if (isAuthenticated) {
+                requestPortalSwitch('/', 'Portal Selection');
               } else {
                 navigate('/');
               }
@@ -218,16 +266,16 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav style={{ display: 'none', alignItems: 'center', gap: '28px' }} className="desktop-nav">
+        <nav style={{ display: 'none', alignItems: 'center', gap: '16px' }} className="desktop-nav">
           {isAuthorityMode ? (
-            authorityNavLinks.map((link) => {
+            authorityPrimaryNavLinks.map((link) => {
               const active = isAuthorityActive(link.path);
               return (
                 <Link
                   key={link.path}
                   to={link.path}
                   style={{
-                    fontSize: '0.9rem',
+                    fontSize: '0.86rem',
                     fontWeight: active ? 600 : 500,
                     color: active ? 'var(--color-primary)' : 'var(--text-primary)',
                     borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent',
@@ -261,7 +309,7 @@ export default function Navbar() {
                   to={targetTo}
                   state={targetState}
                   style={{
-                    fontSize: '0.9rem',
+                    fontSize: '0.86rem',
                     fontWeight: active ? 600 : 500,
                     color: active ? 'var(--color-primary)' : 'var(--text-primary)',
                     borderBottom: active ? '2px solid var(--color-primary)' : '2px solid transparent',
@@ -278,7 +326,7 @@ export default function Navbar() {
 
         {/* Right Desktop Actions */}
         {isAuthorityMode ? (
-          <div style={{ display: 'none', alignItems: 'center', gap: '12px' }} className="desktop-actions">
+          <div style={{ display: 'none', alignItems: 'center', gap: '10px' }} className="desktop-actions">
             <ThemeToggle />
 
             {/* Citizen Portal Switcher */}
@@ -300,28 +348,176 @@ export default function Navbar() {
               <span>Citizen Portal</span>
             </button>
 
-            {/* Logged-in authority officer info and Sign Out */}
             {isAuthenticated ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span
-                  style={{
-                    fontSize: '0.875rem',
-                    color: 'var(--text-secondary)',
-                    fontWeight: 500
-                  }}
-                  title={user?.email || user?.name}
-                >
-                  {user?.name?.split(' ')[0] || user?.name || 'Officer'}
-                </span>
-                <button
-                  onClick={handleLogout}
+              <>
+                {/* Officer Account / Profile Button */}
+                <Link
+                  to="/authority/account"
                   className="btn btn-secondary btn-sm"
-                  title="Sign Out"
-                  style={{ padding: '6px 10px' }}
+                  title="Officer Profile & Credentials"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px 4px 6px',
+                    borderRadius: '20px',
+                    borderColor: isAuthorityActive('/authority/account') ? 'var(--color-primary)' : 'var(--border-subtle)',
+                    backgroundColor: isAuthorityActive('/authority/account') ? 'var(--color-primary-light, #EFF6FF)' : undefined,
+                    color: isAuthorityActive('/authority/account') ? 'var(--color-primary)' : 'var(--text-primary)',
+                    fontWeight: 600,
+                    fontSize: '0.8125rem',
+                    textDecoration: 'none'
+                  }}
                 >
-                  <LogOut size={15} />
-                </button>
-              </div>
+                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', overflow: 'hidden', backgroundColor: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.72rem', flexShrink: 0 }}>
+                    {user?.avatar ? (
+                      <img src={getImageUrl(user.avatar)} alt={user?.name || 'Officer'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      (user?.name || 'O')[0].toUpperCase()
+                    )}
+                  </div>
+                  <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user?.name?.split(' ')[0] || 'Account'}
+                  </span>
+                </Link>
+
+                {/* Three-Line Hamburger Menu for Secondary Options */}
+                <div style={{ position: 'relative' }} ref={authorityHamburgerRef}>
+                  <button
+                    type="button"
+                    onClick={() => setAuthorityHamburgerOpen(!authorityHamburgerOpen)}
+                    className={`btn btn-secondary btn-sm ${authorityHamburgerOpen ? 'active' : ''}`}
+                    aria-label="Toggle secondary municipal navigation"
+                    aria-expanded={authorityHamburgerOpen}
+                    title="More Municipal Options"
+                    style={{
+                      padding: '6px 10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      borderColor: authorityHamburgerOpen ? 'var(--color-primary)' : 'var(--border-subtle)',
+                      backgroundColor: authorityHamburgerOpen ? 'var(--bg-subtle)' : undefined
+                    }}
+                  >
+                    <Menu size={17} />
+                    <span className="hamburger-btn-label" style={{ fontSize: '0.8125rem', fontWeight: 500 }}>Menu</span>
+                  </button>
+
+                  {/* Authority Hamburger Dropdown Menu */}
+                  {authorityHamburgerOpen && (
+                    <div
+                      className="account-dropdown-menu"
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 8px)',
+                        right: 0,
+                        width: '260px',
+                        backgroundColor: 'var(--bg-surface)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '12px',
+                        boxShadow: 'var(--shadow-md)',
+                        zIndex: 100,
+                        overflow: 'hidden'
+                      }}
+                    >
+                      <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-subtle)' }}>
+                        <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 700 }}>
+                          Municipal Management
+                        </div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {user?.name || 'Authority Officer'}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {user?.assignedCategory || 'Central Oversight'}
+                        </div>
+                      </div>
+
+                      <div style={{ padding: '6px' }}>
+                        {authoritySecondaryNavLinks.map((item) => {
+                          const active = isAuthorityActive(item.path);
+                          return (
+                            <Link
+                              key={item.path}
+                              to={item.path}
+                              onClick={() => setAuthorityHamburgerOpen(false)}
+                              className="nav-dropdown-item"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                padding: '9px 12px',
+                                borderRadius: '6px',
+                                fontSize: '0.85rem',
+                                color: active ? 'var(--color-primary)' : 'var(--text-primary)',
+                                backgroundColor: active ? 'var(--color-primary-light, #EFF6FF)' : 'transparent',
+                                textDecoration: 'none',
+                                fontWeight: active ? 600 : 500
+                              }}
+                            >
+                              <span style={{ color: active ? 'var(--color-primary)' : 'var(--text-muted)' }}>
+                                {item.icon}
+                              </span>
+                              <span>{item.name}</span>
+                            </Link>
+                          );
+                        })}
+
+                        <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
+
+                        <Link
+                          to="/authority/account"
+                          onClick={() => setAuthorityHamburgerOpen(false)}
+                          className="nav-dropdown-item"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '9px 12px',
+                            borderRadius: '6px',
+                            fontSize: '0.85rem',
+                            color: isAuthorityActive('/authority/account') ? 'var(--color-primary)' : 'var(--text-primary)',
+                            backgroundColor: isAuthorityActive('/authority/account') ? 'var(--color-primary-light, #EFF6FF)' : 'transparent',
+                            textDecoration: 'none',
+                            fontWeight: isAuthorityActive('/authority/account') ? 600 : 500
+                          }}
+                        >
+                          <User size={16} style={{ color: 'var(--text-muted)' }} />
+                          <span>Officer Profile & Credentials</span>
+                        </Link>
+
+                        <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAuthorityHamburgerOpen(false);
+                            handleLogout();
+                          }}
+                          className="nav-dropdown-item"
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '9px 12px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            background: 'none',
+                            fontSize: '0.85rem',
+                            color: 'var(--color-status-rejected, #DC2626)',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            fontWeight: 600
+                          }}
+                        >
+                          <LogOut size={16} />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
             ) : (
               <Link to="/authority/login" className="btn btn-secondary btn-sm">
                 <Building2 size={14} />
@@ -330,7 +526,7 @@ export default function Navbar() {
             )}
           </div>
         ) : (
-          <div style={{ display: 'none', alignItems: 'center', gap: '12px' }} className="desktop-actions">
+          <div style={{ display: 'none', alignItems: 'center', gap: '8px' }} className="desktop-actions">
             <ThemeToggle />
 
             {/* Authority Portal Link / Indicator */}
@@ -340,15 +536,16 @@ export default function Navbar() {
                 <span>Authority Dashboard</span>
               </Link>
             ) : (
-              <Link
-                to="/authority/login"
+              <button
+                type="button"
+                onClick={handleAuthorityPortalClick}
                 className="btn btn-secondary btn-sm"
                 title="Official Municipal Officers Portal"
-                style={{ fontSize: '0.8125rem' }}
+                style={{ fontSize: '0.8125rem', cursor: 'pointer' }}
               >
                 <Building2 size={14} />
                 <span>Authority Portal</span>
-              </Link>
+              </button>
             )}
 
             {/* Citizen Login / Account Dropdown */}
@@ -733,15 +930,88 @@ export default function Navbar() {
               </Link>
             )}
 
-            {/* Report an Issue CTA Button with restrained red indicator dot */}
-            <Link
-              to={!isAuthenticated ? '/login' : '/report'}
-              state={!isAuthenticated ? { from: '/report', message: 'Please log in or register to report a civic issue.' } : undefined}
-              className="btn btn-primary btn-sm btn-report-accent"
-            >
-              <span className="urgent-dot" title="Active grievance intake" />
-              <span>Report an Issue</span>
-            </Link>
+            {/* Citizen Three-Line Hamburger Menu for Secondary Options */}
+            <div style={{ position: 'relative' }} ref={citizenHamburgerRef}>
+              <button
+                type="button"
+                onClick={() => setCitizenHamburgerOpen(!citizenHamburgerOpen)}
+                className={`btn btn-secondary btn-sm ${citizenHamburgerOpen ? 'active' : ''}`}
+                aria-label="Toggle citizen menu"
+                aria-expanded={citizenHamburgerOpen}
+                title="More Citizen Options"
+                style={{
+                  padding: '6px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  borderColor: citizenHamburgerOpen ? 'var(--color-primary)' : 'var(--border-subtle)',
+                  backgroundColor: citizenHamburgerOpen ? 'var(--bg-subtle)' : undefined,
+                  cursor: 'pointer'
+                }}
+              >
+                <Menu size={17} />
+                <span className="hamburger-btn-label" style={{ fontSize: '0.8125rem', fontWeight: 500 }}>Menu</span>
+              </button>
+
+              {/* Citizen Hamburger Dropdown Menu */}
+              {citizenHamburgerOpen && (
+                <div
+                  className="account-dropdown-menu"
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 8px)',
+                    right: 0,
+                    width: '260px',
+                    backgroundColor: 'var(--bg-surface)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '12px',
+                    boxShadow: 'var(--shadow-md)',
+                    zIndex: 100,
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-subtle)' }}>
+                    <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 700 }}>
+                      Citizen Portal
+                    </div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
+                      Information & Resources
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '6px' }}>
+                    {citizenMenuLinks.map((item) => {
+                      const active = isCitizenActive(item.path);
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          onClick={() => setCitizenHamburgerOpen(false)}
+                          className="nav-dropdown-item"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '9px 12px',
+                            borderRadius: '6px',
+                            fontSize: '0.85rem',
+                            color: active ? 'var(--color-primary)' : 'var(--text-primary)',
+                            backgroundColor: active ? 'var(--color-primary-light, #EFF6FF)' : 'transparent',
+                            textDecoration: 'none',
+                            fontWeight: active ? 600 : 500
+                          }}
+                        >
+                          <span style={{ color: active ? 'var(--color-primary)' : 'var(--text-muted)' }}>
+                            {item.icon}
+                          </span>
+                          <span>{item.name}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -940,6 +1210,27 @@ export default function Navbar() {
                   >
                     <Trash2 size={16} style={{ color: 'var(--text-muted)' }} />
                     <span>Deleted Complaints</span>
+                  </Link>
+
+                  <Link
+                    to="/authority/account"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="nav-dropdown-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 8px',
+                      borderRadius: '6px',
+                      color: isAuthorityActive('/authority/account') ? 'var(--color-primary)' : 'var(--text-primary)',
+                      backgroundColor: isAuthorityActive('/authority/account') ? 'var(--color-primary-light, #EFF6FF)' : 'transparent',
+                      fontSize: '0.9rem',
+                      textDecoration: 'none',
+                      fontWeight: isAuthorityActive('/authority/account') ? 600 : 500
+                    }}
+                  >
+                    <User size={16} style={{ color: 'var(--text-muted)' }} />
+                    <span>Officer Profile & Credentials</span>
                   </Link>
 
                   <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
@@ -1397,27 +1688,50 @@ export default function Navbar() {
                 );
               })}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                <Link
-                  to={!isAuthenticated ? '/login' : '/report'}
-                  state={!isAuthenticated ? { from: '/report', message: 'Please log in or register to report a civic issue.' } : undefined}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="btn btn-primary btn-report-accent"
-                  style={{ width: '100%' }}
-                >
-                  <span className="urgent-dot" />
-                  <span>Report an Issue</span>
-                </Link>
+              <div style={{ marginTop: '12px', borderTop: '1px solid var(--border-subtle)', paddingTop: '10px' }}>
+                <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '6px' }}>
+                  Information & Resources
+                </div>
+                {citizenMenuLinks.map((item) => {
+                  const active = isCitizenActive(item.path);
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 0',
+                        fontSize: '0.95rem',
+                        fontWeight: active ? 600 : 500,
+                        color: active ? 'var(--color-primary)' : 'var(--text-primary)',
+                        borderBottom: '1px solid var(--border-subtle)'
+                      }}
+                    >
+                      <span style={{ color: active ? 'var(--color-primary)' : 'var(--text-muted)' }}>
+                        {item.icon}
+                      </span>
+                      <span>{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </div>
 
-                <Link
-                  to="/authority/login"
-                  onClick={() => setMobileMenuOpen(false)}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleAuthorityPortalClick();
+                  }}
                   className="btn btn-secondary"
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', justifyContent: 'center', cursor: 'pointer' }}
                 >
                   <Building2 size={16} />
                   <span>Municipal Authority Portal</span>
-                </Link>
+                </button>
 
                 {isAuthenticated ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
@@ -1613,30 +1927,35 @@ export default function Navbar() {
           flex-shrink: 0 !important;
           white-space: nowrap !important;
         }
-        @media (min-width: 1024px) {
+        @media (min-width: 1100px) {
           .desktop-nav { display: flex !important; }
           .desktop-actions { display: flex !important; }
           .mobile-controls { display: none !important; }
           .mobile-drawer { display: none !important; }
         }
-        @media (min-width: 1024px) and (max-width: 1200px) {
+        @media (max-width: 1099px) {
+          .desktop-nav { display: none !important; }
+          .desktop-actions { display: none !important; }
+          .mobile-controls { display: flex !important; }
+        }
+        @media (min-width: 1100px) and (max-width: 1200px) {
           .navbar-container {
             padding-left: 12px !important;
             padding-right: 12px !important;
           }
           .desktop-nav {
-            gap: 12px !important;
+            gap: 14px !important;
           }
           .desktop-nav a {
-            font-size: 0.82rem !important;
+            font-size: 0.85rem !important;
           }
           .desktop-actions {
-            gap: 6px !important;
+            gap: 8px !important;
           }
           .desktop-actions .btn-sm {
-            padding: 4px 7px !important;
+            padding: 4px 8px !important;
             gap: 4px !important;
-            font-size: 0.76rem !important;
+            font-size: 0.78rem !important;
           }
         }
         @media (max-width: 640px) {

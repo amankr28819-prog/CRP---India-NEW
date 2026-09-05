@@ -5,7 +5,7 @@ const path = require('path');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const { connectDB } = require('./config/db');
-const { seedData, seedAuthorityAccounts } = require('./utils/seed');
+const { seedData, seedAuthorityAccounts, seedCitizenAccountsAndComplaints } = require('./utils/seed');
 const errorHandler = require('./middleware/errorHandler');
 const { sanitizeMiddleware } = require('./middleware/sanitize');
 const { authLimiter, apiLimiter } = require('./middleware/rateLimiter');
@@ -15,6 +15,7 @@ const authRoutes = require('./routes/authRoutes');
 const complaintRoutes = require('./routes/complaintRoutes');
 const authorityRoutes = require('./routes/authorityRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const citizenRoutes = require('./routes/citizenRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -37,8 +38,9 @@ connectDB().then(async () => {
   } else {
     try {
       await seedAuthorityAccounts();
+      await seedCitizenAccountsAndComplaints();
     } catch (err) {
-      console.error('[SEED] Failed to verify authority demo accounts:', err.message);
+      console.error('[SEED] Failed to verify demo accounts and complaints:', err.message);
     }
   }
 });
@@ -111,6 +113,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/authority', authorityRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/citizens', citizenRoutes);
 
 // Fallback 404 for undefined API endpoints
 app.use('/api/*', (req, res) => {

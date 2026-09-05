@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { UserPlus, AlertCircle, Info } from 'lucide-react';
+import { UserPlus, AlertCircle, Info, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BackButton from '../components/BackButton';
-import AuthTransition from '../components/AuthTransition';
 import loginBg from '../assets/citizen-login-bg.jpg';
 
 export default function CitizenRegister() {
@@ -17,7 +16,7 @@ export default function CitizenRegister() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const { register, isAuthenticated, isAuthority } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -48,8 +47,15 @@ export default function CitizenRegister() {
       setError('Voter ID must be a 10-digit alphanumeric code (e.g. ABC1234567).');
       return;
     }
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
+    const hasUpper = /[A-Z]/.test(formData.password);
+    const hasNumber = /[0-9]/.test(formData.password);
+    const hasSpecial = /[^A-Za-z0-9]/.test(formData.password);
+    if (!hasUpper || !hasNumber || !hasSpecial) {
+      setError('Password must be at least 8 characters and contain at least 1 uppercase letter, 1 number, and 1 special character.');
       return;
     }
     if (!agreedToTerms) {
@@ -62,11 +68,10 @@ export default function CitizenRegister() {
     try {
       const res = await register({ ...formData, voterId: cleanVoterId, agreedToTerms });
       if (res.success) {
-        isRedirectingRef.current = true;
-        setIsTransitioning(true);
-        setTimeout(() => {
-          navigate(redirectTarget, { replace: true });
-        }, 1300);
+        setLoading(false);
+        setShowSuccessModal(true);
+        // Clear password from local form state for credential safety
+        setFormData(prev => ({ ...prev, password: '' }));
         return;
       }
     } catch (err) {
@@ -74,6 +79,22 @@ export default function CitizenRegister() {
       setLoading(false);
     }
   };
+
+  // Auto-redirect to login after 2.5 seconds if user does not click manually
+  useEffect(() => {
+    if (showSuccessModal) {
+      const timer = setTimeout(() => {
+        navigate('/login', {
+          replace: true,
+          state: {
+            from: redirectTarget,
+            message: 'Registration successful. Please login with your new account.'
+          }
+        });
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessModal, navigate, redirectTarget]);
 
   return (
     <div
@@ -97,7 +118,17 @@ export default function CitizenRegister() {
       }}
     >
       <div style={{ width: '100%', maxWidth: '480px' }}>
-        <BackButton fallback="/login" style={{ color: '#FFFFFF', marginBottom: '16px' }} />
+        <BackButton
+          fallback="/login"
+          style={{
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            color: '#F8FAFC',
+            borderColor: 'rgba(255, 255, 255, 0.25)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            marginBottom: '16px'
+          }}
+        />
         <div
           style={{
             backgroundColor: 'var(--bg-surface)',
@@ -144,6 +175,7 @@ export default function CitizenRegister() {
               id="regName"
               type="text"
               name="name"
+              autoComplete="name"
               value={formData.name}
               onChange={handleInputChange}
               placeholder="e.g. Amit Kumar"
@@ -160,6 +192,7 @@ export default function CitizenRegister() {
               id="regEmail"
               type="email"
               name="email"
+              autoComplete="username"
               value={formData.email}
               onChange={handleInputChange}
               placeholder="e.g. amit@example.com"
@@ -174,6 +207,7 @@ export default function CitizenRegister() {
               id="regPhone"
               type="tel"
               name="phone"
+              autoComplete="tel"
               value={formData.phone}
               onChange={handleInputChange}
               placeholder="e.g. +91 98765 43210"
@@ -210,12 +244,16 @@ export default function CitizenRegister() {
               id="regPassword"
               type="password"
               name="password"
+              autoComplete="new-password"
               value={formData.password}
               onChange={handleInputChange}
-              placeholder="At least 6 characters"
+              placeholder="At least 8 characters"
               className="form-input"
               required
             />
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+              Password must be at least 8 characters and contain at least 1 uppercase letter, 1 number, and 1 special character.
+            </span>
           </div>
 
           {/* Mandatory Terms & Conditions / Privacy Policy Checkbox */}
@@ -274,16 +312,16 @@ export default function CitizenRegister() {
 
           <button
             type="submit"
-            disabled={loading || isTransitioning || !agreedToTerms}
+            disabled={loading || !agreedToTerms}
             className="btn btn-primary btn-lg"
             style={{
               width: '100%',
               marginTop: '8px',
-              opacity: (!agreedToTerms || loading || isTransitioning) ? 0.6 : 1,
-              cursor: (!agreedToTerms || loading || isTransitioning) ? 'not-allowed' : 'pointer'
+              opacity: (!agreedToTerms || loading) ? 0.6 : 1,
+              cursor: (!agreedToTerms || loading) ? 'not-allowed' : 'pointer'
             }}
           >
-            {isTransitioning ? 'Registering...' : loading ? 'Creating Account...' : 'Complete Registration'}
+            {loading ? 'Creating Account...' : 'Complete Registration'}
           </button>
         </form>
 
@@ -300,13 +338,78 @@ export default function CitizenRegister() {
       </div>
     </div>
 
-    <AuthTransition
-      isOpen={isTransitioning}
-      title="Registration Successful"
-      subtitle="Signing You In..."
-      redirectText="Redirecting to Citizen Portal..."
-      type="register"
-    />
+    {/* Registration Success Modal */}
+    {showSuccessModal && (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1000,
+          backgroundColor: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '16px',
+            padding: '32px 28px',
+            maxWidth: '440px',
+            width: '100%',
+            textAlign: 'center',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)'
+          }}
+        >
+          <div
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              backgroundColor: 'var(--color-accent-green-bg, #DCFCE7)',
+              color: 'var(--color-accent-green, #15803D)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px auto'
+            }}
+          >
+            <CheckCircle2 size={36} />
+          </div>
+
+          <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+            Account Created Successfully
+          </h2>
+
+          <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '24px' }}>
+            Registration successful. Please login with your new account.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              navigate('/login', {
+                replace: true,
+                state: {
+                  from: redirectTarget,
+                  message: 'Registration successful. Please login with your new account.'
+                }
+              });
+            }}
+            className="btn btn-primary btn-lg"
+            style={{ width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            <span>Proceed to Citizen Login</span>
+            <ArrowRight size={18} />
+          </button>
+        </div>
+      </div>
+    )}
   </div>
 );
 }

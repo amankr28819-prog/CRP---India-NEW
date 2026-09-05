@@ -17,7 +17,11 @@ import {
   Camera,
   X,
   Trash2,
-  Archive
+  Archive,
+  ExternalLink,
+  Flag,
+  Copy,
+  ThumbsUp
 } from 'lucide-react';
 import { api, getImageUrl } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -58,6 +62,18 @@ export default function AuthorityComplaintDetail() {
   const [assignDept, setAssignDept] = useState('');
   const [assignOfficer, setAssignOfficer] = useState('');
   const [assignRemark, setAssignRemark] = useState('');
+
+  const isValidCoordinate = (lat, lng) => {
+    if (lat === null || lat === undefined || lat === '' || lng === null || lng === undefined || lng === '') {
+      return false;
+    }
+    const nLat = Number(lat);
+    const nLng = Number(lng);
+    if (isNaN(nLat) || isNaN(nLng)) return false;
+    if (nLat < -90 || nLat > 90 || nLng < -180 || nLng > 180) return false;
+    if (nLat === 0 && nLng === 0) return false;
+    return true;
+  };
 
   const fetchComplaint = async () => {
     setLoading(true);
@@ -193,6 +209,60 @@ export default function AuthorityComplaintDetail() {
     }
   };
 
+  // Administrative Flagging State & Handlers
+  const [flagModalType, setFlagModalType] = useState(null); // 'misinformation' or 'duplicate'
+  const [flagExplanation, setFlagExplanation] = useState('');
+  const [flagLoading, setFlagLoading] = useState(false);
+
+  const handleFlagSubmit = async (e) => {
+    e.preventDefault();
+    if (!flagExplanation.trim()) {
+      setError('Please provide a detailed explanation for this administrative flag.');
+      return;
+    }
+    setFlagLoading(true);
+    setError('');
+    try {
+      let res;
+      if (flagModalType === 'misinformation') {
+        res = await api.flagMisinformation(complaint._id, flagExplanation.trim());
+      } else {
+        res = await api.flagDuplicate(complaint._id, flagExplanation.trim());
+      }
+      if (res.success) {
+        setComplaint(res.complaint);
+        setActionSuccess(`Complaint successfully flagged as ${flagModalType === 'misinformation' ? 'Misinformation' : 'Duplicate'}.`);
+        setFlagModalType(null);
+        setFlagExplanation('');
+        setTimeout(() => setActionSuccess(''), 4000);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to flag complaint.');
+    } finally {
+      setFlagLoading(false);
+    }
+  };
+
+  const handleRemoveFlag = async () => {
+    if (!window.confirm('Are you sure you want to remove the administrative flag and restore this complaint to the Active pool?')) {
+      return;
+    }
+    setFlagLoading(true);
+    setError('');
+    try {
+      const res = await api.removeFlag(complaint._id, 'Administrative flag cleared by municipal authority. Complaint returned to Active pool.');
+      if (res.success) {
+        setComplaint(res.complaint);
+        setActionSuccess('Administrative flag removed. Complaint restored to active pool.');
+        setTimeout(() => setActionSuccess(''), 4000);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to remove flag.');
+    } finally {
+      setFlagLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="container" style={{ padding: '64px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -322,9 +392,42 @@ export default function AuthorityComplaintDetail() {
               <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
                 {complaint.ward}, {complaint.city}
               </div>
-              {complaint.latitude && complaint.longitude && (
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  GPS: {complaint.latitude}, {complaint.longitude}
+              {isValidCoordinate(complaint.latitude, complaint.longitude) ? (
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                    GPS: {complaint.latitude}, {complaint.longitude}
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${Number(complaint.latitude)},${Number(complaint.longitude)}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-secondary"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '0.875rem',
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      textDecoration: 'none',
+                      color: 'var(--color-primary)',
+                      backgroundColor: 'var(--color-primary-light, rgba(37, 99, 235, 0.08))',
+                      borderColor: 'var(--color-primary)',
+                      fontWeight: 600,
+                      marginTop: '6px',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Open exact complaint coordinates in Google Maps"
+                  >
+                    <MapPin size={17} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                    <span>View on Google Maps</span>
+                    <ExternalLink size={14} style={{ opacity: 0.85, flexShrink: 0 }} />
+                  </a>
+                </div>
+              ) : (
+                <div style={{ marginTop: '8px', fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <MapPin size={14} style={{ opacity: 0.5 }} />
+                  <span>Location unavailable</span>
                 </div>
               )}
             </div>
@@ -461,7 +564,7 @@ export default function AuthorityComplaintDetail() {
             <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
               Resolution Audit Trail
             </h3>
-            <Timeline history={complaint.statusHistory} />
+            <Timeline history={complaint.statusHistory} currentStatus={complaint.status} complaint={complaint} />
           </div>
         </div>
 
@@ -709,10 +812,222 @@ export default function AuthorityComplaintDetail() {
                   </button>
                 </form>
               </div>
+
+              {/* Action 3: Community Consensus & Administrative Flagging */}
+              <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                    Administrative Flagging & Moderation
+                  </h2>
+                  <span
+                    title={`Net Community Score: ${complaint.netScore || 0}`}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '3px 10px',
+                      borderRadius: '16px',
+                      backgroundColor: (complaint.netScore || 0) > 0 ? '#DCFCE7' : (complaint.netScore || 0) < 0 ? '#FEE2E2' : 'var(--bg-app)',
+                      color: (complaint.netScore || 0) > 0 ? '#15803D' : (complaint.netScore || 0) < 0 ? '#B91C1C' : 'var(--text-muted)',
+                      fontWeight: 700,
+                      fontSize: '0.8125rem'
+                    }}
+                  >
+                    <ThumbsUp size={13} />
+                    <span>Net Score: {(complaint.netScore || 0) > 0 ? `+${complaint.netScore}` : (complaint.netScore || 0)}</span>
+                  </span>
+                </div>
+
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '16px' }}>
+                  Flagging moves the complaint out of the active public feed while preserving community visibility and voting. Reaching 500 unique citizen upvotes automatically restores flagged complaints.
+                </p>
+
+                {/* If Currently Flagged */}
+                {complaint.flagStatus === 'misinformation' && (
+                  <div style={{ padding: '16px', backgroundColor: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: '6px', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#B91C1C', fontWeight: 700, fontSize: '0.9rem', marginBottom: '6px' }}>
+                      <AlertTriangle size={16} />
+                      <span>Currently Flagged as Misinformation</span>
+                    </div>
+                    <div style={{ fontSize: '0.8125rem', color: '#991B1B', marginBottom: '8px', lineHeight: 1.4 }}>
+                      <strong>Reason:</strong> {complaint.flagDetails?.explanation || 'Marked as false or unverified.'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#B91C1C', marginBottom: '12px' }}>
+                      Flagged by <strong>{complaint.flagDetails?.flaggedByName || 'Municipal Officer'}</strong>
+                      {complaint.flagDetails?.flaggedAt && ` on ${new Date(complaint.flagDetails.flaggedAt).toLocaleDateString('en-IN')}`}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#7F1D1D', marginBottom: '12px', padding: '6px 10px', backgroundColor: '#FEE2E2', borderRadius: '4px' }}>
+                      <strong>Auto-Restoration Status:</strong> {complaint.upvotesCount || 0} / 500 unique upvotes reached
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveFlag}
+                      disabled={flagLoading}
+                      className="btn btn-secondary btn-sm"
+                      style={{ width: '100%', borderColor: '#F87171', color: '#B91C1C', fontWeight: 600 }}
+                    >
+                      {flagLoading ? 'Restoring...' : 'Remove Flag & Restore to Active Pool'}
+                    </button>
+                  </div>
+                )}
+
+                {complaint.flagStatus === 'duplicate' && (
+                  <div style={{ padding: '16px', backgroundColor: '#FFFBEB', border: '1.5px solid #FCD34D', borderRadius: '6px', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#B45309', fontWeight: 700, fontSize: '0.9rem', marginBottom: '6px' }}>
+                      <Copy size={16} />
+                      <span>Currently Flagged as Duplicate</span>
+                    </div>
+                    <div style={{ fontSize: '0.8125rem', color: '#92400E', marginBottom: '8px', lineHeight: 1.4 }}>
+                      <strong>Reason / Original Ref:</strong> {complaint.flagDetails?.explanation || 'Duplicate of existing complaint.'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#B45309', marginBottom: '12px' }}>
+                      Flagged by <strong>{complaint.flagDetails?.flaggedByName || 'Municipal Officer'}</strong>
+                      {complaint.flagDetails?.flaggedAt && ` on ${new Date(complaint.flagDetails.flaggedAt).toLocaleDateString('en-IN')}`}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#78350F', marginBottom: '12px', padding: '6px 10px', backgroundColor: '#FEF3C7', borderRadius: '4px' }}>
+                      <strong>Auto-Restoration Status:</strong> {complaint.upvotesCount || 0} / 500 unique upvotes reached
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveFlag}
+                      disabled={flagLoading}
+                      className="btn btn-secondary btn-sm"
+                      style={{ width: '100%', borderColor: '#FBBF24', color: '#B45309', fontWeight: 600 }}
+                    >
+                      {flagLoading ? 'Restoring...' : 'Remove Flag & Restore to Active Pool'}
+                    </button>
+                  </div>
+                )}
+
+                {/* If Not Flagged: Show Flag Actions */}
+                {(!complaint.flagStatus || complaint.flagStatus === 'none') && (
+                  <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+                    <button
+                      type="button"
+                      onClick={() => { setFlagModalType('misinformation'); setFlagExplanation(''); }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ borderColor: '#FCA5A5', color: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <AlertTriangle size={14} />
+                      <span>Flag as Misinformation</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => { setFlagModalType('duplicate'); setFlagExplanation(''); }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ borderColor: '#FCD34D', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <Copy size={14} />
+                      <span>Flag as Duplicate</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
       </div>
+
+      {/* Flagging Modal */}
+      {flagModalType && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px',
+            backdropFilter: 'blur(2px)'
+          }}
+          onClick={() => setFlagModalType(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            style={{
+              backgroundColor: 'var(--bg-surface)',
+              borderRadius: '8px',
+              border: '1px solid var(--border-subtle)',
+              padding: '24px',
+              maxWidth: '520px',
+              width: '100%',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {flagModalType === 'misinformation' ? (
+                  <AlertTriangle size={20} style={{ color: '#DC2626' }} />
+                ) : (
+                  <Copy size={20} style={{ color: '#D97706' }} />
+                )}
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                  Flag Complaint as {flagModalType === 'misinformation' ? 'Misinformation' : 'Duplicate'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFlagModalType(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '16px' }}>
+              {flagModalType === 'misinformation'
+                ? 'Please specify the exact factual reason why this grievance is classified as misinformation. This explanation will be publicly visible to citizens and logged for accountability.'
+                : 'Please specify the reason or provide the Reference ID of the primary complaint this duplicates.'}
+            </p>
+
+            <form onSubmit={handleFlagSubmit}>
+              <div className="form-group" style={{ marginBottom: '16px' }}>
+                <label className="form-label" style={{ fontSize: '0.8125rem' }}>
+                  Official Explanation / Reference <span style={{ color: '#DC2626' }}>*</span>
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  value={flagExplanation}
+                  onChange={(e) => setFlagExplanation(e.target.value)}
+                  placeholder={flagModalType === 'misinformation' ? 'e.g. Field inspection confirmed no sewage leakage exists at Metro Pillar 42. Image submitted matches a different city.' : 'e.g. Duplicate of active grievance CRP-2026-00101 filed for identical location.'}
+                  className="form-textarea"
+                  style={{ fontSize: '0.85rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setFlagModalType(null)}
+                  className="btn btn-secondary btn-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={flagLoading}
+                  className="btn btn-sm"
+                  style={{
+                    backgroundColor: flagModalType === 'misinformation' ? '#DC2626' : '#D97706',
+                    color: '#fff'
+                  }}
+                >
+                  {flagLoading ? 'Submitting Flag...' : `Confirm Flag as ${flagModalType === 'misinformation' ? 'Misinformation' : 'Duplicate'}`}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Lightbox Modal for Large Image Inspection */}
       {fullscreenImage && (

@@ -383,7 +383,7 @@ export default function TrackComplaint() {
               <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
                 Status Timeline
               </h3>
-              <Timeline history={complaint.statusHistory} />
+              <Timeline history={complaint.statusHistory} currentStatus={complaint.status} complaint={complaint} />
             </div>
           </div>
         </div>

@@ -62,7 +62,17 @@ export default function AuthorityLogin() {
       }}
     >
       <div style={{ width: '100%', maxWidth: '480px' }}>
-        <BackButton fallback="/" style={{ color: '#FFFFFF', marginBottom: '16px' }} />
+        <BackButton
+          fallback="/"
+          style={{
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            color: '#F8FAFC',
+            borderColor: 'rgba(255, 255, 255, 0.25)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            marginBottom: '16px'
+          }}
+        />
         <div
           style={{
             backgroundColor: 'var(--bg-surface)',
@@ -115,7 +125,9 @@ export default function AuthorityLogin() {
             <div style={{ position: 'relative' }}>
               <input
                 id="authorityEmail"
+                name="email"
                 type="email"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="officer@crp.gov.in"
@@ -133,7 +145,9 @@ export default function AuthorityLogin() {
             <div style={{ position: 'relative' }}>
               <input
                 id="authorityPassword"
+                name="password"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"

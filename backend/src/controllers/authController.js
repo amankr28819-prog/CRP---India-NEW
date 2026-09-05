@@ -68,10 +68,21 @@ const register = async (req, res, next) => {
       });
     }
 
-    if (password.length < 6 || password.length > 128) {
+    if (password.length < 8 || password.length > 128) {
       return res.status(400).json({
         success: false,
-        message: 'Password must be between 6 and 128 characters long.'
+        message: 'Password must be between 8 and 128 characters long.'
+      });
+    }
+
+    const hasUpper = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[^A-Za-z0-9]/.test(password);
+
+    if (!hasUpper || !hasNumber || !hasSpecial) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters and contain at least 1 uppercase letter, 1 number, and 1 special character.'
       });
     }
 
@@ -122,11 +133,13 @@ const register = async (req, res, next) => {
       password,
       phone: (typeof phone === 'string' ? phone.trim() : '') || '',
       voterId: cleanVoterId,
+      constituency: (typeof req.body.constituency === 'string' && req.body.constituency.trim()) ? req.body.constituency.trim() : 'Central Parliamentary Constituency',
       role: 'citizen',
       agreedToTerms: true
     });
 
     const token = generateToken(user);
+
 
     res.status(201).json({
       success: true,
@@ -241,6 +254,14 @@ const login = async (req, res, next) => {
 const getMe = async (req, res) => {
   const authorityRoles = ['authority', 'authority_admin', 'authority_category'];
   const isAuthUser = req.user && authorityRoles.includes(req.user.role);
+
+  // Auto-clear expired suspension
+  if (req.user && req.user.isSuspended && req.user.suspendedUntil && new Date(req.user.suspendedUntil) <= new Date()) {
+    req.user.isSuspended = false;
+    req.user.suspendedUntil = null;
+    await req.user.save();
+  }
+
   const userObj = req.user && (req.user.toObject ? req.user.toObject() : { ...req.user });
 
   res.json({
@@ -249,30 +270,52 @@ const getMe = async (req, res) => {
       ...userObj,
       role: isAuthUser ? 'authority' : (req.user ? req.user.role : 'citizen'),
       authorityRole: req.user ? req.user.role : 'citizen',
-      assignedCategory: (req.user && req.user.assignedCategory) || ''
+      assignedCategory: (req.user && req.user.assignedCategory) || '',
+      constituency: (req.user && req.user.constituency) || 'Central Parliamentary Constituency',
+      karma: (req.user && req.user.karma) || 0,
+      warningCount: (req.user && req.user.warningCount) || 0,
+      suspensionCount: (req.user && req.user.suspensionCount) || 0,
+      isSuspended: (req.user && req.user.isSuspended) || false,
+      suspendedUntil: (req.user && req.user.suspendedUntil) || null
     }
   });
 };
 
-// @desc Update user profile details (e.g. name)
+// Helper to construct uniform user responses across auth endpoints
+const formatUserResponse = (user) => {
+  const authorityRoles = ['authority', 'authority_admin', 'authority_category'];
+  const isAuthUser = user && authorityRoles.includes(user.role);
+  const clientRole = isAuthUser ? 'authority' : (user ? user.role : 'citizen');
+
+  return {
+    id: user._id,
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone || '',
+    voterId: user.voterId || '',
+    role: clientRole,
+    authorityRole: user.role,
+    assignedCategory: user.assignedCategory || '',
+    department: user.department || '',
+    designation: user.designation || '',
+    avatar: user.avatar || '',
+    constituency: user.constituency || 'Central Parliamentary Constituency',
+    karma: user.karma || 0,
+    warningCount: user.warningCount || 0,
+    suspensionCount: user.suspensionCount || 0,
+    isSuspended: user.isSuspended || false,
+    suspendedUntil: user.suspendedUntil || null,
+    settings: user.settings,
+    createdAt: user.createdAt
+  };
+};
+
+// @desc Update user profile details (e.g. name or phone)
 // @route PATCH /api/auth/profile
 const updateProfile = async (req, res, next) => {
   try {
-    const { name } = req.body;
-    if (!name || typeof name !== 'string' || !name.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name is required and must be text.'
-      });
-    }
-
-    const cleanName = name.trim();
-    if (cleanName.length < 2 || cleanName.length > 100) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name must be between 2 and 100 characters in length.'
-      });
-    }
+    const { name, phone, constituency } = req.body;
 
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -282,31 +325,56 @@ const updateProfile = async (req, res, next) => {
       });
     }
 
-    user.name = cleanName;
+    // Change 14: Citizen official name and constituency are permanently anchored to verified Voter ID
+    if (user.role === 'citizen') {
+      if (name && name.trim() !== user.name) {
+        return res.status(403).json({
+          success: false,
+          message: 'Official name is permanently anchored to your verified Voter ID and cannot be modified.'
+        });
+      }
+      if (constituency && constituency.trim() !== user.constituency) {
+        return res.status(403).json({
+          success: false,
+          message: 'Constituency is permanently anchored to your verified Voter ID and cannot be modified.'
+        });
+      }
+      if (req.body.voterId && req.body.voterId.trim().toUpperCase() !== user.voterId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Voter ID is permanent and cannot be modified.'
+        });
+      }
+    } else {
+      if (name && typeof name === 'string' && name.trim()) {
+        const cleanName = name.trim();
+        if (cleanName.length < 2 || cleanName.length > 100) {
+          return res.status(400).json({
+            success: false,
+            message: 'Name must be between 2 and 100 characters in length.'
+          });
+        }
+        user.name = cleanName;
+      }
+    }
+
+    if (phone !== undefined && typeof phone === 'string') {
+      user.phone = phone.trim();
+    }
+
     await user.save();
 
     res.json({
       success: true,
       message: 'Profile updated successfully.',
-      user: {
-        id: user._id,
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        voterId: user.voterId || '',
-        role: user.role,
-        avatar: user.avatar || '',
-        settings: user.settings,
-        createdAt: user.createdAt
-      }
+      user: formatUserResponse(user)
     });
   } catch (err) {
     next(err);
   }
 };
 
-// @desc Upload or change citizen profile picture
+// @desc Upload or change profile picture
 // @route PATCH /api/auth/profile-picture
 const uploadProfilePicture = async (req, res, next) => {
   try {
@@ -332,18 +400,7 @@ const uploadProfilePicture = async (req, res, next) => {
       success: true,
       message: 'Profile photo updated successfully.',
       avatar: user.avatar,
-      user: {
-        id: user._id,
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        voterId: user.voterId || '',
-        role: user.role,
-        avatar: user.avatar,
-        settings: user.settings,
-        createdAt: user.createdAt
-      }
+      user: formatUserResponse(user)
     });
   } catch (err) {
     next(err);
@@ -369,18 +426,7 @@ const removeProfilePicture = async (req, res, next) => {
       success: true,
       message: 'Profile photo removed successfully.',
       avatar: '',
-      user: {
-        id: user._id,
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        voterId: user.voterId || '',
-        role: user.role,
-        avatar: '',
-        settings: user.settings,
-        createdAt: user.createdAt
-      }
+      user: formatUserResponse(user)
     });
   } catch (err) {
     next(err);

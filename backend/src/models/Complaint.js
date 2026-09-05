@@ -144,7 +144,46 @@ const complaintSchema = new mongoose.Schema(
     agreedToTerms: {
       type: Boolean,
       default: false
-    }
+    },
+    upvotesCount: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    downvotesCount: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    netScore: {
+      type: Number,
+      default: 0,
+      index: true
+    },
+    flagStatus: {
+      type: String,
+      enum: ['none', 'misinformation', 'duplicate'],
+      default: 'none',
+      index: true
+    },
+    flagDetails: {
+      flagType: { type: String, enum: ['misinformation', 'duplicate', null], default: null },
+      flaggedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+      flaggedByName: { type: String, default: '' },
+      flaggedAt: { type: Date, default: null },
+      explanation: { type: String, default: '' }
+    },
+    flagHistory: [
+      {
+        flagStatus: { type: String, default: 'none' },
+        flagType: { type: String, default: null },
+        changedBy: { type: String, default: 'System' },
+        changedByName: { type: String, default: '' },
+        explanation: { type: String, default: '' },
+        date: { type: Date, default: Date.now },
+        autoRestored: { type: Boolean, default: false }
+      }
+    ]
   },
   {
     timestamps: true

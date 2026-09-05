@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const Complaint = require('../models/Complaint');
 const Notification = require('../models/Notification');
+const User = require('../models/User');
+const Vote = require('../models/Vote');
 const { generateReferenceId } = require('../utils/referenceGenerator');
 const { escapeRegex } = require('../middleware/sanitize');
 
@@ -73,6 +75,20 @@ const createComplaint = async (req, res, next) => {
         success: false,
         message: 'Please log in or register to report a civic issue.'
       });
+    }
+
+    // Disciplinary Suspension Check: Suspended citizens cannot submit complaints
+    if (req.user.isSuspended) {
+      if (req.user.suspendedUntil && new Date(req.user.suspendedUntil) > new Date()) {
+        return res.status(403).json({
+          success: false,
+          message: `Your account is suspended until ${new Date(req.user.suspendedUntil).toLocaleDateString()} due to receiving 3 warnings. You cannot submit new complaints while suspended.`
+        });
+      } else {
+        req.user.isSuspended = false;
+        req.user.suspendedUntil = null;
+        await req.user.save();
+      }
     }
 
     const agreed = req.body.agreedToTerms === true || req.body.agreedToTerms === 'true';
@@ -283,9 +299,17 @@ const getComplaintByRefId = async (req, res, next) => {
       }
     }
 
+    const masked = maskCitizenPii(complaint, req.user);
+    if (req.user && req.user.role === 'citizen') {
+      const existingVote = await Vote.findOne({ citizen: req.user._id, complaint: complaint._id });
+      masked.userVote = existingVote ? existingVote.voteType : null;
+    } else {
+      masked.userVote = null;
+    }
+
     res.json({
       success: true,
-      complaint: maskCitizenPii(complaint, req.user)
+      complaint: masked
     });
   } catch (err) {
     next(err);
@@ -296,12 +320,24 @@ const getComplaintByRefId = async (req, res, next) => {
 // @route GET /api/complaints
 const getComplaints = async (req, res, next) => {
   try {
-    const { status, category, ward, search, page = 1, limit = 20, myReports, assignedOfficer, assignedOnly } = req.query;
+    const { status, category, ward, search, page = 1, limit = 20, myReports, assignedOfficer, assignedOnly, sort, flagFilter } = req.query;
     const query = {
       deletedByCitizen: { $ne: true }
     };
 
-    if (status && status !== 'All') {
+    // Flag filtering (default: active complaints pool)
+    if (flagFilter === 'misinformation') {
+      query.flagStatus = 'misinformation';
+    } else if (flagFilter === 'duplicate') {
+      query.flagStatus = 'duplicate';
+    } else if (flagFilter === 'all') {
+      // Don't constrain flagStatus
+    } else {
+      query.flagStatus = 'none';
+    }
+
+    // Status filtering: 'Total Complaints' or 'All' queries all statuses
+    if (status && status !== 'All' && status !== 'Total Complaints') {
       query.status = status;
     }
 
@@ -329,6 +365,7 @@ const getComplaints = async (req, res, next) => {
       }
     }
 
+    // Search by Name (Title) or ID (Reference ID) with partial case-insensitive matching
     if (search && typeof search === 'string') {
       const cleanSearch = escapeRegex(search.trim());
       if (cleanSearch) {
@@ -350,19 +387,54 @@ const getComplaints = async (req, res, next) => {
     const cleanLimit = Math.min(100, Math.max(1, parseInt(limit) || 20));
     const skip = (cleanPage - 1) * cleanLimit;
 
+    // Sorting: default is Newest First; votes sort is netScore descending with tiebreaker newest first
+    let sortObj = { createdAt: -1 };
+    if (sort === 'votes' || sort === 'highest_votes' || sort === 'netScore') {
+      sortObj = { netScore: -1, createdAt: -1 };
+    } else if (sort === 'oldest') {
+      sortObj = { createdAt: 1 };
+    } else if (sort === 'category_asc') {
+      sortObj = { category: 1, createdAt: -1 };
+    } else if (sort === 'category_desc') {
+      sortObj = { category: -1, createdAt: -1 };
+    } else if (sort === 'status') {
+      sortObj = { status: 1, createdAt: -1 };
+    } else if (sort === 'id') {
+      sortObj = { referenceId: 1 };
+    } else {
+      sortObj = { createdAt: -1 };
+    }
+
     const total = await Complaint.countDocuments(query);
     const complaints = await Complaint.find(query)
-      .sort({ createdAt: -1 })
+      .sort(sortObj)
       .skip(skip)
       .limit(cleanLimit);
 
+    // Populate active user's vote if authenticated citizen
+    let voteMap = new Map();
+    if (req.user && req.user.role === 'citizen') {
+      const complaintIds = complaints.map(c => c._id);
+      const userVotes = await Vote.find({
+        citizen: req.user._id,
+        complaint: { $in: complaintIds }
+      });
+      userVotes.forEach(v => voteMap.set(v.complaint.toString(), v.voteType));
+    }
+
+    const formattedComplaints = complaints.map(c => {
+      const masked = maskCitizenPii(c, req.user);
+      masked.userVote = voteMap.get(c._id.toString()) || null;
+      return masked;
+    });
+
     res.json({
       success: true,
-      count: complaints.length,
+      count: formattedComplaints.length,
       total,
       page: cleanPage,
       pages: Math.ceil(total / cleanLimit),
-      complaints: complaints.map(c => maskCitizenPii(c, req.user))
+      complaints: formattedComplaints
     });
   } catch (err) {
     next(err);
@@ -374,47 +446,66 @@ const getComplaints = async (req, res, next) => {
 const getCitizenDashboardStats = async (req, res, next) => {
   try {
     const baseFilter = { deletedByCitizen: { $ne: true } };
-    const total = await Complaint.countDocuments(baseFilter);
-    const submitted = await Complaint.countDocuments({ ...baseFilter, status: 'Submitted' });
-    const underReview = await Complaint.countDocuments({ ...baseFilter, status: 'Under Review' });
-    const assigned = await Complaint.countDocuments({ ...baseFilter, status: 'Assigned' });
-    const inProgress = await Complaint.countDocuments({ ...baseFilter, status: 'In Progress' });
-    const resolved = await Complaint.countDocuments({ ...baseFilter, status: 'Resolved' });
-    const rejected = await Complaint.countDocuments({ ...baseFilter, status: 'Rejected' });
+    const activeFilter = { ...baseFilter, flagStatus: 'none' };
+
+    // Change 3: Exclude "Submitted" card. Five parity KPI metrics:
+    const total = await Complaint.countDocuments(activeFilter);
+    const underReview = await Complaint.countDocuments({ ...activeFilter, status: 'Under Review' });
+    const assigned = await Complaint.countDocuments({ ...activeFilter, status: 'Assigned' });
+    const inProgress = await Complaint.countDocuments({ ...activeFilter, status: 'In Progress' });
+    const resolved = await Complaint.countDocuments({ ...activeFilter, status: 'Resolved' });
+    const rejected = await Complaint.countDocuments({ ...activeFilter, status: 'Rejected' });
+    const misinformationCount = await Complaint.countDocuments({ ...baseFilter, flagStatus: 'misinformation' });
+    const duplicateCount = await Complaint.countDocuments({ ...baseFilter, flagStatus: 'duplicate' });
 
     // Category breakdown
     const categoryStats = await Complaint.aggregate([
-      { $match: baseFilter },
+      { $match: activeFilter },
       { $group: { _id: '$category', count: { $sum: 1 } } },
       { $sort: { count: -1 } }
     ]);
 
     // Top active wards
     const wardStats = await Complaint.aggregate([
-      { $match: baseFilter },
+      { $match: activeFilter },
       { $group: { _id: '$ward', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 6 }
     ]);
 
     // Recent 8 complaints (strictly PII-masked for citizen privacy)
-    const rawRecent = await Complaint.find(baseFilter)
+    const rawRecent = await Complaint.find(activeFilter)
       .sort({ createdAt: -1 })
       .limit(8);
 
-    const recentComplaints = rawRecent.map(c => maskCitizenPii(c, req.user));
+    let voteMap = new Map();
+    if (req.user && req.user.role === 'citizen') {
+      const recentIds = rawRecent.map(c => c._id);
+      const userVotes = await Vote.find({
+        citizen: req.user._id,
+        complaint: { $in: recentIds }
+      });
+      userVotes.forEach(v => voteMap.set(v.complaint.toString(), v.voteType));
+    }
+
+    const recentComplaints = rawRecent.map(c => {
+      const masked = maskCitizenPii(c, req.user);
+      masked.userVote = voteMap.get(c._id.toString()) || null;
+      return masked;
+    });
 
     res.json({
       success: true,
       data: {
         stats: {
           total,
-          submitted,
           underReview,
           assigned,
           inProgress,
           resolved,
-          rejected
+          rejected,
+          misinformationCount,
+          duplicateCount
         },
         categoryStats,
         wardStats,
@@ -709,7 +800,9 @@ const deleteComplaint = async (req, res, next) => {
     }
 
     // Ownership check: Only the citizen who created this complaint can delete it
-    const isOwner = complaint.citizen?.userId && req.user._id && (complaint.citizen.userId.toString() === req.user._id.toString());
+    const ownerId = complaint.citizen?.userId?._id || complaint.citizen?.userId;
+    const authUserId = req.user._id || req.user.id;
+    const isOwner = Boolean(ownerId && authUserId && (ownerId.toString() === authUserId.toString()));
     if (!isOwner) {
       return res.status(403).json({
         success: false,
@@ -748,6 +841,434 @@ const deleteComplaint = async (req, res, next) => {
   }
 };
 
+// @desc Upvote or downvote on a complaint (Citizens only)
+// @route POST /api/complaints/:id/vote
+const voteOnComplaint = async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'citizen') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only citizens are permitted to vote on complaints. Municipal authorities cannot cast votes.'
+      });
+    }
+
+    if (req.user.isSuspended) {
+      if (req.user.suspendedUntil && new Date(req.user.suspendedUntil) > new Date()) {
+        return res.status(403).json({
+          success: false,
+          message: `Your account is suspended until ${new Date(req.user.suspendedUntil).toLocaleDateString()} due to receiving 3 warnings. You cannot vote while suspended.`
+        });
+      } else {
+        req.user.isSuspended = false;
+        req.user.suspendedUntil = null;
+        await req.user.save();
+      }
+    }
+
+    const { id } = req.params;
+    const { voteType } = req.body; // 'upvote' or 'downvote'
+
+    if (!['upvote', 'downvote'].includes(voteType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid voteType. Must be "upvote" or "downvote".'
+      });
+    }
+
+    const complaint = mongoose.Types.ObjectId.isValid(id)
+      ? await Complaint.findById(id)
+      : await Complaint.findOne({ referenceId: id });
+
+    if (!complaint || complaint.deletedByCitizen) {
+      return res.status(404).json({
+        success: false,
+        message: 'Complaint not found.'
+      });
+    }
+
+    // Check existing vote
+    let existingVote = await Vote.findOne({
+      citizen: req.user._id,
+      complaint: complaint._id
+    });
+
+    let activeUserVote = null;
+
+    if (existingVote && existingVote.voteType === voteType) {
+      // Toggle off / remove vote
+      await Vote.deleteOne({ _id: existingVote._id });
+      activeUserVote = null;
+    } else if (existingVote) {
+      // Change vote
+      existingVote.voteType = voteType;
+      await existingVote.save();
+      activeUserVote = voteType;
+    } else {
+      // Create new vote
+      existingVote = await Vote.create({
+        citizen: req.user._id,
+        complaint: complaint._id,
+        voteType
+      });
+      activeUserVote = voteType;
+    }
+
+    // Recalculate upvotes, downvotes, netScore from database
+    const upvotesCount = await Vote.countDocuments({
+      complaint: complaint._id,
+      voteType: 'upvote'
+    });
+    const downvotesCount = await Vote.countDocuments({
+      complaint: complaint._id,
+      voteType: 'downvote'
+    });
+    const netScore = upvotesCount - downvotesCount;
+
+    complaint.upvotesCount = upvotesCount;
+    complaint.downvotesCount = downvotesCount;
+    complaint.netScore = netScore;
+
+    // Change 8B & Change 12: 500 Unique Upvote Auto-Restoration
+    let autoRestored = false;
+    if (['misinformation', 'duplicate'].includes(complaint.flagStatus) && upvotesCount >= 500) {
+      const priorFlag = complaint.flagStatus;
+      complaint.flagStatus = 'none';
+      complaint.flagHistory.push({
+        flagStatus: 'none',
+        flagType: null,
+        changedBy: 'Citizen Community Consensus',
+        changedByName: 'System Auto-Restoration',
+        explanation: `Automatically restored after reaching ${upvotesCount} unique Citizen upvotes (threshold: 500). Prior flag: ${priorFlag}.`,
+        date: new Date(),
+        autoRestored: true
+      });
+      complaint.flagDetails = {
+        flagType: null,
+        flaggedBy: null,
+        flaggedByName: '',
+        flaggedAt: null,
+        explanation: ''
+      };
+      autoRestored = true;
+    }
+
+    await complaint.save();
+
+    // Change 13: Recalculate complaint author's karma (totalUpvotesReceived - totalDownvotesReceived)
+    if (complaint.citizen?.userId) {
+      const authorId = complaint.citizen.userId;
+      const karmaAgg = await Complaint.aggregate([
+        { $match: { 'citizen.userId': authorId, deletedByCitizen: false } },
+        { $group: { _id: null, totalUp: { $sum: '$upvotesCount' }, totalDown: { $sum: '$downvotesCount' } } }
+      ]);
+      const newKarma = karmaAgg.length > 0 ? (karmaAgg[0].totalUp - karmaAgg[0].totalDown) : 0;
+      await User.findByIdAndUpdate(authorId, { karma: newKarma });
+    }
+
+    res.json({
+      success: true,
+      message: activeUserVote ? `Complaint ${voteType}d successfully.` : 'Vote removed successfully.',
+      upvotesCount,
+      downvotesCount,
+      netScore,
+      userVote: activeUserVote,
+      autoRestored
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc Flag complaint as Misinformation (Authority only)
+// @route POST /api/complaints/:id/flag-misinformation
+const flagComplaintAsMisinformation = async (req, res, next) => {
+  try {
+    const authorityRoles = ['authority', 'authority_admin', 'authority_category'];
+    if (!req.user || !authorityRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Only municipal authorities can flag complaints.'
+      });
+    }
+
+    const { id } = req.params;
+    const { explanation } = req.body;
+
+    if (!explanation || typeof explanation !== 'string' || !explanation.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'A detailed explanation is required when flagging a complaint as Misinformation.'
+      });
+    }
+
+    const complaint = mongoose.Types.ObjectId.isValid(id)
+      ? await Complaint.findById(id)
+      : await Complaint.findOne({ referenceId: id });
+
+    if (!complaint || complaint.deletedByCitizen) {
+      return res.status(404).json({
+        success: false,
+        message: 'Complaint not found.'
+      });
+    }
+
+    if (req.user.role === 'authority_category' && complaint.category !== req.user.assignedCategory) {
+      return res.status(403).json({
+        success: false,
+        message: `Access denied: You are only authorized to manage complaints in ${req.user.assignedCategory}.`
+      });
+    }
+
+    complaint.flagStatus = 'misinformation';
+    complaint.flagDetails = {
+      flagType: 'misinformation',
+      flaggedBy: req.user._id,
+      flaggedByName: req.user.name,
+      flaggedAt: new Date(),
+      explanation: explanation.trim()
+    };
+    complaint.flagHistory.push({
+      flagStatus: 'misinformation',
+      flagType: 'misinformation',
+      changedBy: 'Municipal Authority',
+      changedByName: req.user.name,
+      explanation: explanation.trim(),
+      date: new Date()
+    });
+
+    await complaint.save();
+
+    // Change 11 & 12: Accountable Warnings & Suspension for citizen
+    if (complaint.citizen?.userId) {
+      const author = await User.findById(complaint.citizen.userId);
+      if (author) {
+        if (!author.flaggedComplaintsTracked) {
+          author.flaggedComplaintsTracked = {
+            misinformationComplaintIds: [],
+            duplicateComplaintIds: []
+          };
+        }
+        const alreadyTracked = author.flaggedComplaintsTracked.misinformationComplaintIds.some(
+          cId => cId.toString() === complaint._id.toString()
+        );
+        if (!alreadyTracked) {
+          author.flaggedComplaintsTracked.misinformationComplaintIds.push(complaint._id);
+          const misinfoCount = author.flaggedComplaintsTracked.misinformationComplaintIds.length;
+
+          // Milestone: exactly 3 misinformation complaints -> 1 warning
+          if (misinfoCount % 3 === 0) {
+            const nextWarnNum = (author.warningCount || 0) + 1;
+            author.warningCount = nextWarnNum;
+            author.warnings.push({
+              warningNumber: nextWarnNum,
+              type: 'misinformation',
+              reason: `Disciplinary warning #${nextWarnNum}: Citizen accumulated ${misinfoCount} complaints verified and flagged as Misinformation by municipal authorities.`,
+              triggeringComplaintId: complaint._id,
+              createdAt: new Date()
+            });
+
+            // Milestone: exactly 3 total warnings -> 30-day suspension
+            if (author.warningCount >= 3 && !author.isSuspended) {
+              author.isSuspended = true;
+              author.suspensionCount = (author.suspensionCount || 0) + 1;
+              author.suspendedUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+              author.suspensionHistory.push({
+                startDate: new Date(),
+                endDate: author.suspendedUntil,
+                reason: 'Account automatically suspended for 30 days due to accumulating 3 disciplinary warnings.',
+                triggeringWarningCount: author.warningCount,
+                createdAt: new Date()
+              });
+            }
+          }
+          await author.save();
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Complaint successfully flagged as Misinformation.',
+      complaint: maskCitizenPii(complaint, req.user)
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc Flag complaint as Duplicate (Authority only)
+// @route POST /api/complaints/:id/flag-duplicate
+const flagComplaintAsDuplicate = async (req, res, next) => {
+  try {
+    const authorityRoles = ['authority', 'authority_admin', 'authority_category'];
+    if (!req.user || !authorityRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Only municipal authorities can flag complaints.'
+      });
+    }
+
+    const { id } = req.params;
+    const { explanation } = req.body;
+
+    if (!explanation || typeof explanation !== 'string' || !explanation.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'An explanation is required when flagging a complaint as Duplicate.'
+      });
+    }
+
+    const complaint = mongoose.Types.ObjectId.isValid(id)
+      ? await Complaint.findById(id)
+      : await Complaint.findOne({ referenceId: id });
+
+    if (!complaint || complaint.deletedByCitizen) {
+      return res.status(404).json({
+        success: false,
+        message: 'Complaint not found.'
+      });
+    }
+
+    if (req.user.role === 'authority_category' && complaint.category !== req.user.assignedCategory) {
+      return res.status(403).json({
+        success: false,
+        message: `Access denied: You are only authorized to manage complaints in ${req.user.assignedCategory}.`
+      });
+    }
+
+    complaint.flagStatus = 'duplicate';
+    complaint.flagDetails = {
+      flagType: 'duplicate',
+      flaggedBy: req.user._id,
+      flaggedByName: req.user.name,
+      flaggedAt: new Date(),
+      explanation: explanation.trim()
+    };
+    complaint.flagHistory.push({
+      flagStatus: 'duplicate',
+      flagType: 'duplicate',
+      changedBy: 'Municipal Authority',
+      changedByName: req.user.name,
+      explanation: explanation.trim(),
+      date: new Date()
+    });
+
+    await complaint.save();
+
+    // Change 11 & 12: Accountable Warnings & Suspension for citizen
+    if (complaint.citizen?.userId) {
+      const author = await User.findById(complaint.citizen.userId);
+      if (author) {
+        if (!author.flaggedComplaintsTracked) {
+          author.flaggedComplaintsTracked = {
+            misinformationComplaintIds: [],
+            duplicateComplaintIds: []
+          };
+        }
+        const alreadyTracked = author.flaggedComplaintsTracked.duplicateComplaintIds.some(
+          cId => cId.toString() === complaint._id.toString()
+        );
+        if (!alreadyTracked) {
+          author.flaggedComplaintsTracked.duplicateComplaintIds.push(complaint._id);
+          const duplicateCount = author.flaggedComplaintsTracked.duplicateComplaintIds.length;
+
+          // Milestone: exactly 4 duplicate complaints -> 1 warning
+          if (duplicateCount % 4 === 0) {
+            const nextWarnNum = (author.warningCount || 0) + 1;
+            author.warningCount = nextWarnNum;
+            author.warnings.push({
+              warningNumber: nextWarnNum,
+              type: 'duplicate',
+              reason: `Disciplinary warning #${nextWarnNum}: Citizen accumulated ${duplicateCount} complaints verified and flagged as Duplicate by municipal authorities.`,
+              triggeringComplaintId: complaint._id,
+              createdAt: new Date()
+            });
+
+            // Milestone: exactly 3 total warnings -> 30-day suspension
+            if (author.warningCount >= 3 && !author.isSuspended) {
+              author.isSuspended = true;
+              author.suspensionCount = (author.suspensionCount || 0) + 1;
+              author.suspendedUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+              author.suspensionHistory.push({
+                startDate: new Date(),
+                endDate: author.suspendedUntil,
+                reason: 'Account automatically suspended for 30 days due to accumulating 3 disciplinary warnings.',
+                triggeringWarningCount: author.warningCount,
+                createdAt: new Date()
+              });
+            }
+          }
+          await author.save();
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Complaint successfully flagged as Duplicate.',
+      complaint: maskCitizenPii(complaint, req.user)
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc Remove administrative flag and restore complaint to Active pool (Authority only)
+// @route POST /api/complaints/:id/remove-flag
+const removeComplaintFlag = async (req, res, next) => {
+  try {
+    const authorityRoles = ['authority', 'authority_admin', 'authority_category'];
+    if (!req.user || !authorityRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Only municipal authorities can restore flagged complaints.'
+      });
+    }
+
+    const { id } = req.params;
+    const { explanation } = req.body;
+
+    const complaint = mongoose.Types.ObjectId.isValid(id)
+      ? await Complaint.findById(id)
+      : await Complaint.findOne({ referenceId: id });
+
+    if (!complaint || complaint.deletedByCitizen) {
+      return res.status(404).json({
+        success: false,
+        message: 'Complaint not found.'
+      });
+    }
+
+    const priorFlag = complaint.flagStatus;
+    complaint.flagStatus = 'none';
+    complaint.flagDetails = {
+      flagType: null,
+      flaggedBy: null,
+      flaggedByName: '',
+      flaggedAt: null,
+      explanation: ''
+    };
+    complaint.flagHistory.push({
+      flagStatus: 'none',
+      flagType: null,
+      changedBy: 'Municipal Authority',
+      changedByName: req.user.name,
+      explanation: explanation || `Administrative flag (${priorFlag}) cleared by municipal authority. Complaint returned to Active pool.`,
+      date: new Date()
+    });
+
+    await complaint.save();
+
+    res.json({
+      success: true,
+      message: 'Administrative flag removed. Complaint restored to active pool.',
+      complaint: maskCitizenPii(complaint, req.user)
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createComplaint,
   getComplaintByRefId,
@@ -756,5 +1277,9 @@ module.exports = {
   getMyComplaints,
   updateComplaintStatus,
   assignComplaint,
-  deleteComplaint
+  deleteComplaint,
+  voteOnComplaint,
+  flagComplaintAsMisinformation,
+  flagComplaintAsDuplicate,
+  removeComplaintFlag
 };

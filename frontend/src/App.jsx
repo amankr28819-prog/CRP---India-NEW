@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { ThemeProvider } from './context/ThemeContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 
@@ -28,6 +28,8 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import FAQs from './pages/FAQs';
 import AccountLayout from './pages/account/AccountLayout';
+import CitizenSearch from './pages/CitizenSearch';
+import CitizenPublicProfile from './pages/CitizenPublicProfile';
 
 // Authority Pages
 import AuthorityLogin from './pages/authority/AuthorityLogin';
@@ -37,11 +39,43 @@ import AuthorityComplaintDetail from './pages/authority/AuthorityComplaintDetail
 import AuthorityAssignedComplaints from './pages/authority/AuthorityAssignedComplaints';
 import AuthorityDeletedComplaints from './pages/authority/AuthorityDeletedComplaints';
 import AuthorityReports from './pages/authority/AuthorityReports';
+import AuthorityAccount from './pages/authority/AuthorityAccount';
 
 // Wrapper to conditionally render Navbar (hidden on standalone role selection screen)
 function AppLayout() {
   const location = useLocation();
   const isRoleSelection = location.pathname === '/' || location.pathname === '/select-role';
+  const { theme } = useTheme();
+
+  // Theme Isolation: Main Role Selection screen is strictly DARK, while inner portals use active preference
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="color-scheme"]');
+    if (isRoleSelection) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      if (meta) meta.setAttribute('content', 'dark');
+    } else {
+      document.documentElement.setAttribute('data-theme', theme);
+      if (meta) meta.setAttribute('content', theme);
+    }
+  }, [isRoleSelection, theme]);
+
+  // Accessibility Settings: Synchronize and persist globally
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('crp_reduced_motion') === 'true') {
+        document.documentElement.setAttribute('data-reduced-motion', 'true');
+      } else {
+        document.documentElement.removeAttribute('data-reduced-motion');
+      }
+      if (localStorage.getItem('crp_high_contrast') === 'true') {
+        document.documentElement.setAttribute('data-high-contrast', 'true');
+      } else {
+        document.documentElement.removeAttribute('data-high-contrast');
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   return (
     <div className="app-wrapper">
@@ -108,6 +142,9 @@ function AppLayout() {
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/faqs" element={<FAQs />} />
+          <Route path="/citizens" element={<CitizenSearch />} />
+          <Route path="/citizens/:id" element={<CitizenPublicProfile />} />
+          <Route path="/complaints/:id" element={<ComplaintDetails />} />
 
           {/* Municipal Authority Portal */}
           <Route path="/authority/login" element={<AuthorityLogin />} />
@@ -156,6 +193,14 @@ function AppLayout() {
             element={
               <ProtectedRoute>
                 <AuthorityReports />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/authority/account"
+            element={
+              <ProtectedRoute>
+                <AuthorityAccount />
               </ProtectedRoute>
             }
           />

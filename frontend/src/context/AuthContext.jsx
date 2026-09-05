@@ -92,19 +92,13 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     const res = await api.register(userData);
-    if (res.success && res.token) {
-      localStorage.setItem('crp_token', res.token);
-      setToken(res.token);
-      setUser(res.user);
-      localStorage.setItem('crp_portal_role', 'citizen');
-      setPortalRole('citizen');
-      fetchUnreadNotifications();
-    }
+    // Strict requirement: Do not automatically log in newly registered citizen
     return res;
   };
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showPortalSwitchModal, setShowPortalSwitchModal] = useState(false);
+  const [pendingPortalSwitch, setPendingPortalSwitch] = useState(null);
 
   const logout = () => {
     localStorage.removeItem('crp_token');
@@ -128,17 +122,22 @@ export const AuthProvider = ({ children }) => {
     setShowLogoutModal(false);
   };
 
-  const requestPortalSwitch = () => {
+  const requestPortalSwitch = (targetPath = null, targetPortalName = null) => {
+    setPendingPortalSwitch({ targetPath, targetPortalName });
     setShowPortalSwitchModal(true);
   };
 
   const cancelPortalSwitch = () => {
     setShowPortalSwitchModal(false);
+    setPendingPortalSwitch(null);
   };
 
   const confirmPortalSwitch = () => {
+    const destination = pendingPortalSwitch?.targetPath || null;
     logout();
     setShowPortalSwitchModal(false);
+    setPendingPortalSwitch(null);
+    return destination;
   };
 
   const selectPortal = (role) => {
@@ -163,6 +162,7 @@ export const AuthProvider = ({ children }) => {
         cancelLogout,
         confirmLogout,
         showPortalSwitchModal,
+        pendingPortalSwitch,
         requestPortalSwitch,
         cancelPortalSwitch,
         confirmPortalSwitch,

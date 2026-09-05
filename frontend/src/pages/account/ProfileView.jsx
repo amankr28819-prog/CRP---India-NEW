@@ -16,7 +16,10 @@ import {
   Check,
   Lock,
   AlertCircle,
-  Loader2
+  Loader2,
+  Award,
+  AlertTriangle,
+  ShieldAlert
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -342,81 +345,265 @@ export default function ProfileView() {
         </div>
       </div>
 
-      {/* Editable Information Section */}
-      <div
-        style={{
-          backgroundColor: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: '12px',
-          padding: '24px'
-        }}
-      >
-        <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '14px', marginBottom: '20px' }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-            Personal Information
-          </h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
-            Update your public display name. Core credentials remain verified for civic security.
-          </p>
-        </div>
-
-        <form onSubmit={handleSaveName} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div>
-            <label
-              htmlFor="citizen-name"
-              style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}
-            >
-              Full Name
-            </label>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative', flex: '1 1 260px' }}>
-                <User
-                  size={16}
-                  style={{
-                    position: 'absolute',
-                    left: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--text-muted)'
-                  }}
-                />
-                <input
-                  id="citizen-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter full name"
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px 10px 38px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border-subtle)',
-                    backgroundColor: 'var(--bg-subtle)',
-                    color: 'var(--text-primary)',
-                    fontSize: '0.9rem'
-                  }}
-                  required
-                />
+      {/* Citizen Karma & Civic Standing Card (Change 13) */}
+      {user?.role === 'citizen' && (
+        <div
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '12px',
+            padding: '24px'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <Award size={18} style={{ color: 'var(--color-primary)' }} />
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                  Citizen Karma & Civic Standing
+                </h3>
               </div>
-              <button
-                type="submit"
-                disabled={isSavingName || name.trim() === (user?.name || '')}
-                className="btn btn-primary"
-                style={{ minWidth: '120px', gap: '6px' }}
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, maxWidth: '580px', lineHeight: 1.5 }}>
+                Citizen Karma reflects your net community support: <strong>Total Upvotes minus Total Downvotes</strong> across all your submitted complaints.
+              </p>
+            </div>
+
+            <div
+              style={{
+                backgroundColor: 'var(--bg-subtle)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '8px',
+                padding: '12px 24px',
+                textAlign: 'center',
+                minWidth: '120px'
+              }}
+            >
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                Karma Score
+              </div>
+              <div
+                style={{
+                  fontSize: '1.8rem',
+                  fontWeight: 800,
+                  color: (user?.karma || 0) > 0 ? '#16A34A' : (user?.karma || 0) < 0 ? '#DC2626' : 'var(--text-secondary)'
+                }}
               >
-                {isSavingName ? (
-                  <>
-                    <Loader2 size={15} className="animate-spin" />
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <span>Save Name</span>
-                )}
-              </button>
+                {(user?.karma || 0) > 0 ? `+${user.karma}` : user?.karma || 0}
+              </div>
             </div>
           </div>
-        </form>
-      </div>
+
+          {/* Warnings and Suspensions Alerts if any (Change 11) */}
+          {(user?.warningCount > 0 || (user?.isSuspended && user?.suspendedUntil && new Date(user.suspendedUntil) > new Date())) && (
+            <div style={{ marginTop: '18px', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
+              {user?.isSuspended && user?.suspendedUntil && new Date(user.suspendedUntil) > new Date() ? (
+                <div
+                  style={{
+                    backgroundColor: '#FEF2F2',
+                    border: '1.5px solid #EF4444',
+                    borderRadius: '8px',
+                    padding: '14px 18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
+                  }}
+                >
+                  <ShieldAlert size={22} style={{ color: '#DC2626', flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#DC2626' }}>
+                      Account Suspended Until {new Date(user.suspendedUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </div>
+                    <div style={{ fontSize: '0.8125rem', color: '#4B5563', marginTop: '2px' }}>
+                      You have reached 3 administrative warnings. Grievance submission and community voting are temporarily disabled until the suspension ends.
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    backgroundColor: '#FFFBEB',
+                    border: '1px solid #FCD34D',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px'
+                  }}
+                >
+                  <AlertTriangle size={18} style={{ color: '#D97706', flexShrink: 0 }} />
+                  <div style={{ fontSize: '0.85rem', color: '#92400E' }}>
+                    <strong>Administrative Warnings: {user.warningCount} / 3.</strong> (3 warnings trigger an automatic 30-day suspension. Warnings are issued for repeated misinformation or duplicate complaints).
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Voter-ID Immutable Identity Section (Change 14) */}
+      {user?.role === 'citizen' ? (
+        <div
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '12px',
+            padding: '24px'
+          }}
+        >
+          <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '14px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Lock size={18} style={{ color: 'var(--color-primary)' }} />
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                Official Voter-ID Verified Identity
+              </h3>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+              Permanently anchored to your verified Voter ID and cannot be modified.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+            {/* Official Citizen Name */}
+            <div style={{ padding: '16px', borderRadius: '8px', backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Official Name
+                </span>
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    color: '#15803D',
+                    backgroundColor: '#DCFCE7',
+                    padding: '1px 8px',
+                    borderRadius: '4px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Lock size={10} /> Verified & Locked
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', fontWeight: 700, fontSize: '1rem' }}>
+                <User size={18} style={{ color: 'var(--text-muted)' }} />
+                <span>{user?.name}</span>
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                Permanently anchored to your verified Voter ID and cannot be modified.
+              </div>
+            </div>
+
+            {/* Official Constituency */}
+            <div style={{ padding: '16px', borderRadius: '8px', backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Registered Constituency
+                </span>
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    color: '#15803D',
+                    backgroundColor: '#DCFCE7',
+                    padding: '1px 8px',
+                    borderRadius: '4px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Lock size={10} /> Verified & Locked
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', fontWeight: 700, fontSize: '1rem' }}>
+                <ShieldCheck size={18} style={{ color: 'var(--text-muted)' }} />
+                <span>{user?.constituency || 'Jurisdiction Registered'}</span>
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+                Permanently anchored to your verified Voter ID and cannot be modified.
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Authority Name Update Section */
+        <div
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '12px',
+            padding: '24px'
+          }}
+        >
+          <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: '14px', marginBottom: '20px' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+              Authority Official Information
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+              Official administrative user record.
+            </p>
+          </div>
+
+          <form onSubmit={handleSaveName} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label
+                htmlFor="citizen-name"
+                style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}
+              >
+                Official Name
+              </label>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative', flex: '1 1 260px' }}>
+                  <User
+                    size={16}
+                    style={{
+                      position: 'absolute',
+                      left: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: 'var(--text-muted)'
+                    }}
+                  />
+                  <input
+                    id="citizen-name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter official name"
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px 10px 38px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-subtle)',
+                      backgroundColor: 'var(--bg-subtle)',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem'
+                    }}
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSavingName || name.trim() === (user?.name || '')}
+                  className="btn btn-primary"
+                  style={{ minWidth: '120px', gap: '6px' }}
+                >
+                  {isSavingName ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Name</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Verified Registered Identity Credentials */}
       <div

@@ -25,14 +25,86 @@ export default function SettingsView() {
   const [complaintStatusAlerts, setComplaintStatusAlerts] = useState(
     user?.settings?.notifications?.complaintStatus ?? true
   );
-  const [reducedMotion, setReducedMotion] = useState(
-    user?.settings?.accessibility?.reducedMotion ?? false
-  );
-  const [highContrast, setHighContrast] = useState(
-    user?.settings?.accessibility?.highContrast ?? false
-  );
+  const [reducedMotion, setReducedMotion] = useState(() => {
+    if (user?.settings?.accessibility?.reducedMotion !== undefined) {
+      return user.settings.accessibility.reducedMotion;
+    }
+    try {
+      return localStorage.getItem('crp_reduced_motion') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [highContrast, setHighContrast] = useState(() => {
+    if (user?.settings?.accessibility?.highContrast !== undefined) {
+      return user.settings.accessibility.highContrast;
+    }
+    try {
+      return localStorage.getItem('crp_high_contrast') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   const [isSaving, setIsSaving] = useState(false);
+
+  // Synchronize accessibility state when user object loads
+  React.useEffect(() => {
+    if (user?.settings?.accessibility) {
+      const rm = !!user.settings.accessibility.reducedMotion;
+      const hc = !!user.settings.accessibility.highContrast;
+      setReducedMotion(rm);
+      setHighContrast(hc);
+      try {
+        if (rm) {
+          document.documentElement.setAttribute('data-reduced-motion', 'true');
+          localStorage.setItem('crp_reduced_motion', 'true');
+        } else {
+          document.documentElement.removeAttribute('data-reduced-motion');
+          localStorage.setItem('crp_reduced_motion', 'false');
+        }
+        if (hc) {
+          document.documentElement.setAttribute('data-high-contrast', 'true');
+          localStorage.setItem('crp_high_contrast', 'true');
+        } else {
+          document.documentElement.removeAttribute('data-high-contrast');
+          localStorage.setItem('crp_high_contrast', 'false');
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [user?.settings?.accessibility]);
+
+  const handleToggleReducedMotion = (enabled) => {
+    setReducedMotion(enabled);
+    try {
+      if (enabled) {
+        document.documentElement.setAttribute('data-reduced-motion', 'true');
+        localStorage.setItem('crp_reduced_motion', 'true');
+      } else {
+        document.documentElement.removeAttribute('data-reduced-motion');
+        localStorage.setItem('crp_reduced_motion', 'false');
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleToggleHighContrast = (enabled) => {
+    setHighContrast(enabled);
+    try {
+      if (enabled) {
+        document.documentElement.setAttribute('data-high-contrast', 'true');
+        localStorage.setItem('crp_high_contrast', 'true');
+      } else {
+        document.documentElement.removeAttribute('data-high-contrast');
+        localStorage.setItem('crp_high_contrast', 'false');
+      }
+    } catch {
+      // ignore
+    }
+  };
 
   const handleThemeChange = async (newTheme) => {
     setTheme(newTheme);
@@ -69,6 +141,12 @@ export default function SettingsView() {
           ...prev,
           settings: res.settings
         }));
+        try {
+          localStorage.setItem('crp_reduced_motion', String(reducedMotion));
+          localStorage.setItem('crp_high_contrast', String(highContrast));
+        } catch {
+          // ignore
+        }
         showToast('Account preferences saved successfully', 'success');
       }
     } catch (err) {
@@ -140,10 +218,10 @@ export default function SettingsView() {
               <Sun size={22} />
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0F172A' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
                 Light Mode
               </div>
-              <div style={{ fontSize: '0.78rem', color: '#64748B' }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                 Clean daytime civic look
               </div>
             </div>
@@ -215,8 +293,8 @@ export default function SettingsView() {
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Email Updates */}
-          <label
+          {/* Email Updates (Coming Soon) */}
+          <div
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -224,25 +302,43 @@ export default function SettingsView() {
               padding: '14px 16px',
               backgroundColor: 'var(--bg-subtle)',
               borderRadius: '8px',
-              border: '1px solid var(--border-subtle)',
-              cursor: 'pointer'
+              border: '1px solid var(--border-subtle)'
             }}
           >
             <div>
-              <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                Email Milestone Updates
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                  Email Milestone Updates
+                </span>
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    backgroundColor: 'var(--color-accent-amber-bg)',
+                    color: 'var(--color-accent-amber)',
+                    border: '1px solid rgba(217, 119, 6, 0.3)',
+                    letterSpacing: '0.02em',
+                    display: 'inline-flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  Coming Soon
+                </span>
               </div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                Receive emails when your complaint is assigned or officially resolved
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                Receive emails when your complaint is assigned or officially resolved (Service activation in progress)
               </div>
             </div>
             <input
               type="checkbox"
-              checked={emailUpdates}
-              onChange={(e) => setEmailUpdates(e.target.checked)}
-              style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--color-primary)' }}
+              checked={false}
+              disabled={true}
+              title="Email Milestone Updates is Coming Soon"
+              style={{ width: '18px', height: '18px', cursor: 'not-allowed', opacity: 0.45 }}
             />
-          </label>
+          </div>
 
           {/* In-app alerts */}
           <label
@@ -319,7 +415,7 @@ export default function SettingsView() {
             <input
               type="checkbox"
               checked={reducedMotion}
-              onChange={(e) => setReducedMotion(e.target.checked)}
+              onChange={(e) => handleToggleReducedMotion(e.target.checked)}
               style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--color-primary)' }}
             />
           </label>
@@ -348,7 +444,7 @@ export default function SettingsView() {
             <input
               type="checkbox"
               checked={highContrast}
-              onChange={(e) => setHighContrast(e.target.checked)}
+              onChange={(e) => handleToggleHighContrast(e.target.checked)}
               style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--color-primary)' }}
             />
           </label>

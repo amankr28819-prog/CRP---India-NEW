@@ -116,6 +116,7 @@ export default function Home() {
         style={{
           '--hero-bg-desktop': `url(${heroBg})`,
           '--hero-bg-mobile': `url(${heroBgMobile})`,
+          backgroundColor: '#0A1222',
           position: 'relative',
           width: '100%',
           minHeight: '580px',

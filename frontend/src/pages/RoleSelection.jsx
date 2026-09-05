@@ -2,7 +2,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Building2, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
 
 import crpLogo from '../assets/crp-logo-transparent.png';
 import crpInfrastructure from '../assets/crpInfrastructure.jpg';
@@ -11,21 +10,30 @@ import crpInfrastructure from '../assets/crpInfrastructure.jpg';
 export default function RoleSelection() {
   const navigate = useNavigate();
   const { selectPortal, isAuthority, isAuthenticated, requestPortalSwitch } = useAuth();
-  const { theme } = useTheme();
-  const isLightMode = theme === 'light';
   const [isCitizenHovered, setIsCitizenHovered] = React.useState(false);
   const [isAuthorityHovered, setIsAuthorityHovered] = React.useState(false);
   const [isHeadingHovered, setIsHeadingHovered] = React.useState(false);
 
+  // Isolate theme: guarantee Role Selection is ALWAYS dark mode
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    const meta = document.querySelector('meta[name="color-scheme"]');
+    if (meta) meta.setAttribute('content', 'dark');
+  }, []);
+
   const handleSelectRole = (role) => {
     if (role === 'citizen') {
       if (isAuthenticated && isAuthority) {
-        requestPortalSwitch();
+        requestPortalSwitch('/home', 'Citizen Portal');
         return;
       }
       selectPortal('citizen');
       navigate('/home');
     } else {
+      if (isAuthenticated && !isAuthority) {
+        requestPortalSwitch('/authority/login', 'Municipal Authority Portal');
+        return;
+      }
       selectPortal(role);
       if (isAuthenticated && isAuthority) {
         navigate('/authority/dashboard');
@@ -44,16 +52,9 @@ export default function RoleSelection() {
 };
 
 const boxHover = (e) => {
-  e.currentTarget.style.backgroundColor = isLightMode
-    ? 'rgba(255, 255, 255, 0.95)'
-    : 'rgba(15, 23, 42, 0.95)';
-
-  e.currentTarget.style.borderColor = isLightMode
-    ? 'rgba(0, 0, 0, 0.15)'
-    : 'rgba(255, 255, 255, 0.2)';
-
-  e.currentTarget.style.boxShadow =
-    '0 12px 35px rgba(0, 0, 0, 0.25)';
+  e.currentTarget.style.backgroundColor = 'rgba(15, 23, 42, 0.95)';
+  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+  e.currentTarget.style.boxShadow = '0 12px 35px rgba(0, 0, 0, 0.25)';
 };
 
 const boxLeave = (e) => {
@@ -77,7 +78,10 @@ const boxLeave = (e) => {
         justifyContent: 'center',
         padding: '24px 16px',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        colorScheme: 'dark',
+        backgroundColor: '#0A0F1D',
+        color: '#F8FAFC'
       }}
     >
       {/* Background layer with bleed to eliminate internal image border margins */}
@@ -133,17 +137,17 @@ const boxLeave = (e) => {
     alignItems: 'center',
     gap: '8px',
     padding: '6px 14px',
-    backgroundColor: 'var(--bg-subtle)',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
     borderRadius: '20px',
-    border: '1px solid var(--border-subtle)',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
     marginBottom: '24px',
     fontSize: '0.8125rem',
-    color: 'var(--text-secondary)'
+    color: '#E2E8F0'
   }}
 >
   <ShieldCheck
     size={15}
-    style={{ color: 'var(--color-accent-green)' }}
+    style={{ color: '#22C55E' }}
   />
   <span>
     Official Civic Grievance & Municipal Resolution Gateway
@@ -200,40 +204,34 @@ const boxLeave = (e) => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', textAlign: 'left' }}>
           {/* Option 1: Citizen */}
           <div
-            
-  onClick={() => handleSelectRole('citizen')}
-  onMouseEnter={() => setIsCitizenHovered(true)}
-  onMouseLeave={() => setIsCitizenHovered(false)}
-  style={{
-    backgroundColor: isCitizenHovered
-  ? (isLightMode
-      ? 'rgba(255, 255, 255, 0.35)'
-      : 'rgba(15, 23, 42, 0.35)')
-  : 'rgba(15, 23, 42, 0.05)',
+            onClick={() => handleSelectRole('citizen')}
+            onMouseEnter={() => setIsCitizenHovered(true)}
+            onMouseLeave={() => setIsCitizenHovered(false)}
+            style={{
+              backgroundColor: isCitizenHovered
+                ? 'rgba(15, 23, 42, 0.45)'
+                : 'rgba(15, 23, 42, 0.12)',
 
-    backdropFilter: isCitizenHovered ? 'blur(12px)' : 'none',
-    WebkitBackdropFilter: isCitizenHovered ? 'blur(12px)' : 'none',
+              backdropFilter: isCitizenHovered ? 'blur(12px)' : 'none',
+              WebkitBackdropFilter: isCitizenHovered ? 'blur(12px)' : 'none',
 
-    border: 'none',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
 
-    borderRadius: '8px',
-    padding: '28px 24px',
-    cursor: 'pointer',
+              borderRadius: '8px',
+              padding: '28px 24px',
+              cursor: 'pointer',
 
-    transition:
-      'background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease',
+              transition:
+                'background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease',
 
-    boxShadow: isCitizenHovered
-      ? '0 8px 30px rgba(0, 0, 0, 0.25)'
-      : '0 4px 20px rgba(0, 0, 0, 0.10)',
+              boxShadow: isCitizenHovered
+                ? '0 8px 30px rgba(0, 0, 0, 0.35)'
+                : '0 4px 20px rgba(0, 0, 0, 0.15)',
 
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between'
-  }}
-             
-            
-            
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between'
+            }}
           >
             <div>
               <div
@@ -241,8 +239,8 @@ const boxLeave = (e) => {
                   width: '44px',
                   height: '44px',
                   borderRadius: '6px',
-                  backgroundColor: 'var(--color-primary-light)',
-                  color: 'var(--color-primary)',
+                  backgroundColor: '#1E293B',
+                  color: '#3B82F6',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -251,15 +249,15 @@ const boxLeave = (e) => {
               >
                 <Users size={24} />
               </div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: isLightMode ? '#111827' : '#ffffff', marginBottom: '8px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
                 Citizen
               </h2>
-              <p style={{ fontSize: '0.9rem', color: isLightMode ? '#374151' : '#d1d5db', lineHeight: 1.5 }}>
+              <p style={{ fontSize: '0.9rem', color: '#d1d5db', lineHeight: 1.5 }}>
                 Report and track civic issues in your area.
               </p>
             </div>
 
-            <div style={{ marginTop: '28px', display: 'flex', alignItems: 'center', gap: '6px',color: '#3B82F6', fontWeight: 600, fontSize: '0.875rem' }}>
+            <div style={{ marginTop: '28px', display: 'flex', alignItems: 'center', gap: '6px', color: '#3B82F6', fontWeight: 600, fontSize: '0.875rem' }}>
               <span>Enter Citizen Portal</span>
               <ArrowRight size={16} />
             </div>
@@ -269,20 +267,20 @@ const boxLeave = (e) => {
           <div
             onClick={() => handleSelectRole('authority')}
             style={{
-            backgroundColor: isAuthorityHovered
-                  ? (isLightMode ? 'rgba(255, 255, 255, 0.35)' : 'rgba(15, 23, 42, 0.35)')
-                  : 'rgba(15, 23, 42, 0.05)',
+              backgroundColor: isAuthorityHovered
+                ? 'rgba(15, 23, 42, 0.45)'
+                : 'rgba(15, 23, 42, 0.12)',
 
               backdropFilter: isAuthorityHovered ? 'blur(12px)' : 'none',
               WebkitBackdropFilter: isAuthorityHovered ? 'blur(12px)' : 'none',
-            border: 'none',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
               borderRadius: '8px',
               padding: '28px 24px',
               cursor: 'pointer',
-            transition: 'background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease',
-            boxShadow: isAuthorityHovered
-            ? '0 8px 30px rgba(0, 0, 0, 0.25)'
-            : '0 4px 20px rgba(0, 0, 0, 0.10)',
+              transition: 'background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease',
+              boxShadow: isAuthorityHovered
+                ? '0 8px 30px rgba(0, 0, 0, 0.35)'
+                : '0 4px 20px rgba(0, 0, 0, 0.15)',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between'
@@ -296,8 +294,8 @@ const boxLeave = (e) => {
                   width: '44px',
                   height: '44px',
                   borderRadius: '6px',
-                  backgroundColor: 'var(--color-primary-light)',
-                  color: '#1D4ED8',
+                  backgroundColor: '#1E293B',
+                  color: '#3B82F6',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -306,15 +304,15 @@ const boxLeave = (e) => {
               >
                 <Building2 size={24} />
               </div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: isLightMode ? '#111827' : '#ffffff', marginBottom: '8px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#ffffff', marginBottom: '8px' }}>
                 Municipal Authority
               </h2>
-              <p style={{ fontSize: '0.9rem', color: isLightMode ? '#374151' : '#d1d5db', lineHeight: 1.5 }}>
+              <p style={{ fontSize: '0.9rem', color: '#d1d5db', lineHeight: 1.5 }}>
                 Manage complaints and coordinate civic resolution.
               </p>
             </div>
 
-            <div style={{ marginTop: '28px', display: 'flex', alignItems: 'center', gap: '6px',color: '#3B82F6', fontWeight: 600, fontSize: '0.875rem' }}>
+            <div style={{ marginTop: '28px', display: 'flex', alignItems: 'center', gap: '6px', color: '#3B82F6', fontWeight: 600, fontSize: '0.875rem' }}>
               <span>Access Authority Portal</span>
               <ArrowRight size={16} />
             </div>

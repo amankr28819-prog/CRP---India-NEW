@@ -5,7 +5,13 @@ import { useAuth } from '../context/AuthContext';
 
 export default function PortalSwitchModal() {
   const navigate = useNavigate();
-  const { showPortalSwitchModal, cancelPortalSwitch, confirmPortalSwitch } = useAuth();
+  const {
+    showPortalSwitchModal,
+    cancelPortalSwitch,
+    confirmPortalSwitch,
+    pendingPortalSwitch,
+    isAuthority
+  } = useAuth();
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -20,8 +26,11 @@ export default function PortalSwitchModal() {
   if (!showPortalSwitchModal) return null;
 
   const handleConfirm = () => {
-    confirmPortalSwitch();
-    navigate('/home', { replace: true });
+    const destination = pendingPortalSwitch?.targetPath || (isAuthority ? '/home' : '/authority/login');
+    navigate(destination, { replace: true });
+    setTimeout(() => {
+      confirmPortalSwitch();
+    }, 50);
   };
 
   return (
@@ -65,11 +74,11 @@ export default function PortalSwitchModal() {
             fontSize: '1.25rem',
             fontWeight: 700,
             color: 'var(--text-primary)',
-            marginBottom: '8px',
+            marginBottom: '10px',
             letterSpacing: '-0.01em'
           }}
         >
-          Switch to Citizen Portal
+          Log Out
         </h2>
 
         {/* Contextual Description */}
@@ -81,12 +90,10 @@ export default function PortalSwitchModal() {
             marginBottom: '26px'
           }}
         >
-          You are switching to Citizen Portal.
-          <br />
-          You will be logged out from the Municipal Portal.
+          You will be logged out of your current account. Do you want to continue?
         </p>
 
-        {/* Modal Actions: exactly two actions: "Back" and "Logout" */}
+        {/* Modal Actions: Cancel and Log Out */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <button
             type="button"
@@ -101,7 +108,7 @@ export default function PortalSwitchModal() {
             }}
             autoFocus
           >
-            Back
+            Cancel
           </button>
           <button
             type="button"
@@ -126,7 +133,7 @@ export default function PortalSwitchModal() {
             onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
           >
             <LogOut size={16} />
-            <span>Logout</span>
+            <span>Log Out</span>
           </button>
         </div>
       </div>

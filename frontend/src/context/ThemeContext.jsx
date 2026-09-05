@@ -18,9 +18,16 @@ export const ThemeProvider = ({ children }) => {
 
   useEffect(() => {
     try {
-      document.documentElement.setAttribute('data-theme', theme);
-      const meta = document.querySelector('meta[name="color-scheme"]');
-      if (meta) meta.setAttribute('content', theme);
+      const path = typeof window !== 'undefined' ? window.location.pathname : '';
+      if (path === '/' || path === '/select-role') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        const meta = document.querySelector('meta[name="color-scheme"]');
+        if (meta) meta.setAttribute('content', 'dark');
+      } else {
+        document.documentElement.setAttribute('data-theme', theme);
+        const meta = document.querySelector('meta[name="color-scheme"]');
+        if (meta) meta.setAttribute('content', theme);
+      }
       localStorage.setItem('crp_theme', theme);
     } catch {
       // ignore

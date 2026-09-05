@@ -168,6 +168,44 @@ export const api = {
     }
   },
 
+  // Voting API
+  voteComplaint: async (id, voteType) => {
+    const res = await fetch(`${API_BASE_URL}/complaints/${encodeURIComponent(id)}/vote`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ voteType })
+    });
+    return await handleResponse(res);
+  },
+
+  // Administrative Flagging APIs (Authority only)
+  flagMisinformation: async (id, explanation) => {
+    const res = await fetch(`${API_BASE_URL}/complaints/${encodeURIComponent(id)}/flag-misinformation`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ explanation })
+    });
+    return await handleResponse(res);
+  },
+
+  flagDuplicate: async (id, explanation) => {
+    const res = await fetch(`${API_BASE_URL}/complaints/${encodeURIComponent(id)}/flag-duplicate`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ explanation })
+    });
+    return await handleResponse(res);
+  },
+
+  removeFlag: async (id, explanation) => {
+    const res = await fetch(`${API_BASE_URL}/complaints/${encodeURIComponent(id)}/remove-flag`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ explanation })
+    });
+    return await handleResponse(res);
+  },
+
   // Authority API
   getAuthorityDashboard: async () => {
     try {
@@ -341,6 +379,38 @@ export const api = {
       headers: getHeaders()
     });
     return await handleResponse(res);
+  },
+
+  // Citizen Directory & Public Profile APIs
+  searchCitizens: async (params = {}) => {
+    try {
+      const query = new URLSearchParams(params).toString();
+      const res = await fetch(`${API_BASE_URL}/citizens/search${query ? `?${query}` : ''}`, {
+        method: 'GET',
+        headers: getHeaders()
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please ensure the backend is running.');
+      }
+      throw err;
+    }
+  },
+
+  getCitizenPublicProfile: async (id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/citizens/${encodeURIComponent(id)}/public-profile`, {
+        method: 'GET',
+        headers: getHeaders()
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please ensure the backend is running.');
+      }
+      throw err;
+    }
   }
 };
 

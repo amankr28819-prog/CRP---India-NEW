@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Building2, User, Image, AlertCircle, Copy, CheckCircle2, X, Trash2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Building2, User, Image, AlertCircle, Copy, CheckCircle2, X, Trash2, ShieldAlert, AlertTriangle, ExternalLink } from 'lucide-react';
 import { api, getImageUrl } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import StatusBadge from '../components/StatusBadge';
 import Timeline from '../components/Timeline';
 import BackButton from '../components/BackButton';
+import VotingButtons from '../components/VotingButtons';
 
 export default function ComplaintDetails() {
   const { id } = useParams();
@@ -165,9 +166,166 @@ export default function ComplaintDetails() {
               <span>Complaint Deleted</span>
             </span>
           ) : (
-            <StatusBadge status={complaint.status} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {complaint.flagStatus === 'misinformation' && (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 10px',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      backgroundColor: '#FEE2E2',
+                      color: '#DC2626',
+                      border: '1px solid #FCA5A5',
+                      textTransform: 'uppercase'
+                    }}
+                  >
+                    <AlertTriangle size={12} />
+                    Flagged: Misinformation
+                  </span>
+                )}
+                {complaint.flagStatus === 'duplicate' && (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 10px',
+                      borderRadius: '4px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      backgroundColor: '#FEF3C7',
+                      color: '#D97706',
+                      border: '1px solid #FCD34D',
+                      textTransform: 'uppercase'
+                    }}
+                  >
+                    <AlertTriangle size={12} />
+                    Flagged: Duplicate
+                  </span>
+                )}
+                <StatusBadge status={complaint.status} />
+              </div>
+
+              {/* Citizen Voting Controls */}
+              <div style={{ marginTop: '2px' }}>
+                <VotingButtons
+                  complaint={complaint}
+                  onVoteChange={(updated) => {
+                    setComplaint((prev) => ({
+                      ...prev,
+                      ...updated,
+                      ...(updated.autoRestored ? { flagStatus: 'none' } : {})
+                    }));
+                  }}
+                />
+              </div>
+            </div>
           )}
         </div>
+
+        {/* Administrative Flag Banner with Explanation & 500-Upvote Milestone */}
+        {complaint.flagStatus && complaint.flagStatus !== 'none' && (
+          <div
+            style={{
+              backgroundColor: complaint.flagStatus === 'misinformation' ? '#FEF2F2' : '#FFFBEB',
+              border: `1.5px solid ${complaint.flagStatus === 'misinformation' ? '#EF4444' : '#F59E0B'}`,
+              borderRadius: '8px',
+              padding: '18px 20px',
+              marginTop: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: complaint.flagStatus === 'misinformation' ? '#B91C1C' : '#B45309', fontWeight: 700, fontSize: '0.95rem' }}>
+                <ShieldAlert size={19} />
+                <span>
+                  {complaint.flagStatus === 'misinformation'
+                    ? 'Administratively Flagged as Misinformation'
+                    : 'Administratively Flagged as Duplicate Grievance'}
+                </span>
+              </div>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: complaint.flagStatus === 'misinformation' ? '#991B1B' : '#92400E',
+                  backgroundColor: complaint.flagStatus === 'misinformation' ? '#FEE2E2' : '#FEF3C7',
+                  padding: '2px 8px',
+                  borderRadius: '4px'
+                }}
+              >
+                Moved to Flagged Complaints Pool
+              </span>
+            </div>
+
+            {complaint.flagDetails?.reason && (
+              <div
+                style={{
+                  fontSize: '0.875rem',
+                  color: '#1F2937',
+                  backgroundColor: '#FFFFFF',
+                  padding: '12px 14px',
+                  borderRadius: '6px',
+                  borderLeft: `4px solid ${complaint.flagStatus === 'misinformation' ? '#EF4444' : '#F59E0B'}`
+                }}
+              >
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: complaint.flagStatus === 'misinformation' ? '#B91C1C' : '#B45309', marginBottom: '4px', textTransform: 'uppercase' }}>
+                  Official Authority Stated Explanation:
+                </div>
+                <div style={{ lineHeight: 1.5 }}>{complaint.flagDetails.reason}</div>
+                {complaint.flagDetails.duplicateOfComplaintRef && (
+                  <div style={{ marginTop: '8px', fontSize: '0.8125rem', color: '#4B5563' }}>
+                    Duplicate of Complaint Reference:{' '}
+                    <Link
+                      to={`/complaints/${complaint.flagDetails.duplicateOfComplaintRef}`}
+                      style={{ color: 'var(--color-primary)', fontWeight: 600 }}
+                    >
+                      {complaint.flagDetails.duplicateOfComplaintRef}
+                    </Link>
+                  </div>
+                )}
+                {complaint.flagDetails.flaggedAt && (
+                  <div style={{ marginTop: '6px', fontSize: '0.75rem', color: '#6B7280' }}>
+                    Flagged on: {new Date(complaint.flagDetails.flaggedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Community 500-Upvote Auto-Restoration Tracker */}
+            <div style={{ backgroundColor: '#FFFFFF', padding: '12px 14px', borderRadius: '6px', border: '1px solid #E5E7EB' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem', marginBottom: '6px' }}>
+                <span style={{ fontWeight: 600, color: '#374151' }}>
+                  Community Auto-Restoration Milestone (500 Unique Upvotes)
+                </span>
+                <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
+                  {complaint.upvotesCount || 0} / 500 upvotes ({Math.min(100, Math.round(((complaint.upvotesCount || 0) / 500) * 100))}%)
+                </span>
+              </div>
+              <div style={{ height: '8px', width: '100%', backgroundColor: '#E5E7EB', borderRadius: '4px', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${Math.min(100, ((complaint.upvotesCount || 0) / 500) * 100)}%`,
+                    backgroundColor: '#10B981',
+                    borderRadius: '4px',
+                    transition: 'width 0.3s ease'
+                  }}
+                />
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#6B7280', marginTop: '6px' }}>
+                Citizens can still vote on this complaint. Once it reaches 500 unique upvotes, it will be automatically restored to the active complaints pool.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Deleted by Citizen Alert Banner */}
         {complaint.deletedByCitizen && (
@@ -201,7 +359,7 @@ export default function ComplaintDetails() {
         )}
 
         {/* Civic Meta Details List */}
-        <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border-subtle)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+        <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border-subtle)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
           <div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
               Location & Jurisdiction
@@ -217,6 +375,36 @@ export default function ComplaintDetails() {
                 GPS: {complaint.latitude}, {complaint.longitude}
               </div>
             )}
+          </div>
+
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px' }}>
+              Complainant / Citizen
+            </div>
+            <div style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: 500 }}>
+              {complaint.citizen?.userId ? (
+                <Link
+                  to={`/citizens/${complaint.citizen.userId}`}
+                  style={{
+                    color: 'var(--color-primary)',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="View Public Accountability Profile"
+                >
+                  <span>{complaint.citizen.name || 'Verified Citizen'}</span>
+                  <ExternalLink size={12} />
+                </Link>
+              ) : (
+                complaint.citizen?.name || 'Verified Citizen'
+              )}
+            </div>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+              Verified Grievance Author
+            </div>
           </div>
 
           <div>
@@ -362,7 +550,7 @@ export default function ComplaintDetails() {
           <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
             Status Progression Timeline
           </h3>
-          <Timeline history={complaint.statusHistory} />
+          <Timeline history={complaint.statusHistory} currentStatus={complaint.status} complaint={complaint} />
         </div>
       </div>
 

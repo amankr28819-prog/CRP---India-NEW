@@ -608,7 +608,7 @@ export default function MyComplaintsView() {
                 Official Redressal Timeline
               </h4>
               {selectedComplaint.statusHistory && selectedComplaint.statusHistory.length > 0 ? (
-                <Timeline history={selectedComplaint.statusHistory} />
+                <Timeline history={selectedComplaint.statusHistory} currentStatus={selectedComplaint.status} complaint={selectedComplaint} />
               ) : (
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No status updates recorded yet.</p>
               )}
