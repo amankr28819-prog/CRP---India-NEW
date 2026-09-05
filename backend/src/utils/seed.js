@@ -414,11 +414,114 @@ const sampleComplaintsData = (citizen1) => [
   }
 ];
 
+const demoAuthorityAccounts = [
+  {
+    name: 'Municipal Commissioner (Admin)',
+    email: 'admin.authority@crp.gov.in',
+    password: 'AuthorityAdmin@2026',
+    phone: '+91 98110 00001',
+    role: 'authority_admin',
+    assignedCategory: '',
+    department: 'Central Municipal Administration',
+    designation: 'Municipal Commissioner / Chief Administrator'
+  },
+  {
+    name: 'Roads Infrastructure Officer',
+    email: 'roads.authority@crp.gov.in',
+    password: 'RoadsAuth@2026',
+    phone: '+91 98110 00002',
+    role: 'authority_category',
+    assignedCategory: 'Roads & Potholes',
+    department: 'Public Works Department (Roads)',
+    designation: 'Superintending Engineer (Roads)'
+  },
+  {
+    name: 'Sanitation & Waste Officer',
+    email: 'garbage.authority@crp.gov.in',
+    password: 'GarbageAuth@2026',
+    phone: '+91 98110 00003',
+    role: 'authority_category',
+    assignedCategory: 'Garbage & Sanitation',
+    department: 'Solid Waste & Sanitation Department',
+    designation: 'Chief Sanitation Inspector'
+  },
+  {
+    name: 'Lighting Division Officer',
+    email: 'lighting.authority@crp.gov.in',
+    password: 'LightingAuth@2026',
+    phone: '+91 98110 00004',
+    role: 'authority_category',
+    assignedCategory: 'Streetlights',
+    department: 'Municipal Electrical & Lighting Division',
+    designation: 'Assistant Executive Engineer (Electrical)'
+  },
+  {
+    name: 'Water Board Officer',
+    email: 'water.authority@crp.gov.in',
+    password: 'WaterAuth@2026',
+    phone: '+91 98110 00005',
+    role: 'authority_category',
+    assignedCategory: 'Water Supply',
+    department: 'Water Supply & Jal Board',
+    designation: 'Zonal Water Supply Engineer'
+  },
+  {
+    name: 'Stormwater Drainage Officer',
+    email: 'drainage.authority@crp.gov.in',
+    password: 'DrainageAuth@2026',
+    phone: '+91 98110 00006',
+    role: 'authority_category',
+    assignedCategory: 'Drainage',
+    department: 'Stormwater Drainage & Sewerage Board',
+    designation: 'Divisional Drainage Engineer'
+  },
+  {
+    name: 'Parks & Amenities Officer',
+    email: 'parks.authority@crp.gov.in',
+    password: 'ParksAuth@2026',
+    phone: '+91 98110 00007',
+    role: 'authority_category',
+    assignedCategory: 'Public Spaces',
+    department: 'Parks & Public Amenities Directorate',
+    designation: 'Public Spaces Directorate Officer'
+  },
+  {
+    name: 'Civic Redressal Officer',
+    email: 'other.authority@crp.gov.in',
+    password: 'OtherAuth@2026',
+    phone: '+91 98110 00008',
+    role: 'authority_category',
+    assignedCategory: 'Other Issues',
+    department: 'Central Civic Redressal Cell',
+    designation: 'Civic Redressal Grievance Officer'
+  }
+];
+
+const seedAuthorityAccounts = async () => {
+  console.log('[SEED] Ensuring Main and Category Authority demo accounts exist...');
+  for (const acc of demoAuthorityAccounts) {
+    const existing = await User.findOne({ email: acc.email });
+    if (!existing) {
+      await User.create(acc);
+      console.log(`[SEED] Created authority account: ${acc.email} (${acc.role} - ${acc.assignedCategory || 'ALL'})`);
+    } else {
+      existing.role = acc.role;
+      existing.assignedCategory = acc.assignedCategory;
+      existing.department = acc.department;
+      existing.designation = acc.designation;
+      existing.password = acc.password;
+      await existing.save();
+      console.log(`[SEED] Updated existing authority account: ${acc.email} (${acc.role} - ${acc.assignedCategory || 'ALL'})`);
+    }
+  }
+};
+
 const seedData = async (shouldExit = true) => {
   try {
     const userCount = await User.countDocuments();
     if (userCount > 0 && !shouldExit) {
-      // Already populated, skip automatic seed
+      // Already populated, ensure authority accounts exist without clearing data
+      await seedAuthorityAccounts();
       return;
     }
 
@@ -508,6 +611,9 @@ const seedData = async (shouldExit = true) => {
       }
     ]);
 
+    console.log('[SEED] Creating category authority demo accounts...');
+    await seedAuthorityAccounts();
+
     console.log('[SEED] Data seeding completed successfully!');
     if (shouldExit) {
       process.exit(0);
@@ -522,4 +628,4 @@ if (require.main === module) {
   connectDB().then(() => seedData(true));
 }
 
-module.exports = { seedData };
+module.exports = { seedData, seedAuthorityAccounts };

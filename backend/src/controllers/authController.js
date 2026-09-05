@@ -17,6 +17,7 @@ const generateToken = (user) => {
     {
       id: user._id,
       role: user.role,
+      assignedCategory: user.assignedCategory || '',
       email: user.email,
       name: user.name
     },
@@ -187,8 +188,10 @@ const login = async (req, res, next) => {
       });
     }
 
+    const authorityRoles = ['authority', 'authority_admin', 'authority_category'];
+
     // If logging in through authority portal, ensure the account has authority privileges
-    if (expectedRole === 'authority' && user.role !== 'authority') {
+    if (expectedRole === 'authority' && !authorityRoles.includes(user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Access restricted: This account does not have Municipal Authority clearance.'
@@ -204,6 +207,8 @@ const login = async (req, res, next) => {
     }
 
     const token = generateToken(user);
+    const isAuthUser = authorityRoles.includes(user.role);
+    const clientRole = isAuthUser ? 'authority' : user.role;
 
     res.json({
       success: true,
@@ -216,7 +221,9 @@ const login = async (req, res, next) => {
         email: user.email,
         phone: user.phone,
         voterId: user.voterId || '',
-        role: user.role,
+        role: clientRole,
+        authorityRole: user.role,
+        assignedCategory: user.assignedCategory || '',
         department: user.department,
         designation: user.designation,
         avatar: user.avatar || '',
@@ -232,9 +239,18 @@ const login = async (req, res, next) => {
 // @desc Get current logged-in user profile
 // @route GET /api/auth/me
 const getMe = async (req, res) => {
+  const authorityRoles = ['authority', 'authority_admin', 'authority_category'];
+  const isAuthUser = req.user && authorityRoles.includes(req.user.role);
+  const userObj = req.user && (req.user.toObject ? req.user.toObject() : { ...req.user });
+
   res.json({
     success: true,
-    user: req.user
+    user: {
+      ...userObj,
+      role: isAuthUser ? 'authority' : (req.user ? req.user.role : 'citizen'),
+      authorityRole: req.user ? req.user.role : 'citizen',
+      assignedCategory: (req.user && req.user.assignedCategory) || ''
+    }
   });
 };
 

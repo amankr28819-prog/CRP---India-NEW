@@ -22,7 +22,7 @@ const maskCitizenPii = (complaint, reqUser) => {
   if (!complaint) return null;
   const compObj = complaint.toObject ? complaint.toObject() : { ...complaint };
 
-  const isAuthority = reqUser && reqUser.role === 'authority';
+  const isAuthority = reqUser && ['authority', 'authority_admin', 'authority_category'].includes(reqUser.role);
   const isOwner = reqUser && compObj.citizen?.userId && reqUser._id && compObj.citizen.userId.toString() === reqUser._id.toString();
 
   if (!isAuthority && !isOwner && compObj.citizen) {
@@ -273,6 +273,16 @@ const getComplaintByRefId = async (req, res, next) => {
       });
     }
 
+    // Security: If logged-in user is a category-wise authority, strictly verify complaint category
+    if (req.user && req.user.role === 'authority_category') {
+      if (complaint.category !== req.user.assignedCategory) {
+        return res.status(403).json({
+          success: false,
+          message: `Access denied: You do not have authorization to view complaints outside your assigned category (${req.user.assignedCategory}).`
+        });
+      }
+    }
+
     res.json({
       success: true,
       complaint: maskCitizenPii(complaint, req.user)
@@ -295,6 +305,11 @@ const getComplaints = async (req, res, next) => {
 
     if (category && category !== 'All' && categoryDepartmentMap[category]) {
       query.category = category;
+    }
+
+    // Security: If logged-in user is a category-wise authority, strictly enforce category filter
+    if (req.user && req.user.role === 'authority_category') {
+      query.category = req.user.assignedCategory;
     }
 
     if (ward && ward !== 'All' && typeof ward === 'string' && ward.length <= 100) {
@@ -376,6 +391,16 @@ const updateComplaintStatus = async (req, res, next) => {
         success: false,
         message: 'Complaint not found.'
       });
+    }
+
+    // Security: Category Authority cannot update complaints outside their assigned category
+    if (req.user && req.user.role === 'authority_category') {
+      if (complaint.category !== req.user.assignedCategory) {
+        return res.status(403).json({
+          success: false,
+          message: `Access denied: You cannot update status of complaints outside your assigned category (${req.user.assignedCategory}).`
+        });
+      }
     }
 
     const officerName = req.user ? `${req.user.name} (${req.user.designation || 'Authority'})` : 'Municipal Authority';
@@ -470,6 +495,16 @@ const assignComplaint = async (req, res, next) => {
         success: false,
         message: 'Complaint not found.'
       });
+    }
+
+    // Security: Category Authority cannot assign complaints outside their assigned category
+    if (req.user && req.user.role === 'authority_category') {
+      if (complaint.category !== req.user.assignedCategory) {
+        return res.status(403).json({
+          success: false,
+          message: `Access denied: You cannot assign complaints outside your assigned category (${req.user.assignedCategory}).`
+        });
+      }
     }
 
     if (assignedDepartment && typeof assignedDepartment === 'string') {

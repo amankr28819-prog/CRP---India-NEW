@@ -49,7 +49,8 @@ const verifyToken = async (req, res, next) => {
 };
 
 const isAuthority = (req, res, next) => {
-  if (!req.user || req.user.role !== 'authority') {
+  const authorityRoles = ['authority', 'authority_admin', 'authority_category'];
+  if (!req.user || !authorityRoles.includes(req.user.role)) {
     return res.status(403).json({
       success: false,
       message: 'Access denied: Municipal Authority privilege required.'

@@ -36,8 +36,13 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['citizen', 'authority'],
+      enum: ['citizen', 'authority', 'authority_admin', 'authority_category'],
       default: 'citizen'
+    },
+    assignedCategory: {
+      type: String,
+      trim: true,
+      default: ''
     },
     department: {
       type: String,

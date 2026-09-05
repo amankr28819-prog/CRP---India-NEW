@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Building2, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import ThemeToggle from '../components/ThemeToggle';
 
 import crpLogo from '../assets/crp-logo-transparent.png';
@@ -11,7 +12,8 @@ import crpInfrastructure from '../assets/crpInfrastructure.jpg';
 export default function RoleSelection() {
   const navigate = useNavigate();
   const { selectPortal, isAuthority, isAuthenticated, requestPortalSwitch } = useAuth();
-  const isLightMode = document.documentElement.classList.contains('light');
+  const { theme } = useTheme();
+  const isLightMode = theme === 'light';
   const [isCitizenHovered, setIsCitizenHovered] = React.useState(false);
   const [isAuthorityHovered, setIsAuthorityHovered] = React.useState(false);
   const [isHeadingHovered, setIsHeadingHovered] = React.useState(false);
@@ -274,7 +276,7 @@ const boxLeave = (e) => {
             onClick={() => handleSelectRole('authority')}
             style={{
             backgroundColor: isAuthorityHovered
-                  ? 'rgba(15, 23, 42, 0.35)'
+                  ? (isLightMode ? 'rgba(255, 255, 255, 0.35)' : 'rgba(15, 23, 42, 0.35)')
                   : 'rgba(15, 23, 42, 0.05)',
 
               backdropFilter: isAuthorityHovered ? 'blur(12px)' : 'none',

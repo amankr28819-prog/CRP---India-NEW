@@ -5,7 +5,7 @@ const path = require('path');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const { connectDB } = require('./config/db');
-const { seedData } = require('./utils/seed');
+const { seedData, seedAuthorityAccounts } = require('./utils/seed');
 const errorHandler = require('./middleware/errorHandler');
 const { sanitizeMiddleware } = require('./middleware/sanitize');
 const { authLimiter, apiLimiter } = require('./middleware/rateLimiter');
@@ -30,10 +30,16 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
-// Connect to Database & seed demo data in development only
+// Connect to Database & seed demo data
 connectDB().then(async () => {
   if (process.env.NODE_ENV !== 'production') {
     await seedData(false);
+  } else {
+    try {
+      await seedAuthorityAccounts();
+    } catch (err) {
+      console.error('[SEED] Failed to verify authority demo accounts:', err.message);
+    }
   }
 });
 
