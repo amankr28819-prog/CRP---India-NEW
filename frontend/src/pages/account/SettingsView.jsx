@@ -16,94 +16,36 @@ import { api } from '../../services/api';
 
 export default function SettingsView() {
   const { user, updateUser } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, highContrast, setHighContrast, reducedMotion, setReducedMotion } = useTheme();
   const { showToast } = useToast();
 
   const [emailUpdates, setEmailUpdates] = useState(
-    user?.settings?.notifications?.emailUpdates ?? true
+    user?.settings?.notifications?.emailUpdates ?? false
   );
   const [complaintStatusAlerts, setComplaintStatusAlerts] = useState(
     user?.settings?.notifications?.complaintStatus ?? true
   );
-  const [reducedMotion, setReducedMotion] = useState(() => {
-    if (user?.settings?.accessibility?.reducedMotion !== undefined) {
-      return user.settings.accessibility.reducedMotion;
-    }
-    try {
-      return localStorage.getItem('crp_reduced_motion') === 'true';
-    } catch {
-      return false;
-    }
-  });
-  const [highContrast, setHighContrast] = useState(() => {
-    if (user?.settings?.accessibility?.highContrast !== undefined) {
-      return user.settings.accessibility.highContrast;
-    }
-    try {
-      return localStorage.getItem('crp_high_contrast') === 'true';
-    } catch {
-      return false;
-    }
-  });
 
   const [isSaving, setIsSaving] = useState(false);
 
-  // Synchronize accessibility state when user object loads
+  // Synchronize accessibility state if the user account has an explicit preference saved
   React.useEffect(() => {
     if (user?.settings?.accessibility) {
-      const rm = !!user.settings.accessibility.reducedMotion;
-      const hc = !!user.settings.accessibility.highContrast;
-      setReducedMotion(rm);
-      setHighContrast(hc);
-      try {
-        if (rm) {
-          document.documentElement.setAttribute('data-reduced-motion', 'true');
-          localStorage.setItem('crp_reduced_motion', 'true');
-        } else {
-          document.documentElement.removeAttribute('data-reduced-motion');
-          localStorage.setItem('crp_reduced_motion', 'false');
-        }
-        if (hc) {
-          document.documentElement.setAttribute('data-high-contrast', 'true');
-          localStorage.setItem('crp_high_contrast', 'true');
-        } else {
-          document.documentElement.removeAttribute('data-high-contrast');
-          localStorage.setItem('crp_high_contrast', 'false');
-        }
-      } catch {
-        // ignore
+      if (user.settings.accessibility.highContrast === true) {
+        setHighContrast(true);
+      }
+      if (user.settings.accessibility.reducedMotion === true) {
+        setReducedMotion(true);
       }
     }
   }, [user?.settings?.accessibility]);
 
   const handleToggleReducedMotion = (enabled) => {
     setReducedMotion(enabled);
-    try {
-      if (enabled) {
-        document.documentElement.setAttribute('data-reduced-motion', 'true');
-        localStorage.setItem('crp_reduced_motion', 'true');
-      } else {
-        document.documentElement.removeAttribute('data-reduced-motion');
-        localStorage.setItem('crp_reduced_motion', 'false');
-      }
-    } catch {
-      // ignore
-    }
   };
 
   const handleToggleHighContrast = (enabled) => {
     setHighContrast(enabled);
-    try {
-      if (enabled) {
-        document.documentElement.setAttribute('data-high-contrast', 'true');
-        localStorage.setItem('crp_high_contrast', 'true');
-      } else {
-        document.documentElement.removeAttribute('data-high-contrast');
-        localStorage.setItem('crp_high_contrast', 'false');
-      }
-    } catch {
-      // ignore
-    }
   };
 
   const handleThemeChange = async (newTheme) => {

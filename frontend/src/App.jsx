@@ -40,6 +40,7 @@ import AuthorityAssignedComplaints from './pages/authority/AuthorityAssignedComp
 import AuthorityDeletedComplaints from './pages/authority/AuthorityDeletedComplaints';
 import AuthorityReports from './pages/authority/AuthorityReports';
 import AuthorityAccount from './pages/authority/AuthorityAccount';
+import NotFound from './pages/NotFound';
 
 // Wrapper to conditionally render Navbar (hidden on standalone role selection screen)
 function AppLayout() {
@@ -59,7 +60,7 @@ function AppLayout() {
     }
   }, [isRoleSelection, theme]);
 
-  // Accessibility Settings: Synchronize and persist globally
+  // Accessibility Settings: Synchronize and persist globally across route changes
   useEffect(() => {
     try {
       if (localStorage.getItem('crp_reduced_motion') === 'true') {
@@ -75,7 +76,7 @@ function AppLayout() {
     } catch {
       // ignore
     }
-  }, []);
+  }, [location.pathname]);
 
   return (
     <div className="app-wrapper">
@@ -205,8 +206,8 @@ function AppLayout() {
             }
           />
 
-          {/* Catch-all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* Catch-all 404 handler */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
       {!isRoleSelection && <Footer />}

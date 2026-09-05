@@ -30,6 +30,14 @@
           document.documentElement.setAttribute('data-theme', activeTheme);
           const meta = document.querySelector('meta[name="color-scheme"]');
           if (meta) meta.setAttribute('content', activeTheme);
+
+          // Restore accessibility preferences immediately before render
+          if (localStorage.getItem('crp_high_contrast') === 'true') {
+            document.documentElement.setAttribute('data-high-contrast', 'true');
+          }
+          if (localStorage.getItem('crp_reduced_motion') === 'true') {
+            document.documentElement.setAttribute('data-reduced-motion', 'true');
+          }
         } catch (e) {}
       })();
     </script>
