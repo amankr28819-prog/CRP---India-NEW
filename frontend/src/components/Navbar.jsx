@@ -16,7 +16,8 @@ import {
   Lock,
   HelpCircle,
   ShieldCheck,
-  Users
+  Users,
+  Trash2
 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { useAuth } from '../context/AuthContext';
@@ -106,6 +107,7 @@ export default function Navbar() {
 
   const citizenNavLinks = [
     { name: 'Home', path: '/home' },
+    { name: 'Dashboard', path: '/dashboard' },
     { name: 'Report an Issue', path: '/report' },
     { name: 'Track Complaint', path: '/track' },
     { name: 'About', path: '/about' }
@@ -115,12 +117,14 @@ export default function Navbar() {
     { name: 'Dashboard', path: '/authority/dashboard' },
     { name: 'Complaints', path: '/authority/complaints' },
     { name: 'Assigned Complaints', path: '/authority/assigned' },
+    { name: 'Deleted Complaints', path: '/authority/deleted-complaints' },
     { name: 'Reports & Analytics', path: '/authority/reports' }
   ];
 
   const isCitizenActive = (path) => {
     if (path === '/home' && location.pathname === '/home') return true;
-    if (path !== '/home' && location.pathname.startsWith(path)) return true;
+    if (path === '/dashboard' && location.pathname === '/dashboard') return true;
+    if (path !== '/home' && path !== '/dashboard' && location.pathname.startsWith(path)) return true;
     return false;
   };
 
@@ -136,6 +140,9 @@ export default function Navbar() {
     }
     if (path === '/authority/assigned') {
       return location.pathname === '/authority/assigned';
+    }
+    if (path === '/authority/deleted-complaints') {
+      return location.pathname === '/authority/deleted-complaints';
     }
     if (path === '/authority/reports') {
       return location.pathname === '/authority/reports';
@@ -236,11 +243,14 @@ export default function Navbar() {
             citizenNavLinks.map((link) => {
               const isReport = link.path === '/report';
               const isTrack = link.path === '/track';
-              const isProtected = isReport || isTrack;
+              const isDashboard = link.path === '/dashboard';
+              const isProtected = isReport || isTrack || isDashboard;
               const targetTo = !isAuthenticated && isProtected ? '/login' : link.path;
               const targetState = !isAuthenticated && isProtected ? {
                 from: link.path,
-                message: isTrack
+                message: isDashboard
+                  ? 'Please log in or register to view the citizen grievance dashboard.'
+                  : isTrack
                   ? 'Please log in or register to track your complaints.'
                   : 'Please log in or register to report a civic issue.'
               } : undefined;
@@ -522,6 +532,28 @@ export default function Navbar() {
                       >
                         <User size={15} style={{ color: 'var(--text-muted)' }} />
                         <span>Personal Information</span>
+                      </Link>
+
+                      <Link
+                        to="/dashboard"
+                        onClick={() => setAccountDropdownOpen(false)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '9px 12px',
+                          borderRadius: '6px',
+                          fontSize: '0.85rem',
+                          color: 'var(--text-primary)',
+                          textDecoration: 'none',
+                          fontWeight: 500
+                        }}
+                        className="nav-dropdown-item"
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <ShieldCheck size={15} style={{ color: 'var(--color-accent-green)' }} />
+                          <span>Grievance Dashboard</span>
+                        </div>
                       </Link>
 
                       <Link
@@ -890,6 +922,26 @@ export default function Navbar() {
                     <span>Assigned Complaints</span>
                   </Link>
 
+                  <Link
+                    to="/authority/deleted-complaints"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="nav-dropdown-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 8px',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      textDecoration: 'none',
+                      fontWeight: 500
+                    }}
+                  >
+                    <Trash2 size={16} style={{ color: 'var(--text-muted)' }} />
+                    <span>Deleted Complaints</span>
+                  </Link>
+
                   <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
 
                   <button
@@ -994,6 +1046,26 @@ export default function Navbar() {
                   >
                     <User size={16} style={{ color: 'var(--text-muted)' }} />
                     <span>Personal Information</span>
+                  </Link>
+
+                  <Link
+                    to="/dashboard"
+                    onClick={() => setMobileAccountOpen(false)}
+                    className="nav-dropdown-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 8px',
+                      borderRadius: '6px',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.9rem',
+                      textDecoration: 'none',
+                      fontWeight: 500
+                    }}
+                  >
+                    <ShieldCheck size={16} style={{ color: 'var(--color-accent-green)' }} />
+                    <span>Grievance Dashboard</span>
                   </Link>
 
                   <Link
@@ -1294,11 +1366,14 @@ export default function Navbar() {
               {citizenNavLinks.map((link) => {
                 const isReport = link.path === '/report';
                 const isTrack = link.path === '/track';
-                const isProtected = isReport || isTrack;
+                const isDashboard = link.path === '/dashboard';
+                const isProtected = isReport || isTrack || isDashboard;
                 const targetTo = !isAuthenticated && isProtected ? '/login' : link.path;
                 const targetState = !isAuthenticated && isProtected ? {
                   from: link.path,
-                  message: isTrack
+                  message: isDashboard
+                    ? 'Please log in or register to view the citizen grievance dashboard.'
+                    : isTrack
                     ? 'Please log in or register to track your complaints.'
                     : 'Please log in or register to report a civic issue.'
                 } : undefined;

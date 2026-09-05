@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Users, Building2, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import ThemeToggle from '../components/ThemeToggle';
 
 import crpLogo from '../assets/crp-logo-transparent.png';
 import crpInfrastructure from '../assets/crpInfrastructure.jpg';
@@ -104,11 +103,6 @@ const boxLeave = (e) => {
           pointerEvents: 'none'
         }}
       />
-
-      {/* Top right theme toggle */}
-      <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 1 }}>
-        <ThemeToggle />
-      </div>
 
       <div style={{ width: '100%', maxWidth: '680px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
         {/* CRP Logo */}

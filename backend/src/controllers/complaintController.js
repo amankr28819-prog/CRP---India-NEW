@@ -297,7 +297,9 @@ const getComplaintByRefId = async (req, res, next) => {
 const getComplaints = async (req, res, next) => {
   try {
     const { status, category, ward, search, page = 1, limit = 20, myReports, assignedOfficer, assignedOnly } = req.query;
-    const query = {};
+    const query = {
+      deletedByCitizen: { $ne: true }
+    };
 
     if (status && status !== 'All') {
       query.status = status;
@@ -361,6 +363,63 @@ const getComplaints = async (req, res, next) => {
       page: cleanPage,
       pages: Math.ceil(total / cleanLimit),
       complaints: complaints.map(c => maskCitizenPii(c, req.user))
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc Get public read-only Citizen dashboard metrics, distributions, and recent complaints
+// @route GET /api/complaints/dashboard-stats
+const getCitizenDashboardStats = async (req, res, next) => {
+  try {
+    const baseFilter = { deletedByCitizen: { $ne: true } };
+    const total = await Complaint.countDocuments(baseFilter);
+    const submitted = await Complaint.countDocuments({ ...baseFilter, status: 'Submitted' });
+    const underReview = await Complaint.countDocuments({ ...baseFilter, status: 'Under Review' });
+    const assigned = await Complaint.countDocuments({ ...baseFilter, status: 'Assigned' });
+    const inProgress = await Complaint.countDocuments({ ...baseFilter, status: 'In Progress' });
+    const resolved = await Complaint.countDocuments({ ...baseFilter, status: 'Resolved' });
+    const rejected = await Complaint.countDocuments({ ...baseFilter, status: 'Rejected' });
+
+    // Category breakdown
+    const categoryStats = await Complaint.aggregate([
+      { $match: baseFilter },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Top active wards
+    const wardStats = await Complaint.aggregate([
+      { $match: baseFilter },
+      { $group: { _id: '$ward', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 6 }
+    ]);
+
+    // Recent 8 complaints (strictly PII-masked for citizen privacy)
+    const rawRecent = await Complaint.find(baseFilter)
+      .sort({ createdAt: -1 })
+      .limit(8);
+
+    const recentComplaints = rawRecent.map(c => maskCitizenPii(c, req.user));
+
+    res.json({
+      success: true,
+      data: {
+        stats: {
+          total,
+          submitted,
+          underReview,
+          assigned,
+          inProgress,
+          resolved,
+          rejected
+        },
+        categoryStats,
+        wardStats,
+        recentComplaints
+      }
     });
   } catch (err) {
     next(err);
@@ -578,7 +637,8 @@ const getMyComplaints = async (req, res, next) => {
       $or: [
         { 'citizen.userId': userId },
         { 'citizen.email': userEmail }
-      ]
+      ],
+      deletedByCitizen: { $ne: true }
     };
 
     if (status && status !== 'All' && typeof status === 'string' && status.length <= 50) {
@@ -616,11 +676,85 @@ const getMyComplaints = async (req, res, next) => {
   }
 };
 
+// @desc Soft delete a complaint by citizen owner
+// @route DELETE /api/complaints/:id
+const deleteComplaint = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid complaint identifier.'
+      });
+    }
+
+    // Role check: Only citizens can delete their complaints. Authorities cannot delete complaints.
+    if (!req.user || req.user.role !== 'citizen') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Municipal Authorities cannot delete complaints. Only the citizen who submitted the complaint can delete it.'
+      });
+    }
+
+    const complaint = mongoose.Types.ObjectId.isValid(id)
+      ? await Complaint.findById(id)
+      : await Complaint.findOne({ referenceId: id });
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: 'Complaint not found.'
+      });
+    }
+
+    // Ownership check: Only the citizen who created this complaint can delete it
+    const isOwner = complaint.citizen?.userId && req.user._id && (complaint.citizen.userId.toString() === req.user._id.toString());
+    if (!isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: You can only delete complaints submitted by your own account.'
+      });
+    }
+
+    if (complaint.deletedByCitizen) {
+      return res.status(400).json({
+        success: false,
+        message: 'This complaint has already been deleted.'
+      });
+    }
+
+    // Soft delete: flag as deleted without removing the database record
+    complaint.deletedByCitizen = true;
+    complaint.deletedAt = new Date();
+
+    // Preserve status and audit trail
+    complaint.statusHistory.push({
+      status: complaint.status,
+      changedBy: req.user.name || 'Citizen',
+      remark: 'Complaint deleted by citizen.',
+      timestamp: new Date()
+    });
+
+    await complaint.save();
+
+    res.json({
+      success: true,
+      message: 'Complaint deleted successfully.',
+      referenceId: complaint.referenceId
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createComplaint,
   getComplaintByRefId,
   getComplaints,
+  getCitizenDashboardStats,
   getMyComplaints,
   updateComplaintStatus,
-  assignComplaint
+  assignComplaint,
+  deleteComplaint
 };

@@ -16,6 +16,7 @@ import PortalSwitchModal from './components/PortalSwitchModal';
 // Citizen Pages
 import RoleSelection from './pages/RoleSelection';
 import Home from './pages/Home';
+import CitizenDashboard from './pages/CitizenDashboard';
 import CategorySelect from './pages/CategorySelect';
 import ComplaintForm from './pages/ComplaintForm';
 import TrackComplaint from './pages/TrackComplaint';
@@ -34,6 +35,7 @@ import AuthorityDashboard from './pages/authority/AuthorityDashboard';
 import AuthorityComplaints from './pages/authority/AuthorityComplaints';
 import AuthorityComplaintDetail from './pages/authority/AuthorityComplaintDetail';
 import AuthorityAssignedComplaints from './pages/authority/AuthorityAssignedComplaints';
+import AuthorityDeletedComplaints from './pages/authority/AuthorityDeletedComplaints';
 import AuthorityReports from './pages/authority/AuthorityReports';
 
 // Wrapper to conditionally render Navbar (hidden on standalone role selection screen)
@@ -52,6 +54,14 @@ function AppLayout() {
 
           {/* Citizen Portal */}
           <Route path="/home" element={<Home />} />
+          <Route
+            path="/dashboard"
+            element={
+              <CitizenProtectedRoute>
+                <CitizenDashboard />
+              </CitizenProtectedRoute>
+            }
+          />
           <Route
             path="/report"
             element={
@@ -130,6 +140,14 @@ function AppLayout() {
             element={
               <ProtectedRoute>
                 <AuthorityAssignedComplaints />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/authority/deleted-complaints"
+            element={
+              <ProtectedRoute>
+                <AuthorityDeletedComplaints />
               </ProtectedRoute>
             }
           />

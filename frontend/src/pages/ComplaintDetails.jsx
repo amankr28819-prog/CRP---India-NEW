@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Building2, User, Image, AlertCircle, Copy, CheckCircle2, X } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Building2, User, Image, AlertCircle, Copy, CheckCircle2, X, Trash2 } from 'lucide-react';
 import { api, getImageUrl } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import StatusBadge from '../components/StatusBadge';
 import Timeline from '../components/Timeline';
 import BackButton from '../components/BackButton';
 
 export default function ComplaintDetails() {
   const { id } = useParams();
+  const { user, isAuthority } = useAuth();
   const [complaint, setComplaint] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const fetchComplaint = async () => {
@@ -43,6 +47,32 @@ export default function ComplaintDetails() {
     }
   };
 
+  const isOwner = Boolean(
+    user &&
+    complaint?.citizen?.userId &&
+    (user._id?.toString() === complaint.citizen.userId.toString() || user.id?.toString() === complaint.citizen.userId.toString())
+  );
+
+  const handleDeleteComplaint = async () => {
+    setDeleting(true);
+    try {
+      const res = await api.deleteComplaint(complaint._id || complaint.referenceId);
+      if (res.success) {
+        setComplaint((prev) => ({
+          ...prev,
+          deletedByCitizen: true,
+          deletedAt: new Date()
+        }));
+        setShowDeleteModal(false);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to delete complaint.');
+      setShowDeleteModal(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="container" style={{ padding: '64px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -68,13 +98,33 @@ export default function ComplaintDetails() {
 
   return (
     <div className="container" style={{ padding: '36px 20px 80px 20px', maxWidth: '860px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '10px' }}>
         <BackButton fallback="/track" label="Back to Tracking" style={{ marginBottom: 0 }} />
 
-        <button onClick={copyRef} className="btn btn-secondary btn-sm" style={{ fontSize: '0.8125rem' }}>
-          <Copy size={13} />
-          <span>{copied ? 'Copied' : 'Copy Reference ID'}</span>
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {isOwner && !isAuthority && !complaint.deletedByCitizen && (
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="btn btn-secondary btn-sm"
+              style={{
+                fontSize: '0.8125rem',
+                color: 'var(--color-status-rejected, #DC2626)',
+                borderColor: 'rgba(239, 68, 68, 0.3)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <Trash2 size={13} />
+              <span>Delete Complaint</span>
+            </button>
+          )}
+
+          <button onClick={copyRef} className="btn btn-secondary btn-sm" style={{ fontSize: '0.8125rem' }}>
+            <Copy size={13} />
+            <span>{copied ? 'Copied' : 'Copy Reference ID'}</span>
+          </button>
+        </div>
       </div>
 
       <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '32px' }}>
@@ -94,8 +144,61 @@ export default function ComplaintDetails() {
             </h1>
           </div>
 
-          <StatusBadge status={complaint.status} />
+          {complaint.deletedByCitizen ? (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '5px 12px',
+                borderRadius: '4px',
+                fontSize: '0.8125rem',
+                fontWeight: 700,
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                color: 'var(--color-status-rejected, #DC2626)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em'
+              }}
+            >
+              <AlertCircle size={14} />
+              <span>Complaint Deleted</span>
+            </span>
+          ) : (
+            <StatusBadge status={complaint.status} />
+          )}
         </div>
+
+        {/* Deleted by Citizen Alert Banner */}
+        {complaint.deletedByCitizen && (
+          <div
+            style={{
+              backgroundColor: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              borderRadius: '6px',
+              padding: '16px 20px',
+              marginTop: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}
+          >
+            <AlertCircle size={22} style={{ color: 'var(--color-status-rejected, #DC2626)', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-status-rejected, #DC2626)' }}>
+                Complaint Deleted
+              </div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-primary)', marginTop: '2px' }}>
+                This complaint has been deleted by the citizen who submitted it.
+                {complaint.deletedAt && (
+                  <span style={{ color: 'var(--text-secondary)', marginLeft: '6px' }}>
+                    (Deleted on {new Date(complaint.deletedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })})
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Civic Meta Details List */}
         <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border-subtle)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
@@ -173,7 +276,7 @@ export default function ComplaintDetails() {
         )}
 
         {/* Resolution Proof Section */}
-        {complaint.status === 'Resolved' && complaint.resolutionPhoto && (
+        {!complaint.deletedByCitizen && complaint.status === 'Resolved' && complaint.resolutionPhoto && (
           <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border-subtle)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: 'var(--color-status-resolved-bg)', color: 'var(--color-status-resolved)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -320,6 +423,57 @@ export default function ComplaintDetails() {
                 {fullscreenImage.caption}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div
+          className="logout-modal-backdrop"
+          onClick={() => !deleting && setShowDeleteModal(false)}
+          style={{ zIndex: 99999 }}
+        >
+          <div
+            className="logout-confirm-card"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '440px', width: '90vw', textAlign: 'left', padding: '24px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-status-rejected, #DC2626)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Trash2 size={18} />
+              </div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                Delete Complaint
+              </h3>
+            </div>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '24px' }}>
+              Are you sure you want to delete this complaint?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="btn btn-secondary btn-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteComplaint}
+                disabled={deleting}
+                className="btn btn-sm"
+                style={{
+                  backgroundColor: 'var(--color-status-rejected, #DC2626)',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontWeight: 600
+                }}
+              >
+                {deleting ? 'Deleting...' : 'Delete Complaint'}
+              </button>
+            </div>
           </div>
         </div>
       )}

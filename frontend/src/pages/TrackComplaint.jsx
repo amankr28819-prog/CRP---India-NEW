@@ -140,7 +140,29 @@ export default function TrackComplaint() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <StatusBadge status={complaint.status} />
+              {complaint.deletedByCitizen ? (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '4px',
+                    fontSize: '0.8125rem',
+                    fontWeight: 700,
+                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                    color: 'var(--color-status-rejected, #DC2626)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em'
+                  }}
+                >
+                  <AlertCircle size={14} />
+                  <span>Complaint Deleted</span>
+                </span>
+              ) : (
+                <StatusBadge status={complaint.status} />
+              )}
               <Link
                 to={`/complaint/${complaint.referenceId}`}
                 className="btn btn-secondary btn-sm"
@@ -154,6 +176,37 @@ export default function TrackComplaint() {
 
           {/* Body Info */}
           <div style={{ padding: '24px' }}>
+            {/* Deleted by Citizen Alert Notice */}
+            {complaint.deletedByCitizen && (
+              <div
+                style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  borderRadius: '6px',
+                  padding: '16px 20px',
+                  marginBottom: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}
+              >
+                <AlertCircle size={22} style={{ color: 'var(--color-status-rejected, #DC2626)', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-status-rejected, #DC2626)' }}>
+                    Complaint Deleted
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-primary)', marginTop: '2px' }}>
+                    This complaint has been deleted by the citizen who submitted it.
+                    {complaint.deletedAt && (
+                      <span style={{ color: 'var(--text-secondary)', marginLeft: '6px' }}>
+                        (Deleted on {new Date(complaint.deletedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Title & Category */}
             <div style={{ marginBottom: '20px' }}>
               <div style={{ display: 'inline-block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary)', backgroundColor: 'var(--color-primary-light)', padding: '2px 8px', borderRadius: '4px', marginBottom: '8px' }}>
@@ -244,7 +297,7 @@ export default function TrackComplaint() {
             )}
 
             {/* Resolution Proof Section */}
-            {complaint.status === 'Resolved' && complaint.resolutionPhoto && (
+            {!complaint.deletedByCitizen && complaint.status === 'Resolved' && complaint.resolutionPhoto && (
               <div style={{ marginBottom: '28px', padding: '20px', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-subtle)', borderRadius: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                   <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'var(--color-status-resolved-bg)', color: 'var(--color-status-resolved)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

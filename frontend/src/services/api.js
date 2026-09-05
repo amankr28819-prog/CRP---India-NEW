@@ -153,10 +153,58 @@ export const api = {
     return await handleResponse(res);
   },
 
+  deleteComplaint: async (id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/complaints/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please ensure the backend is running.');
+      }
+      throw err;
+    }
+  },
+
   // Authority API
   getAuthorityDashboard: async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/authority/dashboard`, {
+        method: 'GET',
+        headers: getHeaders()
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please ensure the backend is running.');
+      }
+      throw err;
+    }
+  },
+
+  getDeletedComplaints: async (params = {}) => {
+    try {
+      const query = new URLSearchParams(params).toString();
+      const url = `${API_BASE_URL}/authority/deleted-complaints${query ? `?${query}` : ''}`;
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: getHeaders()
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please ensure the backend is running.');
+      }
+      throw err;
+    }
+  },
+
+  // Citizen Dashboard API (Read-only)
+  getCitizenDashboard: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/complaints/dashboard-stats`, {
         method: 'GET',
         headers: getHeaders()
       });

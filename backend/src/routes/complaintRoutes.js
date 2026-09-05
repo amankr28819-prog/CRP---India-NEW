@@ -4,9 +4,11 @@ const {
   createComplaint,
   getComplaintByRefId,
   getComplaints,
+  getCitizenDashboardStats,
   getMyComplaints,
   updateComplaintStatus,
-  assignComplaint
+  assignComplaint,
+  deleteComplaint
 } = require('../controllers/complaintController');
 const { verifyToken, isAuthority, optionalAuth } = require('../middleware/auth');
 const { complaintLimiter } = require('../middleware/rateLimiter');
@@ -15,8 +17,10 @@ const upload = require('../middleware/upload');
 // Public or Citizen routes
 router.post('/', verifyToken, complaintLimiter, upload.array('images', 3), createComplaint);
 router.get('/', optionalAuth, getComplaints);
+router.get('/dashboard-stats', optionalAuth, getCitizenDashboardStats);
 router.get('/my', verifyToken, getMyComplaints);
 router.get('/:referenceId', optionalAuth, getComplaintByRefId);
+router.delete('/:id', verifyToken, deleteComplaint);
 
 // Authority protected routes
 router.patch('/:id/status', verifyToken, isAuthority, upload.single('resolutionPhoto'), updateComplaintStatus);

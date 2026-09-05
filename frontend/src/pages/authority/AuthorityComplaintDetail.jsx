@@ -15,7 +15,9 @@ import {
   Phone,
   Mail,
   Camera,
-  X
+  X,
+  Trash2,
+  Archive
 } from 'lucide-react';
 import { api, getImageUrl } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -215,6 +217,31 @@ export default function AuthorityComplaintDetail() {
     <div className="container" style={{ padding: '36px 20px 80px 20px', maxWidth: '1000px' }}>
       <BackButton fallback="/authority/complaints" label="Back to Complaints Registry" />
 
+      {complaint.deletedByCitizen && (
+        <div
+          style={{
+            marginBottom: '24px',
+            padding: '16px 20px',
+            backgroundColor: '#fff1f2',
+            border: '1.5px solid #fecdd3',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px'
+          }}
+        >
+          <Trash2 size={22} style={{ color: '#e11d48', flexShrink: 0, marginTop: '2px' }} />
+          <div>
+            <div style={{ fontWeight: 700, color: '#9f1239', fontSize: '0.95rem' }}>
+              Status: Deleted by Citizen
+            </div>
+            <div style={{ fontSize: '0.85rem', color: '#881337', marginTop: '4px', lineHeight: 1.5 }}>
+              This complaint was marked as deleted by the citizen who submitted it{complaint.deletedAt ? ` on ${new Date(complaint.deletedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}. This record is retained for municipal reference and historical audit. Further status updates and officer reassignments are permanently disabled.
+            </div>
+          </div>
+        </div>
+      )}
+
       {actionSuccess && (
         <div className="alert alert-success" style={{ marginBottom: '24px' }}>
           <CheckCircle2 size={18} />
@@ -249,7 +276,28 @@ export default function AuthorityComplaintDetail() {
               </h1>
             </div>
 
-            <StatusBadge status={complaint.status} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {complaint.deletedByCitizen && (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '4px 10px',
+                    borderRadius: '4px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    backgroundColor: '#fee2e2',
+                    color: '#b91c1c',
+                    border: '1px solid #fecaca'
+                  }}
+                >
+                  <Trash2 size={13} />
+                  Deleted by Citizen
+                </span>
+              )}
+              <StatusBadge status={complaint.status} />
+            </div>
           </div>
 
           {/* Description */}
@@ -417,216 +465,252 @@ export default function AuthorityComplaintDetail() {
           </div>
         </div>
 
-        {/* Right Column: Authority Action Controls */}
+        {/* Right Column: Authority Action Controls or Archived Status */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* Action 1: Status Change */}
-          <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '24px' }}>
-            <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
-              Update Grievance Status
-            </h2>
-
-            <form onSubmit={handleStatusUpdate}>
-              <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.8125rem' }}>Select New Status</label>
-                <select
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value)}
-                  className="form-select"
-                >
-                  <option value="Submitted">Submitted</option>
-                  <option value="Under Review">Under Review</option>
-                  <option value="Assigned">Assigned</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Resolved">Resolved</option>
-                  <option value="Rejected">Rejected</option>
-                </select>
+          {complaint.deletedByCitizen ? (
+            <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                <Archive size={20} color="var(--color-primary)" />
+                <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                  Archived Grievance Record
+                </h2>
               </div>
-
-              {/* Resolution Proof Section when marking as Resolved */}
-              {newStatus === 'Resolved' && (
-                <div style={{ padding: '16px', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-subtle)', borderRadius: '6px', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-                    <CheckCircle2 size={16} color="var(--color-status-resolved)" />
-                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      Photo Proof of Resolution
-                    </span>
-                  </div>
-
-                  {/* Resolution Note Field */}
-                  <div className="form-group" style={{ marginBottom: '12px' }}>
-                    <label className="form-label" style={{ fontSize: '0.8125rem' }}>
-                      Resolution Note
-                    </label>
-                    <textarea
-                      value={resolutionNote}
-                      onChange={(e) => setResolutionNote(e.target.value)}
-                      rows={2}
-                      placeholder="e.g. Road pothole repaired and damaged section resurfaced."
-                      className="form-textarea"
-                      style={{ fontSize: '0.8125rem' }}
-                    />
-                    <div className="form-hint">Summary of the physical repair or civic work performed.</div>
-                  </div>
-
-                  {/* Upload Photo of Resolved Issue */}
-                  <div className="form-group" style={{ marginBottom: '0' }}>
-                    <label className="form-label" style={{ fontSize: '0.8125rem' }}>
-                      Upload Photo of Resolved Issue <span style={{ color: 'var(--color-status-rejected)' }}>*</span>
-                    </label>
-
-                    {/* Existing Resolution Photo preview if already on file */}
-                    {complaint.resolutionPhoto && !resolutionPreview && (
-                      <div style={{ marginBottom: '10px', padding: '8px', border: '1px dashed var(--border-subtle)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <img
-                          src={getImageUrl(complaint.resolutionPhoto)}
-                          alt="Current Resolution"
-                          style={{ width: '48px', height: '48px', borderRadius: '4px', objectFit: 'cover' }}
-                        />
-                        <div style={{ flex: 1, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                          <strong>Existing Resolution Photo on record.</strong> Choose a new file below to replace it.
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Selected new file preview */}
-                    {resolutionPreview ? (
-                      <div style={{ position: 'relative', width: '100%', maxHeight: '180px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-subtle)', marginBottom: '8px' }}>
-                        <img
-                          src={resolutionPreview}
-                          alt="Resolution preview"
-                          style={{ width: '100%', height: '150px', objectFit: 'cover', display: 'block' }}
-                        />
-                        <button
-                          type="button"
-                          onClick={removeResolutionPhoto}
-                          style={{
-                            position: 'absolute',
-                            top: '8px',
-                            right: '8px',
-                            backgroundColor: 'rgba(0,0,0,0.75)',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '50%',
-                            width: '26px',
-                            height: '26px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer'
-                          }}
-                          title="Remove photo"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div
-                        onClick={() => fileInputRef.current?.click()}
-                        style={{
-                          border: '1.5px dashed var(--border-subtle)',
-                          borderRadius: '6px',
-                          padding: '16px',
-                          textAlign: 'center',
-                          cursor: 'pointer',
-                          backgroundColor: 'var(--bg-surface)'
-                        }}
-                      >
-                        <Camera size={22} style={{ color: 'var(--color-primary)', margin: '0 auto 6px auto' }} />
-                        <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-primary)' }}>
-                          Click to upload resolution photo
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          Supports JPG, JPEG, PNG (max 5MB)
-                        </div>
-                      </div>
-                    )}
-
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png,image/jpg,image/webp"
-                      onChange={handlePhotoChange}
-                      style={{ display: 'none' }}
-                    />
-                  </div>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '16px' }}>
+                This grievance was marked as deleted by the submitting citizen. It is permanently retained in the municipal portal as an archived audit record. Administrative actions, status transitions, and department reassignments are locked.
+              </p>
+              <div style={{ padding: '14px', backgroundColor: 'var(--bg-app)', borderRadius: '6px', border: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.8125rem' }}>
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Deletion Timestamp:</span>{' '}
+                  <strong style={{ color: 'var(--color-status-rejected)' }}>
+                    {complaint.deletedAt ? new Date(complaint.deletedAt).toLocaleString('en-IN') : 'Archived'}
+                  </strong>
                 </div>
-              )}
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Last Active Status:</span>{' '}
+                  <strong>{complaint.status}</strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Assigned Department:</span>{' '}
+                  <strong>{complaint.assignedDepartment || 'Not assigned'}</strong>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Assigned Officer:</span>{' '}
+                  <strong>{complaint.assignedOfficer || 'Not assigned'}</strong>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Action 1: Status Change */}
+              <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '24px' }}>
+                <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
+                  Update Grievance Status
+                </h2>
 
-              <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.8125rem' }}>Official Action Remark</label>
-                <textarea
-                  value={statusRemark}
-                  onChange={(e) => setStatusRemark(e.target.value)}
-                  rows={2}
-                  placeholder="e.g. Field inspection completed. Asphalt patching scheduled for 2 PM."
-                  className="form-textarea"
-                />
-                <div className="form-hint">Remark will be appended to the public timeline and logged under your officer name.</div>
+                <form onSubmit={handleStatusUpdate}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.8125rem' }}>Select New Status</label>
+                    <select
+                      value={newStatus}
+                      onChange={(e) => setNewStatus(e.target.value)}
+                      className="form-select"
+                    >
+                      <option value="Submitted">Submitted</option>
+                      <option value="Under Review">Under Review</option>
+                      <option value="Assigned">Assigned</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Resolved">Resolved</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                  </div>
+
+                  {/* Resolution Proof Section when marking as Resolved */}
+                  {newStatus === 'Resolved' && (
+                    <div style={{ padding: '16px', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-subtle)', borderRadius: '6px', marginBottom: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                        <CheckCircle2 size={16} color="var(--color-status-resolved)" />
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          Photo Proof of Resolution
+                        </span>
+                      </div>
+
+                      {/* Resolution Note Field */}
+                      <div className="form-group" style={{ marginBottom: '12px' }}>
+                        <label className="form-label" style={{ fontSize: '0.8125rem' }}>
+                          Resolution Note
+                        </label>
+                        <textarea
+                          value={resolutionNote}
+                          onChange={(e) => setResolutionNote(e.target.value)}
+                          rows={2}
+                          placeholder="e.g. Road pothole repaired and damaged section resurfaced."
+                          className="form-textarea"
+                          style={{ fontSize: '0.8125rem' }}
+                        />
+                        <div className="form-hint">Summary of the physical repair or civic work performed.</div>
+                      </div>
+
+                      {/* Upload Photo of Resolved Issue */}
+                      <div className="form-group" style={{ marginBottom: '0' }}>
+                        <label className="form-label" style={{ fontSize: '0.8125rem' }}>
+                          Upload Photo of Resolved Issue <span style={{ color: 'var(--color-status-rejected)' }}>*</span>
+                        </label>
+
+                        {/* Existing Resolution Photo preview if already on file */}
+                        {complaint.resolutionPhoto && !resolutionPreview && (
+                          <div style={{ marginBottom: '10px', padding: '8px', border: '1px dashed var(--border-subtle)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <img
+                              src={getImageUrl(complaint.resolutionPhoto)}
+                              alt="Current Resolution"
+                              style={{ width: '48px', height: '48px', borderRadius: '4px', objectFit: 'cover' }}
+                            />
+                            <div style={{ flex: 1, fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                              <strong>Existing Resolution Photo on record.</strong> Choose a new file below to replace it.
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Selected new file preview */}
+                        {resolutionPreview ? (
+                          <div style={{ position: 'relative', width: '100%', maxHeight: '180px', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border-subtle)', marginBottom: '8px' }}>
+                            <img
+                              src={resolutionPreview}
+                              alt="Resolution preview"
+                              style={{ width: '100%', height: '150px', objectFit: 'cover', display: 'block' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={removeResolutionPhoto}
+                              style={{
+                                position: 'absolute',
+                                top: '8px',
+                                right: '8px',
+                                backgroundColor: 'rgba(0,0,0,0.75)',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '26px',
+                                height: '26px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer'
+                              }}
+                              title="Remove photo"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() => fileInputRef.current?.click()}
+                            style={{
+                              border: '1.5px dashed var(--border-subtle)',
+                              borderRadius: '6px',
+                              padding: '16px',
+                              textAlign: 'center',
+                              cursor: 'pointer',
+                              backgroundColor: 'var(--bg-surface)'
+                            }}
+                          >
+                            <Camera size={22} style={{ color: 'var(--color-primary)', margin: '0 auto 6px auto' }} />
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                              Click to upload resolution photo
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              Supports JPG, JPEG, PNG (max 5MB)
+                            </div>
+                          </div>
+                        )}
+
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/jpg,image/webp"
+                          onChange={handlePhotoChange}
+                          style={{ display: 'none' }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.8125rem' }}>Official Action Remark</label>
+                    <textarea
+                      value={statusRemark}
+                      onChange={(e) => setStatusRemark(e.target.value)}
+                      rows={2}
+                      placeholder="e.g. Field inspection completed. Asphalt patching scheduled for 2 PM."
+                      className="form-textarea"
+                    />
+                    <div className="form-hint">Remark will be appended to the public timeline and logged under your officer name.</div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={actionLoading}
+                    className="btn btn-primary"
+                    style={{ width: '100%' }}
+                  >
+                    {actionLoading ? 'Saving...' : 'Apply Status Change'}
+                  </button>
+                </form>
               </div>
 
-              <button
-                type="submit"
-                disabled={actionLoading}
-                className="btn btn-primary"
-                style={{ width: '100%' }}
-              >
-                {actionLoading ? 'Saving...' : 'Apply Status Change'}
-              </button>
-            </form>
-          </div>
+              {/* Action 2: Department & Officer Allocation */}
+              <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '24px' }}>
+                <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
+                  Assign Department & Officer
+                </h2>
 
-          {/* Action 2: Department & Officer Allocation */}
-          <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '24px' }}>
-            <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
-              Assign Department & Officer
-            </h2>
+                <form onSubmit={handleAssignment}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.8125rem' }}>Responsible Department</label>
+                    <select
+                      value={assignDept}
+                      onChange={(e) => setAssignDept(e.target.value)}
+                      className="form-select"
+                    >
+                      {DEPARTMENTS.map((dept, i) => (
+                        <option key={i} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  </div>
 
-            <form onSubmit={handleAssignment}>
-              <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.8125rem' }}>Responsible Department</label>
-                <select
-                  value={assignDept}
-                  onChange={(e) => setAssignDept(e.target.value)}
-                  className="form-select"
-                >
-                  {DEPARTMENTS.map((dept, i) => (
-                    <option key={i} value={dept}>{dept}</option>
-                  ))}
-                </select>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.8125rem' }}>Assigned Field Officer</label>
+                    <input
+                      type="text"
+                      value={assignOfficer}
+                      onChange={(e) => setAssignOfficer(e.target.value)}
+                      placeholder="e.g. Inspector Ramesh K."
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.8125rem' }}>Assignment Instructions (Optional)</label>
+                    <input
+                      type="text"
+                      value={assignRemark}
+                      onChange={(e) => setAssignRemark(e.target.value)}
+                      placeholder="e.g. Priority dispatch for monsoon preparedness"
+                      className="form-input"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={actionLoading}
+                    className="btn btn-secondary"
+                    style={{ width: '100%', borderColor: 'var(--border-subtle)' }}
+                  >
+                    {actionLoading ? 'Saving...' : 'Update Assignment'}
+                  </button>
+                </form>
               </div>
-
-              <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.8125rem' }}>Assigned Field Officer</label>
-                <input
-                  type="text"
-                  value={assignOfficer}
-                  onChange={(e) => setAssignOfficer(e.target.value)}
-                  placeholder="e.g. Inspector Ramesh K."
-                  className="form-input"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.8125rem' }}>Assignment Instructions (Optional)</label>
-                <input
-                  type="text"
-                  value={assignRemark}
-                  onChange={(e) => setAssignRemark(e.target.value)}
-                  placeholder="e.g. Priority dispatch for monsoon preparedness"
-                  className="form-input"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={actionLoading}
-                className="btn btn-secondary"
-                style={{ width: '100%', borderColor: 'var(--border-subtle)' }}
-              >
-                {actionLoading ? 'Saving...' : 'Update Assignment'}
-              </button>
-            </form>
-          </div>
+            </>
+          )}
         </div>
       </div>
 

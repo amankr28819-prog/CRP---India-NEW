@@ -16,12 +16,15 @@ export default function CitizenProtectedRoute({ children }) {
 
   if (!isAuthenticated) {
     const isTrack = location.pathname.startsWith('/track') || location.pathname.startsWith('/complaint');
+    const isDashboard = location.pathname.startsWith('/dashboard');
     return (
       <Navigate
         to="/login"
         state={{
           from: location,
-          message: isTrack
+          message: isDashboard
+            ? 'Please log in or register to view the citizen grievance dashboard.'
+            : isTrack
             ? 'Please log in or register to track your complaints.'
             : 'Please log in or register to report a civic issue.'
         }}

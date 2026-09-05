@@ -16,7 +16,8 @@ import {
   X,
   Image as ImageIcon,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import { api, getImageUrl } from '../../services/api';
 import StatusBadge from '../../components/StatusBadge';
@@ -31,6 +32,8 @@ export default function MyComplaintsView() {
 
   // Selected complaint for modal details view
   const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [complaintToDelete, setComplaintToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchComplaints = async () => {
     try {
@@ -58,6 +61,23 @@ export default function MyComplaintsView() {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     fetchComplaints();
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!complaintToDelete) return;
+    setDeleting(true);
+    try {
+      const res = await api.deleteComplaint(complaintToDelete._id || complaintToDelete.referenceId);
+      if (res.success) {
+        setComplaints((prev) => prev.filter((c) => (c._id !== complaintToDelete._id && c.referenceId !== complaintToDelete.referenceId)));
+        setComplaintToDelete(null);
+      }
+    } catch (err) {
+      console.error('Failed to delete complaint:', err);
+      alert(err.message || 'Failed to delete complaint.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const statusTabs = ['All', 'Submitted', 'In Progress', 'Resolved', 'Rejected'];
@@ -408,7 +428,20 @@ export default function MyComplaintsView() {
                 )}
 
                 {/* Bottom Row Actions */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '2px' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '2px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setComplaintToDelete(c)}
+                    className="btn btn-secondary btn-sm"
+                    style={{
+                      gap: '6px',
+                      color: 'var(--color-status-rejected, #DC2626)',
+                      borderColor: 'rgba(239, 68, 68, 0.3)'
+                    }}
+                  >
+                    <Trash2 size={13} />
+                    <span>Delete</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setSelectedComplaint(c)}
@@ -582,13 +615,83 @@ export default function MyComplaintsView() {
             </div>
 
             {/* Modal Actions */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', borderTop: '1px solid var(--border-subtle)', paddingTop: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', borderTop: '1px solid var(--border-subtle)', paddingTop: '14px', flexWrap: 'wrap', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = selectedComplaint;
+                  setSelectedComplaint(null);
+                  setComplaintToDelete(target);
+                }}
+                className="btn btn-secondary btn-sm"
+                style={{
+                  color: 'var(--color-status-rejected, #DC2626)',
+                  borderColor: 'rgba(239, 68, 68, 0.3)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Trash2 size={14} />
+                <span>Delete Complaint</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setSelectedComplaint(null)}
                 className="btn btn-secondary"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {complaintToDelete && (
+        <div
+          className="logout-modal-backdrop"
+          onClick={() => !deleting && setComplaintToDelete(null)}
+          style={{ zIndex: 99999 }}
+        >
+          <div
+            className="logout-confirm-card"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '440px', width: '90vw', textAlign: 'left', padding: '24px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-status-rejected, #DC2626)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Trash2 size={18} />
+              </div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                Delete Complaint
+              </h3>
+            </div>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '24px' }}>
+              Are you sure you want to delete this complaint?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setComplaintToDelete(null)}
+                disabled={deleting}
+                className="btn btn-secondary btn-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="btn btn-sm"
+                style={{
+                  backgroundColor: 'var(--color-status-rejected, #DC2626)',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontWeight: 600
+                }}
+              >
+                {deleting ? 'Deleting...' : 'Delete Complaint'}
               </button>
             </div>
           </div>

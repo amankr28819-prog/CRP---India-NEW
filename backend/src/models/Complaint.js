@@ -132,6 +132,15 @@ const complaintSchema = new mongoose.Schema(
       trim: true,
       default: ''
     },
+    deletedByCitizen: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+    deletedAt: {
+      type: Date,
+      default: null
+    },
     agreedToTerms: {
       type: Boolean,
       default: false
