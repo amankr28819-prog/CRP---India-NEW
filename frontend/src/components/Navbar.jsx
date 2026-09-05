@@ -182,7 +182,8 @@ export default function Navbar() {
         <Link
           to="/"
           onClick={() => setMobileMenuOpen(false)}
-          style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', cursor: 'pointer', minWidth: 0 }}
+          className="navbar-brand-link"
+          style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', cursor: 'pointer', minWidth: 'max-content', flexShrink: 0 }}
           title="Return to Portal Selection"
         >
           <img
@@ -199,11 +200,11 @@ export default function Navbar() {
               flexShrink: 0
             }}
           />
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 'max-content', flexShrink: 0 }}>
             <div style={{ fontWeight: 700, fontSize: '1.15rem', color: 'var(--text-primary)', lineHeight: 1.1, whiteSpace: 'nowrap' }}>
               CRP India
             </div>
-            <div className="brand-subtitle" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+            <div className="brand-subtitle" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
               {isAuthorityMode ? 'Municipal Authority' : 'Civic Reporting Platform'}
             </div>
           </div>
@@ -751,7 +752,7 @@ export default function Navbar() {
           </button>
           <button
             type="button"
-            className="btn btn-secondary btn-sm"
+            className="btn btn-secondary btn-sm mobile-menu-btn"
             onClick={() => {
               setMobileAccountOpen(false);
               setMobileMenuOpen(!mobileMenuOpen);
@@ -1522,11 +1523,46 @@ export default function Navbar() {
         .nav-dropdown-item:hover {
           background-color: var(--bg-subtle) !important;
         }
-        @media (min-width: 860px) {
+        .navbar-brand-link {
+          flex-shrink: 0 !important;
+          min-width: max-content !important;
+        }
+        .navbar-brand-logo {
+          flex-shrink: 0 !important;
+        }
+        .desktop-nav {
+          flex-shrink: 0 !important;
+          white-space: nowrap !important;
+        }
+        .desktop-actions {
+          flex-shrink: 0 !important;
+          white-space: nowrap !important;
+        }
+        @media (min-width: 1024px) {
           .desktop-nav { display: flex !important; }
           .desktop-actions { display: flex !important; }
           .mobile-controls { display: none !important; }
           .mobile-drawer { display: none !important; }
+        }
+        @media (min-width: 1024px) and (max-width: 1200px) {
+          .navbar-container {
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+          }
+          .desktop-nav {
+            gap: 12px !important;
+          }
+          .desktop-nav a {
+            font-size: 0.82rem !important;
+          }
+          .desktop-actions {
+            gap: 6px !important;
+          }
+          .desktop-actions .btn-sm {
+            padding: 4px 7px !important;
+            gap: 4px !important;
+            font-size: 0.76rem !important;
+          }
         }
         @media (max-width: 640px) {
           .navbar-container {

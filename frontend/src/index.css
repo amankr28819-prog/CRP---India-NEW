@@ -1320,16 +1320,27 @@ h1, h2, h3, h4, h5, h6 {
 /* 2. Role Selection Gateway */
 @media (max-width: 768px) {
   .role-selection-wrapper {
-    background-position: center 18% !important;
-    background-size: cover !important;
-    background-attachment: scroll !important;
+    padding: 24px 14px;
+  }
+  .role-selection-bg {
+    top: -50px !important;
+    bottom: -50px !important;
+    left: -40px !important;
+    right: -40px !important;
+    background-position: center 22% !important;
   }
 }
 
 @media (max-width: 480px) {
   .role-selection-wrapper {
-    background-position: center 14% !important;
     padding: 20px 12px;
+  }
+  .role-selection-bg {
+    top: -50px !important;
+    bottom: -50px !important;
+    left: -40px !important;
+    right: -40px !important;
+    background-position: center 18% !important;
   }
 }
 

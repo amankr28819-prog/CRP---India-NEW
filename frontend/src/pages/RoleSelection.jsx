@@ -70,31 +70,45 @@ const boxLeave = (e) => {
       className="role-selection-wrapper"
       style={{
         minHeight: '100vh',
-        backgroundImage: `
-        linear-gradient(
-         rgba(0, 0, 0, 0.45),
-        rgba(0, 0, 0, 0.45)
-        ),
-        url(${crpInfrastructure})
-        `,
-        
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '24px 16px',
-        position: 'relative'
+        position: 'relative',
+        overflow: 'hidden'
       }}
     >
+      {/* Background layer with bleed to eliminate internal image border margins */}
+      <div
+        className="role-selection-bg"
+        style={{
+          position: 'absolute',
+          top: '-40px',
+          bottom: '-40px',
+          left: '-40px',
+          right: '-40px',
+          backgroundImage: `
+            linear-gradient(
+              rgba(0, 0, 0, 0.45),
+              rgba(0, 0, 0, 0.45)
+            ),
+            url(${crpInfrastructure})
+          `,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center center',
+          backgroundRepeat: 'no-repeat',
+          zIndex: 0,
+          pointerEvents: 'none'
+        }}
+      />
+
       {/* Top right theme toggle */}
-      <div style={{ position: 'absolute', top: '20px', right: '20px' }}>
+      <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 1 }}>
         <ThemeToggle />
       </div>
 
-      <div style={{ width: '100%', maxWidth: '680px', textAlign: 'center' }}>
+      <div style={{ width: '100%', maxWidth: '680px', textAlign: 'center', position: 'relative', zIndex: 1 }}>
         {/* CRP Logo */}
 <div
   style={{

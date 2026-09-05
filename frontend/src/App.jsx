@@ -146,7 +146,7 @@ function AppLayout() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <Footer />
+      {!isRoleSelection && <Footer />}
       <LogoutConfirmModal />
       <PortalSwitchModal />
     </div>
