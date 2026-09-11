@@ -485,7 +485,7 @@ export default function AIAssistant() {
               display: 'flex',
               flexDirection: 'column',
               gap: '14px',
-              backgroundColor: 'var(--bg-page, #F8FAFC)',
+              backgroundColor: 'var(--bg-subtle)',
               scrollBehavior: 'auto'
             }}
           >
@@ -700,9 +700,9 @@ export default function AIAssistant() {
                 flex: 1,
                 padding: '10px 14px',
                 borderRadius: '8px',
-                border: '1px solid var(--border-subtle, #CBD5E1)',
-                backgroundColor: 'var(--bg-page, #F8FAFC)',
-                color: 'var(--text-primary, #0F172A)',
+                border: '1px solid var(--border-subtle)',
+                backgroundColor: 'var(--bg-subtle)',
+                color: 'var(--text-primary)',
                 fontSize: '0.875rem',
                 outline: 'none',
                 fontFamily: 'inherit'

@@ -27,16 +27,42 @@ const generateToken = (user) => {
   );
 };
 
+// Helper to validate and normalize mobile numbers
+const validateAndNormalizePhone = (phoneInput) => {
+  if (!phoneInput || typeof phoneInput !== 'string' || !phoneInput.trim()) {
+    return { valid: false, error: 'Mobile number is required for citizen registration.' };
+  }
+  const trimmed = phoneInput.trim();
+  let digits = trimmed;
+  if (digits.startsWith('+91')) {
+    digits = digits.slice(3).trim();
+  } else if (digits.startsWith('91') && digits.length === 12) {
+    digits = digits.slice(2).trim();
+  }
+
+  if (!/^\d+$/.test(digits)) {
+    return { valid: false, error: 'Mobile number must contain only numeric digits (no alphabetic or special characters).' };
+  }
+  if (digits.length !== 10) {
+    return { valid: false, error: 'Mobile number must be exactly 10 digits.' };
+  }
+  const firstDigit = digits[0];
+  if (!['6', '7', '8', '9'].includes(firstDigit)) {
+    return { valid: false, error: 'Mobile number must begin with 6, 7, 8, or 9.' };
+  }
+  return { valid: true, digits, normalized: `+91${digits}` };
+};
+
 // @desc Register citizen
 // @route POST /api/auth/register
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, phone, voterId, agreedToTerms } = req.body;
+    const { name, email, password, confirmPassword, phone, voterId, agreedToTerms } = req.body;
 
-    if (!name || !email || !password || !voterId) {
+    if (!name || !email || !password || !voterId || !phone) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide full name, valid email, password, and Voter ID.'
+        message: 'Please provide full name, valid email, mobile number, password, and Voter ID.'
       });
     }
 
@@ -44,7 +70,8 @@ const register = async (req, res, next) => {
       typeof name !== 'string' ||
       typeof email !== 'string' ||
       typeof password !== 'string' ||
-      typeof voterId !== 'string'
+      typeof voterId !== 'string' ||
+      typeof phone !== 'string'
     ) {
       return res.status(400).json({
         success: false,
@@ -66,6 +93,24 @@ const register = async (req, res, next) => {
       return res.status(400).json({
         success: false,
         message: 'Please enter a valid email address.'
+      });
+    }
+
+    // Validate mobile number
+    const phoneCheck = validateAndNormalizePhone(phone);
+    if (!phoneCheck.valid) {
+      return res.status(400).json({
+        success: false,
+        message: phoneCheck.error
+      });
+    }
+    const normalizedPhone = phoneCheck.normalized;
+
+    // Validate confirm password if provided
+    if (confirmPassword !== undefined && confirmPassword !== password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Passwords do not match.'
       });
     }
 
@@ -95,16 +140,6 @@ const register = async (req, res, next) => {
       });
     }
 
-    if (phone && typeof phone === 'string') {
-      const cleanPhone = phone.trim();
-      if (cleanPhone && !/^[+]?[0-9\s\-()]{7,20}$/.test(cleanPhone)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Please enter a valid telephone or mobile number.'
-        });
-      }
-    }
-
     if (agreedToTerms !== true && agreedToTerms !== 'true') {
       return res.status(400).json({
         success: false,
@@ -120,6 +155,17 @@ const register = async (req, res, next) => {
       });
     }
 
+    // Check unique mobile number across all accounts
+    const existingPhone = await User.findOne({
+      phone: { $in: [normalizedPhone, phoneCheck.digits] }
+    });
+    if (existingPhone) {
+      return res.status(400).json({
+        success: false,
+        message: 'This mobile number is already registered.'
+      });
+    }
+
     const existingVoter = await User.findOne({ voterId: cleanVoterId });
     if (existingVoter) {
       return res.status(400).json({
@@ -132,7 +178,7 @@ const register = async (req, res, next) => {
       name: trimmedName,
       email: cleanEmail,
       password,
-      phone: (typeof phone === 'string' ? phone.trim() : '') || '',
+      phone: normalizedPhone,
       voterId: cleanVoterId,
       constituency: (typeof req.body.constituency === 'string' && req.body.constituency.trim()) ? req.body.constituency.trim() : 'Central Parliamentary Constituency',
       role: 'citizen',
@@ -140,7 +186,6 @@ const register = async (req, res, next) => {
     });
 
     const token = generateToken(user);
-
 
     res.status(201).json({
       success: true,
@@ -164,33 +209,56 @@ const register = async (req, res, next) => {
   }
 };
 
-// @desc Login user (citizen or authority)
+// @desc Login user (citizen or authority) via Email or Mobile Number
 // @route POST /api/auth/login
 const login = async (req, res, next) => {
   try {
-    const { email, password, expectedRole, voterId } = req.body;
+    const { email, identifier, password, expectedRole, voterId } = req.body;
+    const loginIdentifier = (identifier || email || '').trim();
 
-    if (!email || !password) {
+    if (!loginIdentifier || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Please enter both email address and password.'
+        message: 'Please enter both your email address/mobile number and password.'
       });
     }
 
-    if (typeof email !== 'string' || typeof password !== 'string') {
+    if (typeof loginIdentifier !== 'string' || typeof password !== 'string') {
       return res.status(400).json({
         success: false,
-        message: 'Email and password must be valid text.'
+        message: 'Identifier and password must be valid text.'
       });
     }
 
-    const cleanEmail = email.trim().toLowerCase();
+    let query = {};
+    if (loginIdentifier.includes('@')) {
+      // Email authentication
+      query = { email: loginIdentifier.toLowerCase() };
+    } else {
+      // Mobile number authentication: normalize to +91 representation while safely querying both formats
+      let digits = loginIdentifier;
+      if (digits.startsWith('+91')) {
+        digits = digits.slice(3).trim();
+      } else if (digits.startsWith('91') && digits.length === 12) {
+        digits = digits.slice(2).trim();
+      }
 
-    const user = await User.findOne({ email: cleanEmail }).select('+password');
+      if (/^[6-9]\d{9}$/.test(digits)) {
+        const normalized = `+91${digits}`;
+        query = { phone: { $in: [normalized, digits] } };
+      } else {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid credentials. Please enter a valid email address or 10-digit mobile number.'
+        });
+      }
+    }
+
+    const user = await User.findOne(query).select('+password');
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email address or credentials.'
+        message: 'Invalid credentials. Please verify your email/mobile number and password.'
       });
     }
 
@@ -498,10 +566,21 @@ const changePassword = async (req, res, next) => {
       });
     }
 
-    if (newPassword.length < 6 || newPassword.length > 128) {
+    if (newPassword.length < 8 || newPassword.length > 128) {
       return res.status(400).json({
         success: false,
-        message: 'New password must be between 6 and 128 characters long.'
+        message: 'New password must be between 8 and 128 characters long.'
+      });
+    }
+
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+
+    if (!hasUpper || !hasNumber || !hasSpecial) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters and contain at least 1 uppercase letter, 1 number, and 1 special character.'
       });
     }
 
@@ -541,6 +620,173 @@ const changePassword = async (req, res, next) => {
     res.json({
       success: true,
       message: 'Password changed successfully.'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc Verify Citizen Password Reset Credentials (Email + Mobile + Voter ID)
+// @route POST /api/auth/reset-password/verify
+const verifyCitizenReset = async (req, res, next) => {
+  try {
+    const { email, phone, voterId } = req.body;
+
+    if (!email || !phone || !voterId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide Email, Mobile Number, and Voter ID.'
+      });
+    }
+
+    if (
+      typeof email !== 'string' ||
+      typeof phone !== 'string' ||
+      typeof voterId !== 'string'
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'All verification fields must be valid text.'
+      });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanVoterId = voterId.trim().toUpperCase();
+
+    // Normalize phone input
+    let digits = phone.trim();
+    if (digits.startsWith('+91')) {
+      digits = digits.slice(3).trim();
+    } else if (digits.startsWith('91') && digits.length === 12) {
+      digits = digits.slice(2).trim();
+    }
+
+    if (!/^[6-9]\d{9}$/.test(digits)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9.'
+      });
+    }
+
+    const normalizedPhone = `+91${digits}`;
+
+    // Verify all 3 pieces belong to the SAME citizen account
+    const user = await User.findOne({
+      role: 'citizen',
+      email: cleanEmail,
+      voterId: cleanVoterId,
+      phone: { $in: [normalizedPhone, digits] }
+    });
+
+    if (!user) {
+      // Safe generic message to avoid enumeration
+      return res.status(400).json({
+        success: false,
+        message: 'Verification failed. No matching citizen account found for the provided Email, Mobile Number, and Voter ID.'
+      });
+    }
+
+    if (user.isSuspended) {
+      return res.status(403).json({
+        success: false,
+        message: 'This citizen account is suspended. Password reset is not permitted.'
+      });
+    }
+
+    // Generate single-use signed reset token valid for 15 minutes
+    const resetToken = jwt.sign(
+      { id: user._id, type: 'citizen_password_reset' },
+      getJwtSecret(),
+      { expiresIn: '15m' }
+    );
+
+    res.json({
+      success: true,
+      message: 'Citizen identity verified successfully.',
+      resetToken
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc Confirm Citizen Password Reset with verified token
+// @route POST /api/auth/reset-password/confirm
+const confirmCitizenPasswordReset = async (req, res, next) => {
+  try {
+    const { resetToken, newPassword, confirmPassword } = req.body;
+
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reset authorization token and new password are required.'
+      });
+    }
+
+    if (typeof resetToken !== 'string' || typeof newPassword !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Form inputs must be valid text.'
+      });
+    }
+
+    if (confirmPassword !== undefined && newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Passwords do not match.'
+      });
+    }
+
+    if (newPassword.length < 8 || newPassword.length > 128) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be between 8 and 128 characters long.'
+      });
+    }
+
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+
+    if (!hasUpper || !hasNumber || !hasSpecial) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters and contain at least 1 uppercase letter, 1 number, and 1 special character.'
+      });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(resetToken, getJwtSecret());
+    } catch (tokenErr) {
+      return res.status(401).json({
+        success: false,
+        message: 'Password reset session has expired or is invalid. Please start the verification process again.'
+      });
+    }
+
+    if (!decoded || decoded.type !== 'citizen_password_reset' || !decoded.id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid reset authorization.'
+      });
+    }
+
+    const user = await User.findById(decoded.id).select('+password');
+    if (!user || user.role !== 'citizen') {
+      return res.status(404).json({
+        success: false,
+        message: 'Citizen account not found.'
+      });
+    }
+
+    // Set new password (pre-save hook hashes with bcrypt 10 rounds)
+    user.password = newPassword;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully. You can now log in with your new password.'
     });
   } catch (err) {
     next(err);
@@ -608,5 +854,7 @@ module.exports = {
   removeProfilePicture,
   verifyPassword,
   changePassword,
+  verifyCitizenReset,
+  confirmCitizenPasswordReset,
   updateSettings
 };

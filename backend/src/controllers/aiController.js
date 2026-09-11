@@ -47,7 +47,7 @@ Every complaint progresses through 6 standardized stages:
   - Terms & Service (/terms): Civic code of conduct, prohibition of false complaints, voter ID guidelines, and platform terms.
   - FAQs (/faqs): Common questions regarding submission, resolution timelines, karma points, and tracking.
 - Official Support & Helplines:
-  - Toll-Free National Helpline: 1800-11-2026
+  - Toll-Free National Helpline: 1800-11-XXXX
   - Official Support Email: crpindianew@gmail.com
   - Emergency Note: For immediate life-threatening crises (live electrocution hazards, structural building collapses, flash floods), citizens must immediately dial emergency services (112 / Fire / Police).
 

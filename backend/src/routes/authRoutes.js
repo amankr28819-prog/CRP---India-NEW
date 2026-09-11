@@ -9,14 +9,21 @@ const {
   removeProfilePicture,
   verifyPassword,
   changePassword,
+  verifyCitizenReset,
+  confirmCitizenPasswordReset,
   updateSettings
 } = require('../controllers/authController');
 const { verifyToken } = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const { passwordResetLimiter } = require('../middleware/rateLimiter');
 
 router.post('/register', register);
 router.post('/login', login);
 router.get('/me', verifyToken, getMe);
+
+// Citizen Password Reset Flow (Protected with dedicated rate limiter)
+router.post('/reset-password/verify', passwordResetLimiter, verifyCitizenReset);
+router.post('/reset-password/confirm', passwordResetLimiter, confirmCitizenPasswordReset);
 
 // Citizen Account Management (Protected)
 router.patch('/profile', verifyToken, updateProfile);

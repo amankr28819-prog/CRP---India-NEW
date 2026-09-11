@@ -134,6 +134,16 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// Unique index on phone for registered mobile numbers, safely excluding legacy empty records
+userSchema.index(
+  { phone: 1 },
+  {
+    unique: true,
+    sparse: true,
+    partialFilterExpression: { phone: { $type: 'string', $gt: '' } }
+  }
+);
+
 // Hash password before save
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();

@@ -9,9 +9,10 @@ export default function CitizenRegister() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: '',
     phone: '',
-    voterId: ''
+    voterId: '',
+    password: '',
+    confirmPassword: ''
   });
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
@@ -38,15 +39,38 @@ export default function CitizenRegister() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.password || !formData.voterId) {
-      setError('Please fill in all required fields including Voter ID.');
+    if (!formData.name || !formData.email || !formData.phone || !formData.voterId || !formData.password || !formData.confirmPassword) {
+      setError('Please fill in all required fields including Mobile Number, Voter ID, and Confirm Password.');
       return;
     }
+
+    // Clean and validate mobile number
+    const cleanPhone = formData.phone.trim();
+    if (!/^\d+$/.test(cleanPhone)) {
+      setError('Mobile number must contain only numeric digits (no alphabetic or special characters).');
+      return;
+    }
+    if (cleanPhone.length !== 10) {
+      setError('Mobile number must be exactly 10 digits.');
+      return;
+    }
+    if (!['6', '7', '8', '9'].includes(cleanPhone[0])) {
+      setError('Mobile number must begin with 6, 7, 8, or 9.');
+      return;
+    }
+
     const cleanVoterId = formData.voterId.trim().toUpperCase();
     if (cleanVoterId.length !== 10 || !/^[A-Z0-9]{10}$/.test(cleanVoterId)) {
       setError('Voter ID must be a 10-digit alphanumeric code (e.g. ABC1234567).');
       return;
     }
+
+    // Confirm password match check
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
     if (formData.password.length < 8) {
       setError('Password must be at least 8 characters long.');
       return;
@@ -58,6 +82,7 @@ export default function CitizenRegister() {
       setError('Password must be at least 8 characters and contain at least 1 uppercase letter, 1 number, and 1 special character.');
       return;
     }
+
     if (!agreedToTerms) {
       setError('You must agree to the Terms & Conditions and Privacy Policy to register.');
       return;
@@ -66,12 +91,19 @@ export default function CitizenRegister() {
     setLoading(true);
     setError('');
     try {
-      const res = await register({ ...formData, voterId: cleanVoterId, agreedToTerms });
+      const res = await register({
+        name: formData.name,
+        email: formData.email,
+        phone: `+91${cleanPhone}`,
+        voterId: cleanVoterId,
+        password: formData.password,
+        agreedToTerms
+      });
       if (res.success) {
         setLoading(false);
         setShowSuccessModal(true);
-        // Clear password from local form state for credential safety
-        setFormData(prev => ({ ...prev, password: '' }));
+        // Clear sensitive passwords from state
+        setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));
         return;
       }
     } catch (err) {
@@ -202,17 +234,65 @@ export default function CitizenRegister() {
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="regPhone">Phone Number</label>
-            <input
-              id="regPhone"
-              type="tel"
-              name="phone"
-              autoComplete="tel"
-              value={formData.phone}
-              onChange={handleInputChange}
-              placeholder="e.g. +91 98765 43210"
-              className="form-input"
-            />
+            <label className="form-label" htmlFor="regPhone">
+              Mobile Number <span className="required">*</span>
+            </label>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                backgroundColor: 'var(--bg-surface)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-md)',
+                overflow: 'hidden'
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 12px',
+                  backgroundColor: 'var(--bg-subtle)',
+                  borderRight: '1px solid var(--border-subtle)',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.9375rem',
+                  fontWeight: 600,
+                  userSelect: 'none',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <span>+91</span>
+                <span style={{ color: 'var(--border-subtle)', fontWeight: 300 }}>|</span>
+              </div>
+              <input
+                id="regPhone"
+                type="tel"
+                name="phone"
+                autoComplete="tel-national"
+                value={formData.phone}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setFormData(prev => ({ ...prev, phone: val }));
+                }}
+                placeholder="9876543210"
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  outline: 'none',
+                  padding: '10px 14px',
+                  backgroundColor: 'transparent',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.9375rem',
+                  width: '100%'
+                }}
+                maxLength={10}
+                required
+              />
+            </div>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+              Enter 10-digit mobile number starting with 6, 7, 8, or 9
+            </span>
           </div>
 
           <div className="form-group">
@@ -251,9 +331,40 @@ export default function CitizenRegister() {
               className="form-input"
               required
             />
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-              Password must be at least 8 characters and contain at least 1 uppercase letter, 1 number, and 1 special character.
-            </span>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px', lineHeight: 1.5 }}>
+              Password must meet all of the following requirements:
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '4px', marginTop: '4px' }}>
+                <span style={{ color: formData.password.length >= 8 ? 'var(--color-accent-green, #15803D)' : 'var(--text-muted)' }}>
+                  {formData.password.length >= 8 ? '✓' : '•'} At least 8 characters
+                </span>
+                <span style={{ color: /[A-Z]/.test(formData.password) ? 'var(--color-accent-green, #15803D)' : 'var(--text-muted)' }}>
+                  {/[A-Z]/.test(formData.password) ? '✓' : '•'} 1 uppercase letter
+                </span>
+                <span style={{ color: /[0-9]/.test(formData.password) ? 'var(--color-accent-green, #15803D)' : 'var(--text-muted)' }}>
+                  {/[0-9]/.test(formData.password) ? '✓' : '•'} 1 number (0-9)
+                </span>
+                <span style={{ color: /[^A-Za-z0-9]/.test(formData.password) ? 'var(--color-accent-green, #15803D)' : 'var(--text-muted)' }}>
+                  {/[^A-Za-z0-9]/.test(formData.password) ? '✓' : '•'} 1 special character
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="regConfirmPassword">
+              Confirm Password <span className="required">*</span>
+            </label>
+            <input
+              id="regConfirmPassword"
+              type="password"
+              name="confirmPassword"
+              autoComplete="new-password"
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              placeholder="Re-enter your password"
+              className="form-input"
+              required
+            />
           </div>
 
           {/* Mandatory Terms & Conditions / Privacy Policy Checkbox */}

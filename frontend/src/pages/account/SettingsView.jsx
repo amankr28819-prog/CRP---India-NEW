@@ -4,7 +4,6 @@ import {
   Moon,
   Bell,
   Eye,
-  Sliders,
   CheckCircle2,
   Save,
   Loader2
@@ -106,7 +105,7 @@ export default function SettingsView() {
           Account Preferences & Settings
         </h2>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
-          Personalize your appearance theme, notification alerts, and accessibility options.
+          Personalize your appearance theme and notification alerts.
         </p>
       </div>
 
@@ -313,85 +312,7 @@ export default function SettingsView() {
         </div>
       </div>
 
-      {/* Accessibility Settings */}
-      <div
-        style={{
-          backgroundColor: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: '12px',
-          padding: '24px'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-          <Sliders size={18} style={{ color: 'var(--color-primary)' }} />
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-            Accessibility Options
-          </h3>
-        </div>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '0 0 18px 0' }}>
-          Assistive UI settings designed for high legibility and comfort.
-        </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Reduced Motion */}
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '14px 16px',
-              backgroundColor: 'var(--bg-subtle)',
-              borderRadius: '8px',
-              border: '1px solid var(--border-subtle)',
-              cursor: 'pointer'
-            }}
-          >
-            <div>
-              <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                Reduced Motion
-              </div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                Minimize animations and slide transitions across portal views
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={reducedMotion}
-              onChange={(e) => handleToggleReducedMotion(e.target.checked)}
-              style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--color-primary)' }}
-            />
-          </label>
-
-          {/* High Contrast */}
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '14px 16px',
-              backgroundColor: 'var(--bg-subtle)',
-              borderRadius: '8px',
-              border: '1px solid var(--border-subtle)',
-              cursor: 'pointer'
-            }}
-          >
-            <div>
-              <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                High Contrast Elements
-              </div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                Sharpen border outlines and text contrast for enhanced visual clarity
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={highContrast}
-              onChange={(e) => handleToggleHighContrast(e.target.checked)}
-              style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--color-primary)' }}
-            />
-          </label>
-        </div>
-      </div>
 
       {/* Save Button */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

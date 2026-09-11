@@ -46,8 +46,36 @@ import NotFound from './pages/NotFound';
 // Wrapper to conditionally render Navbar (hidden on standalone role selection screen)
 function AppLayout() {
   const location = useLocation();
-  const isRoleSelection = location.pathname === '/' || location.pathname === '/select-role';
+  const { user, isAuthority, portalRole } = useAuth();
   const { theme } = useTheme();
+
+  const isRoleSelection = location.pathname === '/' || location.pathname === '/select-role';
+  const path = location.pathname;
+
+  // AI Assistant Visibility Rules:
+  // Hidden on:
+  // 1. Landing/role-selection screen ('/' or '/select-role')
+  // 2. Citizen Login ('/login')
+  // 3. Citizen Registration ('/register')
+  // 4. Any Municipal/Authority route ('/authority/*')
+  // 5. Any session where the authenticated user or portal role is authority
+  const isAuthorityContext = isAuthority || user?.role === 'authority' || portalRole === 'authority' || path.startsWith('/authority');
+  const isExcludedRoute = path === '/' || path === '/select-role' || path === '/login' || path === '/register';
+
+  // Visible on:
+  // 1. Authenticated citizen pages: /home, /dashboard, /report, /track, /complaint, /account, /citizens
+  // 2. Public legal/help pages: /about, /help, /faqs, /privacy, /terms
+  const isPublicLegalOrHelp = ['/about', '/help', '/faqs', '/privacy', '/terms'].includes(path);
+  const isCitizenPortalRoute =
+    path === '/home' ||
+    path === '/dashboard' ||
+    path.startsWith('/report') ||
+    path.startsWith('/track') ||
+    path.startsWith('/complaint') ||
+    path.startsWith('/account') ||
+    path.startsWith('/citizens');
+
+  const showAIAssistant = !isAuthorityContext && !isExcludedRoute && (isPublicLegalOrHelp || isCitizenPortalRoute);
 
   // Theme Isolation: Main Role Selection screen is strictly DARK, while inner portals use active preference
   useEffect(() => {
@@ -213,7 +241,7 @@ function AppLayout() {
         </Routes>
       </main>
       {!isRoleSelection && <Footer />}
-      {['/home', '/about', '/help', '/privacy', '/faqs', '/terms'].includes(location.pathname) && <AIAssistant />}
+      {showAIAssistant && <AIAssistant />}
       <LogoutConfirmModal />
       <PortalSwitchModal />
     </div>

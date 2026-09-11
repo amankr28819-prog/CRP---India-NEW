@@ -336,7 +336,7 @@ export default function FAQs() {
               }}
             >
               <Phone size={14} style={{ color: 'var(--color-primary)' }} />
-              <span>Toll-Free: <strong>1800-11-2026</strong></span>
+              <span>Toll-Free: <strong>1800-11-XXXX</strong></span>
             </div>
             <a
               href="mailto:crpindianew@gmail.com"

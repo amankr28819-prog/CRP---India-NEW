@@ -233,7 +233,7 @@ export default function TermsOfService() {
                 <Phone size={18} style={{ color: 'var(--color-primary)' }} />
                 <div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Toll-Free Helpline</div>
-                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>1800-11-2026</div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>1800-11-XXXX</div>
                 </div>
               </div>
             </div>

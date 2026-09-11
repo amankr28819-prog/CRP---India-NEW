@@ -36,7 +36,7 @@ export default function SupportView() {
     },
     {
       q: 'How do I escalate an unresolved complaint exceeding the standard SLA?',
-      a: 'If your grievance remains pending beyond 14 working days without active municipal updates, you can contact the Chief Municipal Grievance Officer via the toll-free helpline at 1800-11-2026 or email crpindianew@gmail.com citing your Reference ID.'
+      a: 'If your grievance remains pending beyond 14 working days without active municipal updates, you can contact the Chief Municipal Grievance Officer via the toll-free helpline at 1800-11-XXXX or email crpindianew@gmail.com citing your Reference ID.'
     }
   ];
 
@@ -86,7 +86,7 @@ export default function SupportView() {
               National Civic Helpline
             </div>
             <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', margin: '2px 0 4px 0' }}>
-              1800-11-2026
+              1800-11-XXXX
             </div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
               Toll-Free • 24x7 Multi-lingual Assistance

@@ -292,10 +292,34 @@ export const api = {
   },
 
   changePassword: async (currentPassword, newPassword, confirmPassword) => {
+    let payload;
+    if (typeof currentPassword === 'object' && currentPassword !== null) {
+      payload = currentPassword;
+    } else {
+      payload = { currentPassword, newPassword, confirmPassword };
+    }
     const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
       method: 'PATCH',
       headers: getHeaders(),
-      body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
+      body: JSON.stringify(payload)
+    });
+    return await handleResponse(res);
+  },
+
+  verifyResetCredentials: async (email, phone, voterId) => {
+    const res = await fetch(`${API_BASE_URL}/auth/reset-password/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, phone, voterId })
+    });
+    return await handleResponse(res);
+  },
+
+  confirmPasswordReset: async (resetToken, newPassword, confirmPassword) => {
+    const res = await fetch(`${API_BASE_URL}/auth/reset-password/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resetToken, newPassword, confirmPassword })
     });
     return await handleResponse(res);
   },

@@ -101,7 +101,7 @@ export default function CitizenSearch() {
               />
               <input
                 type="text"
-                className="input"
+                className="form-input"
                 placeholder="Search citizen name..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -121,7 +121,7 @@ export default function CitizenSearch() {
               />
               <input
                 type="text"
-                className="input"
+                className="form-input"
                 placeholder="e.g. South Delhi, Bangalore Central..."
                 value={constituencyFilter}
                 onChange={(e) => setConstituencyFilter(e.target.value)}
@@ -292,7 +292,7 @@ export default function CitizenSearch() {
                       display: 'grid',
                       gridTemplateColumns: 'repeat(4, 1fr)',
                       gap: '8px',
-                      backgroundColor: 'var(--bg-app, #F9FAFB)',
+                      backgroundColor: 'var(--bg-subtle)',
                       padding: '10px 8px',
                       borderRadius: '6px',
                       marginBottom: '16px',
@@ -342,7 +342,7 @@ export default function CitizenSearch() {
                       <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
                         Suspended
                       </div>
-                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: (citizen.suspensionCount || 0) > 0 ? '#475569' : 'var(--text-secondary)' }}>
+                      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
                         {citizen.suspensionCount || 0}
                       </div>
                     </div>

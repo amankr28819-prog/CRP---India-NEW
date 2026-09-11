@@ -65,8 +65,17 @@ export default function ChangePasswordView() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError('New password must be at least 6 characters in length.');
+    if (newPassword.length < 8) {
+      setError('New password must be at least 8 characters long.');
+      return;
+    }
+
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+
+    if (!hasUpper || !hasNumber || !hasSpecial) {
+      setError('New password must be at least 8 characters and contain at least 1 uppercase letter, 1 number, and 1 special character.');
       return;
     }
 
@@ -242,7 +251,7 @@ export default function ChangePasswordView() {
                 type={showNew ? 'text' : 'password'}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter minimum 6 characters"
+                placeholder="Enter at least 8 characters"
                 required
                 style={{
                   width: '100%',
@@ -273,6 +282,25 @@ export default function ChangePasswordView() {
               >
                 {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
+            </div>
+
+            {/* Password Requirements Checklist */}
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.5 }}>
+              Password must meet all of the following requirements:
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '4px', marginTop: '4px' }}>
+                <span style={{ color: newPassword.length >= 8 ? 'var(--color-accent-green, #15803D)' : 'var(--text-muted)' }}>
+                  {newPassword.length >= 8 ? '✓' : '•'} At least 8 characters
+                </span>
+                <span style={{ color: /[A-Z]/.test(newPassword) ? 'var(--color-accent-green, #15803D)' : 'var(--text-muted)' }}>
+                  {/[A-Z]/.test(newPassword) ? '✓' : '•'} 1 uppercase letter
+                </span>
+                <span style={{ color: /[0-9]/.test(newPassword) ? 'var(--color-accent-green, #15803D)' : 'var(--text-muted)' }}>
+                  {/[0-9]/.test(newPassword) ? '✓' : '•'} 1 number (0-9)
+                </span>
+                <span style={{ color: /[^A-Za-z0-9]/.test(newPassword) ? 'var(--color-accent-green, #15803D)' : 'var(--text-muted)' }}>
+                  {/[^A-Za-z0-9]/.test(newPassword) ? '✓' : '•'} 1 special character
+                </span>
+              </div>
             </div>
 
             {/* Password Strength Meter */}

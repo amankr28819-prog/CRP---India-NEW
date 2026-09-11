@@ -92,7 +92,7 @@ export default function Footer() {
               </li>
               <li style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontSize: '0.8125rem' }}>
                 <Phone size={13} />
-                <span>Toll-Free Helpline: 1800-11-2026</span>
+                <span>Toll-Free Helpline: 1800-11-XXXX</span>
               </li>
               <li style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}>
                 <Mail size={13} />

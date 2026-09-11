@@ -61,9 +61,26 @@ const aiChatLimiter = rateLimit({
   }
 });
 
+/**
+ * Password Reset Verification Limiter
+ * Stricter defense against enumeration attacks on email/mobile/voter ID combinations.
+ */
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 5 : 100, // 5 attempts per 15 mins in production
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many password reset verification attempts. Please try again after 15 minutes.'
+  }
+});
+
 module.exports = {
   authLimiter,
   apiLimiter,
   complaintLimiter,
-  aiChatLimiter
+  aiChatLimiter,
+  passwordResetLimiter
 };
+

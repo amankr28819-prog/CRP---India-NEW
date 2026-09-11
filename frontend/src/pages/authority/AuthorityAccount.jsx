@@ -140,8 +140,23 @@ export default function AuthorityAccount() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters long.');
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters long.');
+      return;
+    }
+
+    if (!/[A-Z]/.test(newPassword)) {
+      setPasswordError('New password must include at least one uppercase letter.');
+      return;
+    }
+
+    if (!/[0-9]/.test(newPassword)) {
+      setPasswordError('New password must include at least one number.');
+      return;
+    }
+
+    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(newPassword)) {
+      setPasswordError('New password must include at least one special character.');
       return;
     }
 
@@ -760,12 +775,12 @@ export default function AuthorityAccount() {
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="At least 6 characters"
+                    placeholder="At least 8 characters"
                     className="form-input"
                     required
                   />
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                    Password must be at least 6 characters long.
+                    Password must be at least 8 characters, with an uppercase letter, number, and special character.
                   </span>
                 </div>
 

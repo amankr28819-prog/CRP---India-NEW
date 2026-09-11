@@ -347,6 +347,14 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-muted);
 }
 
+/* Suppress browser native password reveal icons to prevent duplicate eye buttons (Edge / IE) */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 .form-error {
   font-size: 0.8125rem;
   color: var(--color-accent-urgent);
