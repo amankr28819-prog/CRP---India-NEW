@@ -11,7 +11,11 @@ const {
   changePassword,
   verifyCitizenReset,
   confirmCitizenPasswordReset,
-  updateSettings
+  updateSettings,
+  getGoogleConfig,
+  googleAuth,
+  googleLink,
+  googleOnboard
 } = require('../controllers/authController');
 const { verifyToken } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -20,6 +24,12 @@ const { passwordResetLimiter } = require('../middleware/rateLimiter');
 router.post('/register', register);
 router.post('/login', login);
 router.get('/me', verifyToken, getMe);
+
+// Google Sign-In Flow for Citizens
+router.get('/google/config', getGoogleConfig);
+router.post('/google', googleAuth);
+router.post('/google/link', googleLink);
+router.post('/google/onboard', googleOnboard);
 
 // Citizen Password Reset Flow (Protected with dedicated rate limiter)
 router.post('/reset-password/verify', passwordResetLimiter, verifyCitizenReset);

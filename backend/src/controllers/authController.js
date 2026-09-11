@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const { getUploadedFileUrl } = require('../middleware/upload');
 
 const getJwtSecret = () => {
@@ -340,6 +341,13 @@ const getMe = async (req, res) => {
 
   const userObj = req.user && (req.user.toObject ? req.user.toObject() : { ...req.user });
 
+  // Check if citizen has an existing local password
+  let hasPassword = true;
+  if (req.user && req.user.role === 'citizen') {
+    const userWithPass = await User.findById(req.user._id).select('+password');
+    hasPassword = Boolean(userWithPass && userWithPass.password);
+  }
+
   res.json({
     success: true,
     user: {
@@ -352,7 +360,11 @@ const getMe = async (req, res) => {
       warningCount: (req.user && req.user.warningCount) || 0,
       suspensionCount: (req.user && req.user.suspensionCount) || 0,
       isSuspended: (req.user && req.user.isSuspended) || false,
-      suspendedUntil: (req.user && req.user.suspendedUntil) || null
+      suspendedUntil: (req.user && req.user.suspendedUntil) || null,
+      authProvider: (req.user && req.user.authProvider) || 'local',
+      googleId: (req.user && req.user.googleId) || undefined,
+      isGoogleLinked: Boolean(req.user && req.user.googleId),
+      hasPassword
     }
   });
 };
@@ -383,7 +395,11 @@ const formatUserResponse = (user) => {
     isSuspended: user.isSuspended || false,
     suspendedUntil: user.suspendedUntil || null,
     settings: user.settings,
-    createdAt: user.createdAt
+    createdAt: user.createdAt,
+    authProvider: user.authProvider || 'local',
+    googleId: user.googleId || undefined,
+    isGoogleLinked: Boolean(user.googleId),
+    hasPassword: Boolean(user.password)
   };
 };
 
@@ -554,22 +570,20 @@ const verifyPassword = async (req, res, next) => {
   }
 };
 
-// @desc Change user password
+// @desc Change or set user password
 // @route PATCH /api/auth/change-password
 const changePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword, confirmPassword } = req.body;
 
     if (
-      !currentPassword ||
       !newPassword ||
-      typeof currentPassword !== 'string' ||
       typeof newPassword !== 'string' ||
       (confirmPassword && typeof confirmPassword !== 'string')
     ) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide both current and new password as valid text.'
+        message: 'Please provide a valid new password.'
       });
     }
 
@@ -598,13 +612,6 @@ const changePassword = async (req, res, next) => {
       });
     }
 
-    if (currentPassword === newPassword) {
-      return res.status(400).json({
-        success: false,
-        message: 'New password cannot be identical to current password.'
-      });
-    }
-
     const user = await User.findById(req.user._id).select('+password');
     if (!user) {
       return res.status(404).json({
@@ -613,12 +620,29 @@ const changePassword = async (req, res, next) => {
       });
     }
 
-    const isMatch = await user.comparePassword(currentPassword);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Current password does not match registered account password.'
-      });
+    // If user already has an established local password, verify current password
+    if (user.password) {
+      if (!currentPassword || typeof currentPassword !== 'string') {
+        return res.status(400).json({
+          success: false,
+          message: 'Current password is required to change your password.'
+        });
+      }
+
+      if (currentPassword === newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'New password cannot be identical to current password.'
+        });
+      }
+
+      const isMatch = await user.comparePassword(currentPassword);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: 'Current password does not match registered account password.'
+        });
+      }
     }
 
     user.password = newPassword;
@@ -626,7 +650,7 @@ const changePassword = async (req, res, next) => {
 
     res.json({
       success: true,
-      message: 'Password changed successfully.'
+      message: 'Password saved successfully.'
     });
   } catch (err) {
     next(err);
@@ -852,6 +876,440 @@ const updateSettings = async (req, res, next) => {
   }
 };
 
+// ==========================================
+// GOOGLE AUTHENTICATION FOR CITIZENS ONLY
+// ==========================================
+
+let googleOAuthClient = null;
+const getGoogleClient = () => {
+  if (!googleOAuthClient) {
+    googleOAuthClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID || undefined);
+  }
+  return googleOAuthClient;
+};
+
+/**
+ * Verify Google ID token cryptographically.
+ * Validates: signature, audience (if configured), issuer, expiration, email_verified, and extracts sub, email, name, picture.
+ */
+const verifyGoogleToken = async (idToken) => {
+  if (!idToken || typeof idToken !== 'string') {
+    throw new Error('Google credential token is required.');
+  }
+  if (idToken.trim().length < 10) {
+    throw new Error('Malformed Google credential token.');
+  }
+
+  const clientId = process.env.GOOGLE_CLIENT_ID || undefined;
+  const client = getGoogleClient();
+
+  const ticket = await client.verifyIdToken({
+    idToken,
+    audience: clientId
+  });
+
+  const payload = ticket.getPayload();
+  if (!payload) {
+    throw new Error('Invalid Google token payload.');
+  }
+
+  // Verify issuer
+  const validIssuers = ['accounts.google.com', 'https://accounts.google.com'];
+  if (!payload.iss || !validIssuers.includes(payload.iss)) {
+    throw new Error('Invalid Google token issuer.');
+  }
+
+  // Verify expiration
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.exp && payload.exp < now) {
+    throw new Error('Google token has expired. Please authenticate again.');
+  }
+
+  // Verify email_verified
+  if (!payload.email_verified) {
+    throw new Error('Google email address is not verified by Google.');
+  }
+
+  if (!payload.sub) {
+    throw new Error('Google token missing unique subject identifier.');
+  }
+
+  return {
+    sub: payload.sub,
+    email: (payload.email || '').toLowerCase().trim(),
+    name: (payload.name || '').trim(),
+    picture: payload.picture || ''
+  };
+};
+
+let customGoogleVerifier = null;
+const _setGoogleTokenVerifierForTesting = (verifierFn) => {
+  customGoogleVerifier = verifierFn;
+};
+
+// @desc Get public Google Client ID configuration for frontend
+// @route GET /api/auth/google/config
+const getGoogleConfig = (req, res) => {
+  res.json({
+    success: true,
+    clientId: process.env.GOOGLE_CLIENT_ID || ''
+  });
+};
+
+// @desc Google Sign-In for Citizens
+// @route POST /api/auth/google
+const googleAuth = async (req, res, next) => {
+  try {
+    const { credential } = req.body;
+    if (!credential || typeof credential !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Google credential token is required.'
+      });
+    }
+
+    let tokenPayload;
+    try {
+      tokenPayload = await (customGoogleVerifier || verifyGoogleToken)(credential);
+    } catch (tokenErr) {
+      return res.status(401).json({
+        success: false,
+        message: tokenErr.message || 'Google token verification failed.'
+      });
+    }
+
+    const { sub, email, name, picture } = tokenPayload;
+
+    // 1. Check if a citizen account is already linked with this verified Google sub
+    const userWithGoogleId = await User.findOne({ googleId: sub });
+    if (userWithGoogleId) {
+      if (userWithGoogleId.role !== 'citizen') {
+        return res.status(403).json({
+          success: false,
+          message: 'Google Sign-In is only permitted for citizen accounts.'
+        });
+      }
+
+      // Check suspension
+      if (userWithGoogleId.isSuspended) {
+        if (userWithGoogleId.suspendedUntil && new Date(userWithGoogleId.suspendedUntil) > new Date()) {
+          return res.status(403).json({
+            success: false,
+            message: `Account is suspended until ${new Date(userWithGoogleId.suspendedUntil).toLocaleDateString()}. Reason: ${userWithGoogleId.suspensionHistory?.[userWithGoogleId.suspensionHistory.length - 1]?.reason || 'Administrative Action'}`
+          });
+        }
+        userWithGoogleId.isSuspended = false;
+        userWithGoogleId.suspendedUntil = null;
+        await userWithGoogleId.save();
+      }
+
+      const token = generateToken(userWithGoogleId);
+      console.log(`[AUTH] Google Sign-In success for citizen ID: ${userWithGoogleId._id}`);
+      return res.json({
+        success: true,
+        token,
+        user: formatUserResponse(userWithGoogleId),
+        message: 'Signed in successfully with Google.'
+      });
+    }
+
+    // 2. Check if an existing citizen account exists with the verified Google email
+    const existingUserByEmail = await User.findOne({ email });
+    if (existingUserByEmail) {
+      if (existingUserByEmail.role !== 'citizen') {
+        return res.status(403).json({
+          success: false,
+          message: 'Google Sign-In is only permitted for citizen accounts.'
+        });
+      }
+
+      // Check collision
+      if (existingUserByEmail.googleId && existingUserByEmail.googleId !== sub) {
+        return res.status(400).json({
+          success: false,
+          message: 'This CRP citizen account is already linked to a different Google account.'
+        });
+      }
+
+      // Prompt for password verification to link existing account
+      return res.json({
+        success: true,
+        requiresLinking: true,
+        email: existingUserByEmail.email,
+        name: existingUserByEmail.name,
+        message: 'An existing CRP account was found with this email. Please verify your password to link your Google account.'
+      });
+    }
+
+    // 3. New Google User - Verify email domain (.com or .in)
+    if (!email.endsWith('.com') && !email.endsWith('.in')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only email addresses ending with .com or .in are permitted for citizen registration.'
+      });
+    }
+
+    // Return onboarding requirement with verified Google details
+    return res.json({
+      success: true,
+      requiresOnboarding: true,
+      email,
+      name,
+      picture,
+      message: 'Please complete citizen registration with your Voter ID and Mobile Number.'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc Verify password and link Google sub to existing citizen account
+// @route POST /api/auth/google/link
+const googleLink = async (req, res, next) => {
+  try {
+    const { credential, password } = req.body;
+    if (!credential || typeof credential !== 'string' || !password || typeof password !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Google credential token and current password are required.'
+      });
+    }
+
+    let tokenPayload;
+    try {
+      tokenPayload = await (customGoogleVerifier || verifyGoogleToken)(credential);
+    } catch (tokenErr) {
+      return res.status(401).json({
+        success: false,
+        message: tokenErr.message || 'Google token verification failed.'
+      });
+    }
+
+    const { sub, email, picture } = tokenPayload;
+
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Citizen account not found.'
+      });
+    }
+
+    if (user.role !== 'citizen') {
+      return res.status(403).json({
+        success: false,
+        message: 'Google Sign-In is only permitted for citizen accounts.'
+      });
+    }
+
+    // Collision checks
+    if (user.googleId && user.googleId !== sub) {
+      return res.status(400).json({
+        success: false,
+        message: 'This CRP account is already linked to a different Google account.'
+      });
+    }
+
+    const otherUserWithGoogleId = await User.findOne({ googleId: sub });
+    if (otherUserWithGoogleId && String(otherUserWithGoogleId._id) !== String(user._id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'This Google account is already linked to another CRP citizen.'
+      });
+    }
+
+    // Verify existing password
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Incorrect password. Account verification failed.'
+      });
+    }
+
+    // Link Google sub to SAME User._id without migrating/copying data
+    user.googleId = sub;
+    if (!user.avatar && picture) {
+      user.avatar = picture;
+    }
+    await user.save();
+
+    // Check suspension
+    if (user.isSuspended) {
+      if (user.suspendedUntil && new Date(user.suspendedUntil) > new Date()) {
+        return res.status(403).json({
+          success: false,
+          message: `Account is suspended until ${new Date(user.suspendedUntil).toLocaleDateString()}. Reason: ${user.suspensionHistory?.[user.suspensionHistory.length - 1]?.reason || 'Administrative Action'}`
+        });
+      }
+      user.isSuspended = false;
+      user.suspendedUntil = null;
+      await user.save();
+    }
+
+    const token = generateToken(user);
+    console.log(`[AUTH] Google linked successfully for citizen ID: ${user._id}`);
+    return res.json({
+      success: true,
+      token,
+      user: formatUserResponse(user),
+      message: 'Google account linked successfully.'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc Complete onboarding for new Google-authenticated citizen
+// @route POST /api/auth/google/onboard
+const googleOnboard = async (req, res, next) => {
+  try {
+    const { credential, voterId, phone, name } = req.body;
+    if (!credential || typeof credential !== 'string' || !voterId || !phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Google credential, Voter ID, and mobile number are required.'
+      });
+    }
+
+    let tokenPayload;
+    try {
+      tokenPayload = await (customGoogleVerifier || verifyGoogleToken)(credential);
+    } catch (tokenErr) {
+      return res.status(401).json({
+        success: false,
+        message: tokenErr.message || 'Google token verification failed.'
+      });
+    }
+
+    const { sub, email, picture } = tokenPayload;
+
+    // Enforce .com or .in domain on new Google registrations
+    if (!email.endsWith('.com') && !email.endsWith('.in')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only email addresses ending with .com or .in are permitted for citizen registration.'
+      });
+    }
+
+    // Collision checks
+    const existingGoogle = await User.findOne({ googleId: sub });
+    if (existingGoogle) {
+      return res.status(400).json({
+        success: false,
+        message: 'This Google account is already registered. Please sign in.'
+      });
+    }
+
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this email already exists. Please verify your password to link your account.'
+      });
+    }
+
+    // Validate Voter ID
+    const cleanVoterId = typeof voterId === 'string' ? voterId.trim().toUpperCase() : '';
+    if (!/^[A-Z0-9]{10}$/.test(cleanVoterId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Voter ID must be a 10-digit alphanumeric code (e.g. ABC1234567).'
+      });
+    }
+
+    // Validate Mobile
+    const phoneCheck = validateAndNormalizePhone(phone);
+    if (!phoneCheck.valid) {
+      return res.status(400).json({
+        success: false,
+        message: phoneCheck.error
+      });
+    }
+    const normalizedPhone = phoneCheck.normalized;
+
+    // Check Voter ID uniqueness
+    const existingVoter = await User.findOne({ voterId: cleanVoterId });
+    if (existingVoter) {
+      return res.status(400).json({
+        success: false,
+        message: 'This Voter ID is already associated with an existing account.'
+      });
+    }
+
+    // Check Phone uniqueness
+    const existingPhone = await User.findOne({
+      phone: { $in: [normalizedPhone, phoneCheck.digits] }
+    });
+    if (existingPhone) {
+      return res.status(400).json({
+        success: false,
+        message: 'This mobile number is already registered.'
+      });
+    }
+
+    const citizenName = (name && typeof name === 'string' && name.trim()) || tokenPayload.name || 'Citizen';
+    if (citizenName.length < 2 || citizenName.length > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Full name must be between 2 and 100 characters in length.'
+      });
+    }
+
+    // Create exactly ONE User document
+    const newUser = new User({
+      name: citizenName,
+      email,
+      googleId: sub,
+      authProvider: 'google',
+      phone: normalizedPhone,
+      voterId: cleanVoterId,
+      role: 'citizen',
+      avatar: picture || '',
+      agreedToTerms: true
+    });
+
+    await newUser.save();
+
+    const token = generateToken(newUser);
+    console.log(`[AUTH] New citizen registered and linked via Google. ID: ${newUser._id}`);
+    return res.status(201).json({
+      success: true,
+      token,
+      user: formatUserResponse(newUser),
+      message: 'Citizen account created and linked with Google successfully.'
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      if (err.keyPattern?.voterId) {
+        return res.status(400).json({
+          success: false,
+          message: 'This Voter ID is already associated with an existing account.'
+        });
+      }
+      if (err.keyPattern?.phone) {
+        return res.status(400).json({
+          success: false,
+          message: 'This mobile number is already registered.'
+        });
+      }
+      if (err.keyPattern?.googleId) {
+        return res.status(400).json({
+          success: false,
+          message: 'This Google account is already registered.'
+        });
+      }
+      if (err.keyPattern?.email) {
+        return res.status(400).json({
+          success: false,
+          message: 'An account with this email already exists.'
+        });
+      }
+    }
+    next(err);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -863,5 +1321,10 @@ module.exports = {
   changePassword,
   verifyCitizenReset,
   confirmCitizenPasswordReset,
-  updateSettings
+  updateSettings,
+  getGoogleConfig,
+  googleAuth,
+  googleLink,
+  googleOnboard,
+  _setGoogleTokenVerifierForTesting
 };

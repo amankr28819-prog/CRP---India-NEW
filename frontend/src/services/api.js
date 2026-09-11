@@ -85,6 +85,63 @@ export const api = {
     return await handleResponse(res);
   },
 
+  getGoogleConfig: async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/google/config`);
+      return await handleResponse(res);
+    } catch {
+      return { success: false, clientId: '' };
+    }
+  },
+
+  googleAuth: async (credential) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential })
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please ensure the backend is running.');
+      }
+      throw err;
+    }
+  },
+
+  googleLink: async (credential, password) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/google/link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential, password })
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please ensure the backend is running.');
+      }
+      throw err;
+    }
+  },
+
+  googleOnboard: async (onboardData) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/google/onboard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(onboardData)
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please ensure the backend is running.');
+      }
+      throw err;
+    }
+  },
+
   // Complaints API
   submitComplaint: async (formData) => {
     try {

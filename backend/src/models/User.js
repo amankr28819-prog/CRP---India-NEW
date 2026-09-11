@@ -19,9 +19,23 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required: [
+        function () {
+          return !this.googleId;
+        },
+        'Password is required'
+      ],
       minlength: [8, 'Password must be at least 8 characters'],
       select: false
+    },
+    googleId: {
+      type: String,
+      default: undefined
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local'
     },
     phone: {
       type: String,
@@ -139,16 +153,33 @@ userSchema.index(
   { phone: 1 },
   {
     unique: true,
-    sparse: true,
     partialFilterExpression: { phone: { $type: 'string', $gt: '' } }
+  }
+);
+
+// Concurrency-safe unique index on voterId, safely excluding accounts without a voterId
+userSchema.index(
+  { voterId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { voterId: { $type: 'string', $gt: '' } }
+  }
+);
+
+// Concurrency-safe unique index on googleId, safely excluding accounts without Google IDs
+userSchema.index(
+  { googleId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { googleId: { $type: 'string', $gt: '' } }
   }
 );
 
 // Hash password before save
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+  if (!this.password || !this.isModified('password')) return next();
   // If already a valid bcrypt hash, bypass re-hashing
-  if (this.password && /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(this.password)) {
+  if (typeof this.password === 'string' && /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(this.password)) {
     return next();
   }
   try {
@@ -162,6 +193,7 @@ userSchema.pre('save', async function (next) {
 
 // Compare password helper
 userSchema.methods.comparePassword = async function (enteredPassword) {
+  if (!this.password) return false;
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

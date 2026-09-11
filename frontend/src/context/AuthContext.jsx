@@ -96,6 +96,16 @@ export const AuthProvider = ({ children }) => {
     return res;
   };
 
+  const setSession = (newToken, newUser) => {
+    localStorage.setItem('crp_token', newToken);
+    setToken(newToken);
+    setUser(newUser);
+    const activeRole = newUser.role === 'authority' ? 'authority' : 'citizen';
+    localStorage.setItem('crp_portal_role', activeRole);
+    setPortalRole(activeRole);
+    fetchUnreadNotifications();
+  };
+
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showPortalSwitchModal, setShowPortalSwitchModal] = useState(false);
   const [pendingPortalSwitch, setPendingPortalSwitch] = useState(null);
@@ -155,6 +165,7 @@ export const AuthProvider = ({ children }) => {
         isAuthority: user?.role === 'authority',
         loading,
         login,
+        setSession,
         register,
         logout,
         showLogoutModal,
