@@ -18,11 +18,24 @@ export default function AIAssistant() {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const isBusy = isLoading || isStreaming;
 
   const { user } = useAuth();
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const abortControllerRef = useRef(null);
+
+  // Clean up any ongoing stream on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   // Personalized Greeting: safe extraction of first name from auth context
   const citizenName = user?.name ? user.name.trim().split(' ')[0] : '';
@@ -40,21 +53,30 @@ export default function AIAssistant() {
         setTimeout(() => inputRef.current?.focus(), 150);
       }
     }
-  }, [messages, isOpen, isLoading]);
+  }, [messages, isOpen, isLoading, isStreaming]);
 
-  // Send message to backend Gemini endpoint
+  // Send message to backend Gemini endpoint with progressive streaming
   const handleSendMessage = async (textToSend) => {
     const text = (textToSend || inputValue).trim();
-    if (!text || isLoading) return;
+    if (!text || isBusy) return;
 
     setErrorMessage('');
     const userMessage = { role: 'user', text };
     const nextMessages = [...messages, userMessage];
 
-    // Optimistically update conversation UI
+    // Optimistically update conversation UI with the user turn
     setMessages(nextMessages);
     setInputValue('');
     setIsLoading(true);
+    setIsStreaming(false);
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    let hasReceivedFirstChunk = false;
 
     try {
       // Build conversation history (excluding current user turn)
@@ -63,22 +85,66 @@ export default function AIAssistant() {
         text: m.text
       }));
 
-      const res = await api.sendAIChatMessage(text, historyPayload);
+      await api.streamAIChatMessage(
+        text,
+        historyPayload,
+        (chunk, fullText) => {
+          if (!hasReceivedFirstChunk) {
+            hasReceivedFirstChunk = true;
+            // First chunk received: stop showing thinking indicator, start streaming
+            setIsLoading(false);
+            setIsStreaming(true);
+            setMessages((prev) => [
+              ...prev,
+              { role: 'model', text: fullText }
+            ]);
+          } else {
+            setMessages((prev) => {
+              if (prev.length === 0) return [{ role: 'model', text: fullText }];
+              const updated = [...prev];
+              const lastIdx = updated.length - 1;
+              if (updated[lastIdx].role === 'model') {
+                updated[lastIdx] = { ...updated[lastIdx], text: fullText };
+              } else {
+                updated.push({ role: 'model', text: fullText });
+              }
+              return updated;
+            });
+          }
+        },
+        controller.signal
+      );
 
-      if (res.success && res.message) {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'model', text: res.message }
-        ]);
-      } else {
-        setErrorMessage(res.message || 'Sorry, the AI Assistant is temporarily unavailable. Please try again later.');
+      // In the rare case the stream finished with zero text emitted
+      if (!hasReceivedFirstChunk) {
+        setIsLoading(false);
+        setErrorMessage('Sorry, no response was generated. Please try again.');
       }
     } catch (err) {
+      if (err.name === 'AbortError') {
+        // Chat was intentionally cancelled or cleared
+        return;
+      }
       console.error('[AI Assistant] Communication failed:', err);
+      setIsLoading(false);
+      setIsStreaming(false);
+
       const friendlyMsg = err.data?.message || err.message || 'Sorry, the AI Assistant is temporarily unavailable. Please try again later.';
       setErrorMessage(friendlyMsg);
+
+      // If failed mid-stream, remove incomplete model message so conversation history is never corrupted
+      if (hasReceivedFirstChunk) {
+        setMessages((prev) => {
+          if (prev.length > 0 && prev[prev.length - 1].role === 'model') {
+            return prev.slice(0, -1);
+          }
+          return prev;
+        });
+      }
     } finally {
       setIsLoading(false);
+      setIsStreaming(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -90,6 +156,12 @@ export default function AIAssistant() {
   };
 
   const handleClearChat = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
+    setIsStreaming(false);
     setMessages([]);
     setErrorMessage('');
     setInputValue('');
@@ -326,7 +398,7 @@ export default function AIAssistant() {
                     <button
                       key={idx}
                       type="button"
-                      disabled={isLoading}
+                      disabled={isBusy}
                       onClick={() => handleSendMessage(q)}
                       style={{
                         textAlign: 'left',
@@ -337,7 +409,7 @@ export default function AIAssistant() {
                         fontSize: '0.825rem',
                         color: 'var(--color-primary, #0B4F9C)',
                         fontWeight: 500,
-                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        cursor: isBusy ? 'not-allowed' : 'pointer',
                         transition: 'background-color 0.15s ease, border-color 0.15s ease',
                         boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
                       }}
@@ -486,7 +558,7 @@ export default function AIAssistant() {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask a question about CRP India..."
-              disabled={isLoading}
+              disabled={isBusy}
               maxLength={1000}
               style={{
                 flex: 1,
@@ -505,7 +577,7 @@ export default function AIAssistant() {
             <button
               type="button"
               onClick={() => handleSendMessage()}
-              disabled={isLoading || !inputValue.trim()}
+              disabled={isBusy || !inputValue.trim()}
               title="Send question"
               aria-label="Send question"
               style={{
@@ -518,8 +590,8 @@ export default function AIAssistant() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: (isLoading || !inputValue.trim()) ? 'not-allowed' : 'pointer',
-                opacity: (isLoading || !inputValue.trim()) ? 0.5 : 1,
+                cursor: (isBusy || !inputValue.trim()) ? 'not-allowed' : 'pointer',
+                opacity: (isBusy || !inputValue.trim()) ? 0.5 : 1,
                 transition: 'opacity 0.15s ease'
               }}
             >

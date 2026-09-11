@@ -418,10 +418,120 @@ export const api = {
       const res = await fetch(`${API_BASE_URL}/ai/chat`, {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({ message, history })
+        body: JSON.stringify({ message, history, stream: false })
       });
       return await handleResponse(res);
     } catch (err) {
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please check your network connection.');
+      }
+      throw err;
+    }
+  },
+
+  streamAIChatMessage: async (message, history = [], onChunk, signal) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/ai/chat`, {
+        method: 'POST',
+        headers: {
+          ...getHeaders(),
+          'Accept': 'text/event-stream'
+        },
+        body: JSON.stringify({ message, history, stream: true }),
+        signal
+      });
+
+      if (!res.ok) {
+        let errData;
+        try {
+          errData = await res.json();
+        } catch {
+          // Ignore json parse error if response is not json
+        }
+        const errorMsg = errData?.message || `Request failed with status ${res.status}`;
+        const err = new Error(errorMsg);
+        err.status = res.status;
+        err.data = errData;
+        throw err;
+      }
+
+      const contentType = res.headers.get('content-type') || '';
+      // Fallback if backend returned standard JSON instead of SSE
+      if (!contentType.includes('text/event-stream')) {
+        const data = await res.json();
+        const text = data?.message || '';
+        if (text && onChunk) {
+          onChunk(text, text);
+        }
+        return text;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+      let accumulatedText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith(':')) continue;
+
+          if (trimmed.startsWith('data:')) {
+            const dataStr = trimmed.slice(5).trim();
+            if (dataStr === '[DONE]') {
+              break;
+            }
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.error) {
+                throw new Error(parsed.error);
+              }
+              if (parsed.text) {
+                accumulatedText += parsed.text;
+                if (onChunk) {
+                  onChunk(parsed.text, accumulatedText);
+                }
+              }
+            } catch (jsonErr) {
+              if (jsonErr.message && !jsonErr.message.includes('JSON')) {
+                throw jsonErr;
+              }
+            }
+          }
+        }
+      }
+
+      // Process any trailing data in buffer
+      if (buffer.trim()) {
+        const trimmed = buffer.trim();
+        if (trimmed.startsWith('data:')) {
+          const dataStr = trimmed.slice(5).trim();
+          if (dataStr !== '[DONE]') {
+            try {
+              const parsed = JSON.parse(dataStr);
+              if (parsed.text) {
+                accumulatedText += parsed.text;
+                if (onChunk) {
+                  onChunk(parsed.text, accumulatedText);
+                }
+              }
+            } catch {}
+          }
+        }
+      }
+
+      return accumulatedText;
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        throw err;
+      }
       if (err.name === 'TypeError' && err.message.includes('fetch')) {
         throw new Error('Unable to connect to server. Please check your network connection.');
       }
