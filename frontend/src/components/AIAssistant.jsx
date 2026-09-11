@@ -13,6 +13,304 @@ const SUGGESTED_QUESTIONS = [
   'What can I do on the Citizen Dashboard?'
 ];
 
+function parseInline(text, isStreaming = false) {
+  if (!text) return [];
+
+  let processed = text;
+  if (isStreaming) {
+    const boldMatches = (processed.match(/\*\*/g) || []).length;
+    if (boldMatches % 2 !== 0) {
+      processed += '**';
+    }
+  }
+
+  const tokenRegex = /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g;
+  const parts = processed.split(tokenRegex);
+
+  return parts.map((part, i) => {
+    if (!part) return null;
+    if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
+      return (
+        <strong key={i} style={{ fontWeight: 600, color: 'var(--text-primary, #0F172A)' }}>
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith('*') && part.endsWith('*') && part.length >= 2) {
+      return <em key={i}>{part.slice(1, -1)}</em>;
+    }
+    if (part.startsWith('`') && part.endsWith('`') && part.length >= 2) {
+      return (
+        <code
+          key={i}
+          style={{
+            padding: '1px 5px',
+            backgroundColor: 'var(--bg-subtle, #F1F5F9)',
+            border: '1px solid var(--border-subtle, #E2E8F0)',
+            borderRadius: '4px',
+            fontSize: '0.825em',
+            fontFamily: 'monospace',
+            color: 'var(--color-primary, #0B4F9C)'
+          }}
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    if (part.startsWith('[') && part.includes('](') && part.endsWith(')')) {
+      const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      if (match) {
+        const linkText = match[1];
+        const href = match[2];
+        const isSafe =
+          href.startsWith('https://') ||
+          href.startsWith('http://') ||
+          href.startsWith('/') ||
+          href.startsWith('#') ||
+          href.startsWith('mailto:');
+        if (isSafe) {
+          const isExternal = href.startsWith('http://') || href.startsWith('https://');
+          return (
+            <a
+              key={i}
+              href={href}
+              target={isExternal ? '_blank' : undefined}
+              rel={isExternal ? 'noopener noreferrer' : undefined}
+              style={{
+                color: 'var(--color-primary, #0B4F9C)',
+                textDecoration: 'underline',
+                fontWeight: 500
+              }}
+            >
+              {linkText}
+            </a>
+          );
+        }
+      }
+    }
+    return part;
+  });
+}
+
+function parseMarkdownBlocks(rawText) {
+  if (!rawText) return [];
+
+  const lines = rawText.split('\n');
+  const blocks = [];
+  let currentList = null;
+  let inCodeBlock = false;
+  let codeBlockLang = '';
+  let codeLines = [];
+  let paragraphLines = [];
+
+  const flushParagraph = () => {
+    if (paragraphLines.length > 0) {
+      const text = paragraphLines.join('\n').trim();
+      if (text) {
+        blocks.push({ type: 'paragraph', text });
+      }
+      paragraphLines = [];
+    }
+  };
+
+  const flushList = () => {
+    if (currentList) {
+      blocks.push(currentList);
+      currentList = null;
+    }
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith('```')) {
+      if (inCodeBlock) {
+        blocks.push({ type: 'codeblock', lang: codeBlockLang, code: codeLines.join('\n') });
+        inCodeBlock = false;
+        codeLines = [];
+        codeBlockLang = '';
+      } else {
+        flushParagraph();
+        flushList();
+        inCodeBlock = true;
+        codeBlockLang = trimmed.slice(3).trim();
+        codeLines = [];
+      }
+      continue;
+    }
+
+    if (inCodeBlock) {
+      codeLines.push(line);
+      continue;
+    }
+
+    if (!trimmed) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,3})\s+(.+)$/);
+    if (headingMatch) {
+      flushParagraph();
+      flushList();
+      blocks.push({
+        type: 'heading',
+        level: headingMatch[1].length,
+        text: headingMatch[2]
+      });
+      continue;
+    }
+
+    const orderedMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
+    if (orderedMatch) {
+      flushParagraph();
+      if (!currentList || currentList.type !== 'ordered') {
+        flushList();
+        currentList = { type: 'ordered', items: [] };
+      }
+      currentList.items.push(orderedMatch[2]);
+      continue;
+    }
+
+    const unorderedMatch = trimmed.match(/^[-*]\s+(.+)$/);
+    if (unorderedMatch) {
+      flushParagraph();
+      if (!currentList || currentList.type !== 'unordered') {
+        flushList();
+        currentList = { type: 'unordered', items: [] };
+      }
+      currentList.items.push(unorderedMatch[1]);
+      continue;
+    }
+
+    // Regular line in paragraph
+    flushList();
+    paragraphLines.push(line);
+  }
+
+  flushParagraph();
+  flushList();
+
+  if (inCodeBlock && codeLines.length > 0) {
+    blocks.push({ type: 'codeblock', lang: codeBlockLang, code: codeLines.join('\n') });
+  }
+
+  return blocks;
+}
+
+const MarkdownContent = React.memo(function MarkdownContent({ content, isStreaming = false }) {
+  if (!content) return null;
+  const blocks = parseMarkdownBlocks(content);
+
+  return (
+    <div className="crp-ai-markdown" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {blocks.map((block, idx) => {
+        const isLastBlock = idx === blocks.length - 1;
+
+        if (block.type === 'heading') {
+          return (
+            <div
+              key={idx}
+              style={{
+                fontWeight: 700,
+                fontSize: block.level === 1 ? '1.05rem' : (block.level === 2 ? '0.975rem' : '0.925rem'),
+                color: 'var(--text-primary, #0F172A)',
+                marginTop: idx === 0 ? 0 : '4px',
+                marginBottom: 0,
+                lineHeight: 1.35
+              }}
+            >
+              {parseInline(block.text, isStreaming && isLastBlock)}
+            </div>
+          );
+        }
+
+        if (block.type === 'ordered') {
+          return (
+            <ol
+              key={idx}
+              style={{
+                margin: '2px 0 4px 0',
+                paddingLeft: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                lineHeight: 1.5
+              }}
+            >
+              {block.items.map((item, itemIdx) => (
+                <li key={itemIdx}>
+                  {parseInline(item, isStreaming && isLastBlock && itemIdx === block.items.length - 1)}
+                </li>
+              ))}
+            </ol>
+          );
+        }
+
+        if (block.type === 'unordered') {
+          return (
+            <ul
+              key={idx}
+              style={{
+                margin: '2px 0 4px 0',
+                paddingLeft: '18px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '4px',
+                lineHeight: 1.5
+              }}
+            >
+              {block.items.map((item, itemIdx) => (
+                <li key={itemIdx}>
+                  {parseInline(item, isStreaming && isLastBlock && itemIdx === block.items.length - 1)}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+
+        if (block.type === 'codeblock') {
+          return (
+            <pre
+              key={idx}
+              style={{
+                margin: '4px 0',
+                padding: '8px 12px',
+                backgroundColor: 'var(--bg-subtle, #F1F5F9)',
+                border: '1px solid var(--border-subtle, #E2E8F0)',
+                borderRadius: '6px',
+                fontSize: '0.8125rem',
+                overflowX: 'auto',
+                fontFamily: 'monospace',
+                whiteSpace: 'pre-wrap',
+                lineHeight: 1.45
+              }}
+            >
+              <code>{block.code}</code>
+            </pre>
+          );
+        }
+
+        // Default: paragraph
+        return (
+          <p
+            key={idx}
+            style={{
+              margin: 0,
+              lineHeight: 1.55,
+              whiteSpace: 'pre-wrap'
+            }}
+          >
+            {parseInline(block.text, isStreaming && isLastBlock)}
+          </p>
+        );
+      })}
+    </div>
+  );
+});
+
 // Memoized Chat Bubble to avoid re-rendering committed history messages during streaming
 const ChatMessageItem = React.memo(function ChatMessageItem({ msg }) {
   const isUser = msg.role === 'user';
@@ -58,12 +356,15 @@ const ChatMessageItem = React.memo(function ChatMessageItem({ msg }) {
             border: isUser ? 'none' : '1px solid var(--border-subtle, #E2E8F0)',
             fontSize: '0.875rem',
             lineHeight: 1.5,
-            whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
             boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
           }}
         >
-          {msg.text}
+          {isUser ? (
+            <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+          ) : (
+            <MarkdownContent content={msg.text} />
+          )}
         </div>
         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted, #94A3B8)', marginTop: '3px', padding: '0 4px' }}>
           {isUser ? 'You' : 'AI Assistant'}
@@ -607,12 +908,11 @@ export default function AIAssistant() {
                       border: '1px solid var(--border-subtle, #E2E8F0)',
                       fontSize: '0.875rem',
                       lineHeight: 1.5,
-                      whiteSpace: 'pre-wrap',
                       wordBreak: 'break-word',
                       boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                     }}
                   >
-                    {streamingText}
+                    <MarkdownContent content={streamingText} isStreaming={true} />
                   </div>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-muted, #94A3B8)', marginTop: '3px', padding: '0 4px' }}>
                     AI Assistant
