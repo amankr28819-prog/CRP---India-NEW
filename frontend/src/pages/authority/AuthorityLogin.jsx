@@ -106,7 +106,7 @@ export default function AuthorityLogin() {
             Municipal Authority Portal
           </h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            Officer Sign In • Complaint Management & Resolution System
+            Complaint Management & Resolution System
           </p>
         </div>
 

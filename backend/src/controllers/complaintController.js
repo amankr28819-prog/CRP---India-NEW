@@ -580,6 +580,7 @@ const updateComplaintStatus = async (req, res, next) => {
     complaint.statusHistory.push({
       status,
       changedBy: officerName,
+      department: req.user?.department || complaint.assignedDepartment || '',
       remark: auditRemark,
       timestamp: new Date()
     });
@@ -677,6 +678,7 @@ const assignComplaint = async (req, res, next) => {
     complaint.statusHistory.push({
       status: complaint.status,
       changedBy: officerName,
+      department: complaint.assignedDepartment || req.user?.department || '',
       remark: assignRemark,
       timestamp: new Date()
     });
@@ -1020,24 +1022,61 @@ const flagComplaintAsMisinformation = async (req, res, next) => {
       });
     }
 
+    const officerName = req.user?.name || 'Municipal Authority';
+    const officerDept = req.user?.department || complaint.assignedDepartment || 'Municipal Authority';
+    const actionDate = new Date();
+    const cleanExplanation = explanation.trim();
+
+    complaint.status = 'Misinformation';
     complaint.flagStatus = 'misinformation';
     complaint.flagDetails = {
       flagType: 'misinformation',
       flaggedBy: req.user._id,
-      flaggedByName: req.user.name,
-      flaggedAt: new Date(),
-      explanation: explanation.trim()
+      flaggedByName: officerName,
+      flaggedAt: actionDate,
+      explanation: cleanExplanation
     };
     complaint.flagHistory.push({
       flagStatus: 'misinformation',
       flagType: 'misinformation',
       changedBy: 'Municipal Authority',
-      changedByName: req.user.name,
-      explanation: explanation.trim(),
-      date: new Date()
+      changedByName: officerName,
+      department: officerDept,
+      explanation: cleanExplanation,
+      date: actionDate
+    });
+
+    complaint.statusHistory.push({
+      status: 'Misinformation',
+      changedBy: officerName,
+      department: officerDept,
+      remark: `Complaint marked as Misinformation. Reason: ${cleanExplanation}`,
+      timestamp: actionDate
+    });
+
+    complaint.remarks.push({
+      text: `Marked as Misinformation: ${cleanExplanation}`,
+      author: `${officerName} (${officerDept})`,
+      createdAt: actionDate
     });
 
     await complaint.save();
+
+    // Create citizen notification for Misinformation
+    if (complaint.citizen?.userId) {
+      try {
+        await Notification.create({
+          recipient: complaint.citizen.userId,
+          title: 'Complaint Marked as Misinformation',
+          message: `Your complaint ${complaint.referenceId} has been marked as misinformation by ${officerDept}. Reason: ${cleanExplanation}`,
+          type: 'misinformation',
+          complaintId: complaint._id,
+          referenceId: complaint.referenceId
+        });
+      } catch (notifErr) {
+        console.error('[NOTIFICATION] Failed to create misinformation notification:', notifErr);
+      }
+    }
 
     // Change 11 & 12: Accountable Warnings & Suspension for citizen
     if (complaint.citizen?.userId) {
@@ -1137,24 +1176,61 @@ const flagComplaintAsDuplicate = async (req, res, next) => {
       });
     }
 
+    const officerName = req.user?.name || 'Municipal Authority';
+    const officerDept = req.user?.department || complaint.assignedDepartment || 'Municipal Authority';
+    const actionDate = new Date();
+    const cleanExplanation = explanation.trim();
+
+    complaint.status = 'Duplicate';
     complaint.flagStatus = 'duplicate';
     complaint.flagDetails = {
       flagType: 'duplicate',
       flaggedBy: req.user._id,
-      flaggedByName: req.user.name,
-      flaggedAt: new Date(),
-      explanation: explanation.trim()
+      flaggedByName: officerName,
+      flaggedAt: actionDate,
+      explanation: cleanExplanation
     };
     complaint.flagHistory.push({
       flagStatus: 'duplicate',
       flagType: 'duplicate',
       changedBy: 'Municipal Authority',
-      changedByName: req.user.name,
-      explanation: explanation.trim(),
-      date: new Date()
+      changedByName: officerName,
+      department: officerDept,
+      explanation: cleanExplanation,
+      date: actionDate
+    });
+
+    complaint.statusHistory.push({
+      status: 'Duplicate',
+      changedBy: officerName,
+      department: officerDept,
+      remark: `Complaint marked as Duplicate. Reason: ${cleanExplanation}`,
+      timestamp: actionDate
+    });
+
+    complaint.remarks.push({
+      text: `Marked as Duplicate: ${cleanExplanation}`,
+      author: `${officerName} (${officerDept})`,
+      createdAt: actionDate
     });
 
     await complaint.save();
+
+    // Create citizen notification for Duplicate
+    if (complaint.citizen?.userId) {
+      try {
+        await Notification.create({
+          recipient: complaint.citizen.userId,
+          title: 'Complaint Marked as Duplicate',
+          message: `Your complaint ${complaint.referenceId} has been marked as duplicate by ${officerDept}. Reason: ${cleanExplanation}`,
+          type: 'duplicate',
+          complaintId: complaint._id,
+          referenceId: complaint.referenceId
+        });
+      } catch (notifErr) {
+        console.error('[NOTIFICATION] Failed to create duplicate notification:', notifErr);
+      }
+    }
 
     // Change 11 & 12: Accountable Warnings & Suspension for citizen
     if (complaint.citizen?.userId) {

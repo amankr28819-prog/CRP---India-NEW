@@ -518,7 +518,7 @@ export default function Navbar() {
                   )}
                 </div>
               </>
-            ) : (
+            ) : location.pathname === '/authority/login' ? null : (
               <Link to="/authority/login" className="btn btn-secondary btn-sm">
                 <Building2 size={14} />
                 <span>Officer Sign In</span>
@@ -1639,7 +1639,7 @@ export default function Navbar() {
                     <LogOut size={16} />
                     <span>Sign Out ({user?.name})</span>
                   </button>
-                ) : (
+                ) : location.pathname === '/authority/login' ? null : (
                   <Link
                     to="/authority/login"
                     onClick={() => setMobileMenuOpen(false)}

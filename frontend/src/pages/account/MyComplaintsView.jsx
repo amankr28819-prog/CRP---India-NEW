@@ -80,7 +80,7 @@ export default function MyComplaintsView() {
     }
   };
 
-  const statusTabs = ['All', 'Submitted', 'In Progress', 'Resolved', 'Rejected'];
+  const statusTabs = ['All', 'Submitted', 'In Progress', 'Resolved', 'Duplicate', 'Misinformation', 'Rejected'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -423,6 +423,45 @@ export default function MyComplaintsView() {
                     <CheckCircle2 size={16} style={{ color: 'var(--color-accent-green, #15803D)', flexShrink: 0 }} />
                     <div style={{ fontSize: '0.8125rem', color: 'var(--color-accent-green, #15803D)' }}>
                       <strong>Resolved:</strong> {c.resolutionNote || 'Civic defect resolved and verified by municipal authority.'}
+                    </div>
+                  </div>
+                )}
+
+                {/* If Duplicate or Misinformation, showcase brief status notice */}
+                {c.status === 'Duplicate' && (
+                  <div
+                    style={{
+                      backgroundColor: 'rgba(217, 119, 6, 0.1)',
+                      border: '1px solid rgba(217, 119, 6, 0.3)',
+                      borderRadius: '6px',
+                      padding: '10px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px'
+                    }}
+                  >
+                    <AlertTriangle size={16} style={{ color: '#D97706', flexShrink: 0 }} />
+                    <div style={{ fontSize: '0.8125rem', color: '#D97706' }}>
+                      <strong>Duplicate Grievance:</strong> Marked as duplicate by municipal authority. Check timeline for official details.
+                    </div>
+                  </div>
+                )}
+
+                {c.status === 'Misinformation' && (
+                  <div
+                    style={{
+                      backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                      border: '1px solid rgba(220, 38, 38, 0.3)',
+                      borderRadius: '6px',
+                      padding: '10px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px'
+                    }}
+                  >
+                    <AlertTriangle size={16} style={{ color: '#DC2626', flexShrink: 0 }} />
+                    <div style={{ fontSize: '0.8125rem', color: '#DC2626' }}>
+                      <strong>Misinformation:</strong> Marked as misinformation by civic authorities. Check timeline for official details.
                     </div>
                   </div>
                 )}

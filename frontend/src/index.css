@@ -414,6 +414,18 @@ input::-ms-clear {
   border: 1px solid rgba(185, 28, 28, 0.2);
 }
 
+.badge-misinformation {
+  background-color: var(--color-accent-red-bg);
+  color: #DC2626;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+}
+
+.badge-duplicate {
+  background-color: var(--color-accent-amber-bg);
+  color: #D97706;
+  border: 1px solid rgba(217, 119, 6, 0.25);
+}
+
 /* Card / Box surface */
 .surface-box {
   background-color: var(--bg-surface);

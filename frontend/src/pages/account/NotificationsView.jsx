@@ -12,7 +12,9 @@ import {
   ExternalLink,
   CheckCheck,
   Filter,
-  Loader2
+  Loader2,
+  AlertCircle,
+  Copy
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -110,6 +112,18 @@ export default function NotificationsView() {
           icon: <ShieldCheck size={18} />,
           bg: 'var(--color-accent-green-bg, #DCFCE7)',
           color: 'var(--color-accent-green, #15803D)'
+        };
+      case 'misinformation':
+        return {
+          icon: <AlertCircle size={18} />,
+          bg: 'rgba(220, 38, 38, 0.12)',
+          color: '#DC2626'
+        };
+      case 'duplicate':
+        return {
+          icon: <Copy size={18} />,
+          bg: 'rgba(217, 119, 6, 0.12)',
+          color: '#D97706'
         };
       default:
         return {

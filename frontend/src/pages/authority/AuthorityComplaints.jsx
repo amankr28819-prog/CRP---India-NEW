@@ -230,6 +230,8 @@ export default function AuthorityComplaints() {
               <option value="Assigned">Assigned</option>
               <option value="In Progress">In Progress</option>
               <option value="Resolved">Resolved</option>
+              <option value="Duplicate">Duplicate</option>
+              <option value="Misinformation">Misinformation</option>
               <option value="Rejected">Rejected</option>
             </select>
           </div>

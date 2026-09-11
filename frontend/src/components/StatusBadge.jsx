@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, CheckCircle2, AlertCircle, PlayCircle, UserCheck, XCircle } from 'lucide-react';
+import { Clock, CheckCircle2, AlertCircle, PlayCircle, UserCheck, XCircle, Copy } from 'lucide-react';
 
 export default function StatusBadge({ status, size = 'normal' }) {
   const normalized = status || 'Submitted';
@@ -30,6 +30,14 @@ export default function StatusBadge({ status, size = 'normal' }) {
     case 'Rejected':
       badgeClass = 'badge-rejected';
       Icon = XCircle;
+      break;
+    case 'Misinformation':
+      badgeClass = 'badge-misinformation';
+      Icon = AlertCircle;
+      break;
+    case 'Duplicate':
+      badgeClass = 'badge-duplicate';
+      Icon = Copy;
       break;
     default:
       badgeClass = 'badge-submitted';

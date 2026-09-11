@@ -13,7 +13,8 @@ import {
   Building,
   Calendar,
   FileText,
-  ShieldAlert
+  ShieldAlert,
+  Copy
 } from 'lucide-react';
 import { getImageUrl } from '../services/api';
 
@@ -27,6 +28,8 @@ export default function Timeline({ history = [], currentStatus = null, complaint
   const STANDARD_STAGES = ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved'];
 
   const isRejected = activeStatus === 'Rejected' || history.some((h) => h.status === 'Rejected');
+  const isDuplicate = activeStatus === 'Duplicate' || complaint?.flagStatus === 'duplicate' || history.some((h) => h.status === 'Duplicate');
+  const isMisinformation = activeStatus === 'Misinformation' || complaint?.flagStatus === 'misinformation' || history.some((h) => h.status === 'Misinformation');
 
   let stages = STANDARD_STAGES;
   if (isRejected) {
@@ -35,6 +38,16 @@ export default function Timeline({ history = [], currentStatus = null, complaint
       history.some((h) => h.status === st)
     );
     stages = reachedBefore.length > 0 ? [...reachedBefore, 'Rejected'] : ['Submitted', 'Under Review', 'Rejected'];
+  } else if (isDuplicate) {
+    const reachedBefore = ['Submitted', 'Under Review', 'Assigned', 'In Progress'].filter((st) =>
+      history.some((h) => h.status === st)
+    );
+    stages = reachedBefore.length > 0 ? [...reachedBefore, 'Duplicate'] : ['Submitted', 'Duplicate'];
+  } else if (isMisinformation) {
+    const reachedBefore = ['Submitted', 'Under Review', 'Assigned', 'In Progress'].filter((st) =>
+      history.some((h) => h.status === st)
+    );
+    stages = reachedBefore.length > 0 ? [...reachedBefore, 'Misinformation'] : ['Submitted', 'Misinformation'];
   }
 
   const currentIndex = stages.indexOf(activeStatus);
@@ -58,14 +71,27 @@ export default function Timeline({ history = [], currentStatus = null, complaint
   const toggleStage = (stage) => {
     setExpandedStages((prev) => ({
       ...prev,
-      [stage]: !prev[stage]
+      [stage]: prev[stage] !== undefined ? !prev[stage] : false
     }));
   };
 
   // Find most relevant history record for a given stage
   const getStageHistory = (stage) => {
-    if (!history || history.length === 0) return null;
-    return history.slice().reverse().find((h) => h.status === stage) || null;
+    if (history && history.length > 0) {
+      const match = history.slice().reverse().find((h) => h.status === stage);
+      if (match) return match;
+    }
+    // Fallback for Duplicate / Misinformation if legacy flagDetails exists
+    if ((stage === 'Duplicate' || stage === 'Misinformation') && complaint?.flagDetails) {
+      return {
+        status: stage,
+        changedBy: complaint.flagDetails.flaggedBy || 'Civic Authority Officer',
+        department: complaint.assignedDepartment || 'Municipal Authority',
+        remark: complaint.flagDetails.reason || complaint.flagDetails.explanation || '',
+        timestamp: complaint.flagDetails.flaggedAt
+      };
+    }
+    return null;
   };
 
   return (
@@ -73,7 +99,7 @@ export default function Timeline({ history = [], currentStatus = null, complaint
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
         {stages.map((stage, idx) => {
           const state = getStageState(stage, idx);
-          const isExpanded = !!expandedStages[stage];
+          const isExpanded = expandedStages[stage] !== undefined ? !!expandedStages[stage] : (state === 'current' || stage === 'Duplicate' || stage === 'Misinformation');
           const isLast = idx === stages.length - 1;
           const histEntry = getStageHistory(stage);
 
@@ -103,6 +129,22 @@ export default function Timeline({ history = [], currentStatus = null, complaint
               badgeBg = 'rgba(220, 38, 38, 0.12)';
               badgeColor = '#DC2626';
               titleColor = '#DC2626';
+            } else if (stage === 'Misinformation') {
+              nodeBg = '#DC2626';
+              nodeBorder = '#DC2626';
+              nodeColor = '#FFFFFF';
+              badgeText = 'Misinformation';
+              badgeBg = 'rgba(220, 38, 38, 0.12)';
+              badgeColor = '#DC2626';
+              titleColor = '#DC2626';
+            } else if (stage === 'Duplicate') {
+              nodeBg = '#D97706';
+              nodeBorder = '#D97706';
+              nodeColor = '#FFFFFF';
+              badgeText = 'Duplicate';
+              badgeBg = 'rgba(217, 119, 6, 0.12)';
+              badgeColor = '#D97706';
+              titleColor = '#D97706';
             } else {
               nodeBg = 'var(--color-primary, #2563EB)';
               nodeBorder = 'var(--color-primary, #2563EB)';
@@ -158,15 +200,17 @@ export default function Timeline({ history = [], currentStatus = null, complaint
                       justifyContent: 'center',
                       color: nodeColor,
                       flexShrink: 0,
-                      boxShadow: state === 'current' ? '0 0 0 3px rgba(37, 99, 235, 0.2)' : 'none',
+                      boxShadow: state === 'current' ? `0 0 0 3px ${stage === 'Misinformation' || stage === 'Rejected' ? 'rgba(220, 38, 38, 0.2)' : stage === 'Duplicate' ? 'rgba(217, 119, 6, 0.2)' : 'rgba(37, 99, 235, 0.2)'}` : 'none',
                       transition: 'all 0.2s ease'
                     }}
                   >
                     {state === 'completed' ? (
                       <Check size={14} strokeWidth={3} />
                     ) : state === 'current' ? (
-                      stage === 'Rejected' ? (
+                      stage === 'Rejected' || stage === 'Misinformation' ? (
                         <XCircle size={15} strokeWidth={2.5} />
+                      ) : stage === 'Duplicate' ? (
+                        <Copy size={13} strokeWidth={2.5} />
                       ) : (
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#FFFFFF' }} />
                       )
@@ -256,7 +300,15 @@ export default function Timeline({ history = [], currentStatus = null, complaint
                           <Calendar size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                           <div>
                             <span style={{ color: 'var(--text-muted)' }}>
-                              {stage === 'Submitted' ? 'Submitted on: ' : stage === 'Resolved' ? 'Resolved on: ' : 'Updated on: '}
+                              {stage === 'Submitted'
+                                ? 'Submitted on: '
+                                : stage === 'Resolved'
+                                ? 'Resolved on: '
+                                : stage === 'Duplicate'
+                                ? 'Marked Duplicate on: '
+                                : stage === 'Misinformation'
+                                ? 'Marked Misinformation on: '
+                                : 'Updated on: '}
                             </span>
                             <strong style={{ color: 'var(--text-primary)' }}>
                               {new Date(
@@ -280,7 +332,7 @@ export default function Timeline({ history = [], currentStatus = null, complaint
                         <User size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                         <div>
                           <span style={{ color: 'var(--text-muted)' }}>
-                            {stage === 'Submitted' ? 'Submitted by: ' : 'Handled by: '}
+                            {stage === 'Submitted' ? 'Submitted by: ' : 'Officer: '}
                           </span>
                           <strong style={{ color: 'var(--text-primary)' }}>
                             {histEntry?.changedBy ||
@@ -288,28 +340,31 @@ export default function Timeline({ history = [], currentStatus = null, complaint
                                 ? (complaint?.citizen?.name || 'Citizen Complainant')
                                 : stage === 'Resolved' && complaint?.resolvedBy
                                 ? complaint.resolvedBy
-                                : 'Civic Authority Desk')}
+                                : 'Civic Authority Officer')}
                           </strong>
                         </div>
                       </div>
 
-                      {/* Assigned stage specific details */}
-                      {stage === 'Assigned' && (complaint?.assignedDepartment || complaint?.assignedOfficer) && (
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                          <Building size={14} style={{ color: 'var(--text-muted)', marginTop: '2px', flexShrink: 0 }} />
+                      {/* Department */}
+                      {(histEntry?.department || complaint?.assignedDepartment) && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Building size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                           <div>
-                            {complaint?.assignedDepartment && (
-                              <div>
-                                <span style={{ color: 'var(--text-muted)' }}>Assigned Department: </span>
-                                <strong>{complaint.assignedDepartment}</strong>
-                              </div>
-                            )}
-                            {complaint?.assignedOfficer && complaint.assignedOfficer !== 'Unassigned' && (
-                              <div>
-                                <span style={{ color: 'var(--text-muted)' }}>Assigned Officer: </span>
-                                <strong>{complaint.assignedOfficer}</strong>
-                              </div>
-                            )}
+                            <span style={{ color: 'var(--text-muted)' }}>Department: </span>
+                            <strong style={{ color: 'var(--text-primary)' }}>
+                              {histEntry?.department || complaint?.assignedDepartment}
+                            </strong>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Assigned stage specific details */}
+                      {stage === 'Assigned' && complaint?.assignedOfficer && complaint.assignedOfficer !== 'Unassigned' && (
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                          <User size={14} style={{ color: 'var(--text-muted)', marginTop: '2px', flexShrink: 0 }} />
+                          <div>
+                            <span style={{ color: 'var(--text-muted)' }}>Assigned Officer: </span>
+                            <strong>{complaint.assignedOfficer}</strong>
                           </div>
                         </div>
                       )}
@@ -323,11 +378,25 @@ export default function Timeline({ history = [], currentStatus = null, complaint
                             borderRadius: '6px',
                             backgroundColor: 'var(--bg-surface)',
                             border: '1px solid var(--border-subtle)',
-                            borderLeft: `3px solid ${state === 'current' ? 'var(--color-primary)' : '#16A34A'}`
+                            borderLeft: `3px solid ${
+                              stage === 'Misinformation' || stage === 'Rejected'
+                                ? '#DC2626'
+                                : stage === 'Duplicate'
+                                ? '#D97706'
+                                : state === 'current'
+                                ? 'var(--color-primary)'
+                                : '#16A34A'
+                            }`
                           }}
                         >
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '2px', fontWeight: 600 }}>
-                            {stage === 'Submitted' ? 'Initial Intake / Summary' : 'Officer Remarks / Notes'}
+                            {stage === 'Submitted'
+                              ? 'Initial Intake / Summary'
+                              : stage === 'Duplicate'
+                              ? 'Duplicate Grievance Remark / Reason'
+                              : stage === 'Misinformation'
+                              ? 'Misinformation Grievance Remark / Reason'
+                              : 'Officer Remarks / Notes'}
                           </div>
                           <div style={{ color: 'var(--text-primary)', wordBreak: 'break-word' }}>
                             {histEntry?.remark || complaint?.description}

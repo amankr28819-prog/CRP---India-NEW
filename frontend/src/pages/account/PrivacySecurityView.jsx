@@ -204,23 +204,61 @@ export default function PrivacySecurityView() {
             </div>
             <ExternalLink size={14} style={{ color: 'var(--text-muted)' }} />
           </Link>
+        </div>
+      </div>
+
+      {/* Active Session Management */}
+      <div
+        style={{
+          backgroundColor: 'var(--bg-surface)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: '12px',
+          padding: '24px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <LogOut size={18} style={{ color: 'var(--color-status-rejected, #DC2626)' }} />
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                Active Session Management
+              </h3>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, maxWidth: '560px', lineHeight: 1.5 }}>
+              Terminate your authenticated session and revoke active security access tokens across this device and all other registered access points.
+            </p>
+          </div>
 
           <button
             type="button"
             onClick={requestLogout}
             className="btn btn-secondary"
             style={{
-              justifyContent: 'space-between',
-              padding: '12px 16px',
-              color: 'var(--color-status-rejected)',
-              borderColor: 'rgba(220, 38, 38, 0.3)'
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              fontFamily: 'inherit',
+              color: 'var(--color-status-rejected, #DC2626)',
+              borderColor: 'var(--border-subtle)',
+              backgroundColor: 'var(--bg-surface)',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.08)';
+              e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--bg-surface)';
+              e.currentTarget.style.borderColor = 'var(--border-subtle)';
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <LogOut size={16} />
-              <span>Sign Out Everywhere</span>
-            </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>End Session</span>
+            <LogOut size={16} />
+            <span>Sign Out Everywhere</span>
           </button>
         </div>
       </div>

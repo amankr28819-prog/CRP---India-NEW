@@ -3,12 +3,16 @@ const mongoose = require('mongoose');
 const statusHistorySchema = new mongoose.Schema({
   status: {
     type: String,
-    enum: ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved', 'Rejected'],
+    enum: ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved', 'Rejected', 'Duplicate', 'Misinformation'],
     required: true
   },
   changedBy: {
     type: String,
     default: 'System / Citizen'
+  },
+  department: {
+    type: String,
+    default: ''
   },
   remark: {
     type: String,
@@ -92,7 +96,7 @@ const complaintSchema = new mongoose.Schema(
     ],
     status: {
       type: String,
-      enum: ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved', 'Rejected'],
+      enum: ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved', 'Rejected', 'Duplicate', 'Misinformation'],
       default: 'Submitted',
       index: true
     },
