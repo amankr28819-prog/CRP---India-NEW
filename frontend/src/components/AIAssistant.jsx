@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, X, Send, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
+import { X, Send, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import aiAssistantAvatar from '../assets/ai-assistant-girl.jpg';
 
 const SUGGESTED_QUESTIONS = [
   'How do I submit a complaint?',
@@ -9,7 +10,7 @@ const SUGGESTED_QUESTIONS = [
   'What does Under Review mean?',
   'How do I upload complaint evidence?',
   'How does complaint resolution work?',
-  'What can I do on the citizen dashboard?'
+  'What can I do on the Citizen Dashboard?'
 ];
 
 export default function AIAssistant() {
@@ -23,7 +24,7 @@ export default function AIAssistant() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Personalized Greeting
+  // Personalized Greeting: safe extraction of first name from auth context
   const citizenName = user?.name ? user.name.trim().split(' ')[0] : '';
   const greetingHeadline = citizenName ? `Hello ${citizenName}! 👋` : 'Hello! 👋';
 
@@ -35,7 +36,6 @@ export default function AIAssistant() {
   useEffect(() => {
     if (isOpen) {
       scrollToBottom();
-      // Focus input when opened on desktop
       if (window.innerWidth > 640) {
         setTimeout(() => inputRef.current?.focus(), 150);
       }
@@ -97,7 +97,7 @@ export default function AIAssistant() {
 
   return (
     <div className="crp-ai-assistant-container" style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 999 }}>
-      {/* Floating Launcher Button */}
+      {/* Floating Launcher Button with AI Girl Avatar */}
       {!isOpen && (
         <button
           type="button"
@@ -113,7 +113,7 @@ export default function AIAssistant() {
             color: '#FFFFFF',
             border: 'none',
             borderRadius: '50px',
-            padding: '12px 20px',
+            padding: '8px 18px 8px 10px',
             fontSize: '0.925rem',
             fontWeight: 600,
             boxShadow: '0 8px 24px rgba(11, 79, 156, 0.35)',
@@ -122,7 +122,33 @@ export default function AIAssistant() {
             fontFamily: 'inherit'
           }}
         >
-          <Sparkles size={18} style={{ color: '#F8FAFC' }} />
+          <div style={{ position: 'relative', width: '34px', height: '34px' }}>
+            <img
+              src={aiAssistantAvatar}
+              alt="AI Assistant"
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '2px solid #FFFFFF',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                display: 'block'
+              }}
+            />
+            <span
+              style={{
+                position: 'absolute',
+                bottom: '0px',
+                right: '0px',
+                width: '9px',
+                height: '9px',
+                backgroundColor: '#10B981',
+                borderRadius: '50%',
+                border: '1.5px solid #FFFFFF'
+              }}
+            />
+          </div>
           <span>AI Assistant</span>
         </button>
       )}
@@ -134,8 +160,8 @@ export default function AIAssistant() {
           style={{
             width: '380px',
             maxWidth: 'calc(100vw - 32px)',
-            height: '540px',
-            maxHeight: 'calc(100vh - 100px)',
+            height: '560px',
+            maxHeight: 'calc(100vh - 90px)',
             backgroundColor: 'var(--bg-surface, #FFFFFF)',
             border: '1px solid var(--border-subtle, #E2E8F0)',
             borderRadius: '16px',
@@ -149,7 +175,7 @@ export default function AIAssistant() {
           {/* Header */}
           <div
             style={{
-              padding: '14px 18px',
+              padding: '12px 16px',
               backgroundColor: 'var(--color-primary, #0B4F9C)',
               color: '#FFFFFF',
               display: 'flex',
@@ -159,26 +185,38 @@ export default function AIAssistant() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  backgroundColor: 'rgba(255, 255, 255, 0.18)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Bot size={18} />
+              <div style={{ position: 'relative', width: '38px', height: '38px' }}>
+                <img
+                  src={aiAssistantAvatar}
+                  alt="CRP AI Assistant"
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid rgba(255, 255, 255, 0.9)',
+                    display: 'block'
+                  }}
+                />
+                <span
+                  style={{
+                    position: 'absolute',
+                    bottom: '1px',
+                    right: '1px',
+                    width: '9px',
+                    height: '9px',
+                    backgroundColor: '#10B981',
+                    borderRadius: '50%',
+                    border: '1.5px solid #0B4F9C'
+                  }}
+                />
               </div>
               <div>
                 <div style={{ fontSize: '0.925rem', fontWeight: 600, lineHeight: 1.2 }}>
                   CRP India AI Assistant
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.8)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10B981' }} />
-                  <span>Powered by Gemini</span>
+                <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.85)', display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
+                  <span>Official Civic Support</span>
                 </div>
               </div>
             </div>
@@ -193,7 +231,7 @@ export default function AIAssistant() {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: 'rgba(255, 255, 255, 0.8)',
+                    color: 'rgba(255, 255, 255, 0.85)',
                     cursor: 'pointer',
                     padding: '6px',
                     borderRadius: '6px',
@@ -253,11 +291,27 @@ export default function AIAssistant() {
                 boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
               }}
             >
-              <div style={{ fontWeight: 700, color: 'var(--text-primary, #0F172A)', marginBottom: '4px', fontSize: '0.95rem' }}>
-                {greetingHeadline}
-              </div>
-              <div>
-                I'm the CRP India AI Assistant. I can help you understand and use the CRP India platform. What would you like to know?
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                <img
+                  src={aiAssistantAvatar}
+                  alt="AI Assistant Avatar"
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid var(--color-primary, #0B4F9C)',
+                    flexShrink: 0
+                  }}
+                />
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary, #0F172A)', fontSize: '0.95rem' }}>
+                    {greetingHeadline}
+                  </div>
+                  <div style={{ fontSize: '0.825rem', color: 'var(--text-muted, #64748B)' }}>
+                    I'm your CRP India AI Assistant. How can I help you today?
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -304,30 +358,55 @@ export default function AIAssistant() {
                   key={index}
                   style={{
                     display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: isUser ? 'flex-end' : 'flex-start'
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                    justifyContent: isUser ? 'flex-end' : 'flex-start',
+                    gap: '8px'
                   }}
                 >
+                  {!isUser && (
+                    <img
+                      src={aiAssistantAvatar}
+                      alt="AI"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        border: '1.5px solid var(--border-subtle, #E2E8F0)',
+                        flexShrink: 0,
+                        marginTop: '2px'
+                      }}
+                    />
+                  )}
                   <div
                     style={{
-                      maxWidth: '85%',
-                      padding: '10px 14px',
-                      borderRadius: isUser ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
-                      backgroundColor: isUser ? 'var(--color-primary, #0B4F9C)' : 'var(--bg-surface, #FFFFFF)',
-                      color: isUser ? '#FFFFFF' : 'var(--text-primary, #0F172A)',
-                      border: isUser ? 'none' : '1px solid var(--border-subtle, #E2E8F0)',
-                      fontSize: '0.875rem',
-                      lineHeight: 1.5,
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
+                      maxWidth: '82%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: isUser ? 'flex-end' : 'flex-start'
                     }}
                   >
-                    {msg.text}
+                    <div
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: isUser ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
+                        backgroundColor: isUser ? 'var(--color-primary, #0B4F9C)' : 'var(--bg-surface, #FFFFFF)',
+                        color: isUser ? '#FFFFFF' : 'var(--text-primary, #0F172A)',
+                        border: isUser ? 'none' : '1px solid var(--border-subtle, #E2E8F0)',
+                        fontSize: '0.875rem',
+                        lineHeight: 1.5,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
+                      }}
+                    >
+                      {msg.text}
+                    </div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted, #94A3B8)', marginTop: '3px', padding: '0 4px' }}>
+                      {isUser ? 'You' : 'AI Assistant'}
+                    </span>
                   </div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted, #94A3B8)', marginTop: '3px', padding: '0 4px' }}>
-                    {isUser ? 'You' : 'AI Assistant'}
-                  </span>
                 </div>
               );
             })}
@@ -335,6 +414,16 @@ export default function AIAssistant() {
             {/* Loading Indicator */}
             {isLoading && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', backgroundColor: 'var(--bg-surface, #FFFFFF)', border: '1px solid var(--border-subtle, #E2E8F0)', borderRadius: '14px 14px 14px 2px', width: 'fit-content', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)' }}>
+                <img
+                  src={aiAssistantAvatar}
+                  alt="AI Thinking"
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    objectFit: 'cover'
+                  }}
+                />
                 <Sparkles size={16} className="crp-ai-spin" style={{ color: 'var(--color-primary, #0B4F9C)' }} />
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary, #475569)', fontStyle: 'italic' }}>
                   Thinking...
@@ -342,11 +431,37 @@ export default function AIAssistant() {
               </div>
             )}
 
-            {/* Error Message Notice */}
+            {/* Error Message Notice with Retry */}
             {errorMessage && (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '10px 12px', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', fontSize: '0.8125rem', color: 'var(--color-accent-urgent, #EF4444)' }}>
-                <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span>{errorMessage}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 14px', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', fontSize: '0.8125rem', color: 'var(--color-accent-urgent, #EF4444)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <span>{errorMessage}</span>
+                </div>
+                {messages.length > 0 && messages[messages.length - 1].role === 'user' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const lastUserMsg = messages[messages.length - 1].text;
+                      // Remove failed user turn and resend
+                      setMessages((prev) => prev.slice(0, -1));
+                      handleSendMessage(lastUserMsg);
+                    }}
+                    style={{
+                      alignSelf: 'flex-start',
+                      padding: '4px 10px',
+                      backgroundColor: 'transparent',
+                      border: '1px solid var(--color-accent-urgent, #EF4444)',
+                      borderRadius: '4px',
+                      color: 'var(--color-accent-urgent, #EF4444)',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Retry
+                  </button>
+                )}
               </div>
             )}
 

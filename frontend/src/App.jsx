@@ -213,7 +213,7 @@ function AppLayout() {
         </Routes>
       </main>
       {!isRoleSelection && <Footer />}
-      {['/home', '/about', '/help', '/privacy', '/faqs'].includes(location.pathname) && <AIAssistant />}
+      {['/home', '/about', '/help', '/privacy', '/faqs', '/terms'].includes(location.pathname) && <AIAssistant />}
       <LogoutConfirmModal />
       <PortalSwitchModal />
     </div>
