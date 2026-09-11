@@ -44,6 +44,19 @@ export default function CitizenRegister() {
       return;
     }
 
+    // Clean and validate email format and domain (.com or .in only)
+    const cleanEmail = formData.email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail) || cleanEmail.length > 254) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    if (!cleanEmail.endsWith('.com') && !cleanEmail.endsWith('.in')) {
+      setError('Email must end with .com or .in.');
+      return;
+    }
+
     // Clean and validate mobile number
     const cleanPhone = formData.phone.trim();
     if (!/^\d+$/.test(cleanPhone)) {
@@ -93,7 +106,7 @@ export default function CitizenRegister() {
     try {
       const res = await register({
         name: formData.name,
-        email: formData.email,
+        email: cleanEmail,
         phone: `+91${cleanPhone}`,
         voterId: cleanVoterId,
         password: formData.password,
@@ -231,6 +244,9 @@ export default function CitizenRegister() {
               className="form-input"
               required
             />
+            <div className="form-hint" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+              Must be a valid email ending with .com or .in
+            </div>
           </div>
 
           <div className="form-group">

@@ -96,6 +96,13 @@ const register = async (req, res, next) => {
       });
     }
 
+    if (!cleanEmail.endsWith('.com') && !cleanEmail.endsWith('.in')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email must end with .com or .in.'
+      });
+    }
+
     // Validate mobile number
     const phoneCheck = validateAndNormalizePhone(phone);
     if (!phoneCheck.valid) {

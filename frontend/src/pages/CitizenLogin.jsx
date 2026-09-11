@@ -254,26 +254,9 @@ export default function CitizenLogin() {
             </div>
 
             <div className="form-group">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label className="form-label" htmlFor="citizenPassword" style={{ margin: 0 }}>
-                  Password <span style={{ color: 'var(--color-accent-urgent)' }}>*</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={handleOpenResetModal}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--color-primary)',
-                    fontSize: '0.8125rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    padding: 0
-                  }}
-                >
-                  Forgot Password?
-                </button>
-              </div>
+              <label className="form-label" htmlFor="citizenPassword">
+                Password <span style={{ color: 'var(--color-accent-urgent)' }}>*</span>
+              </label>
               <div style={{ position: 'relative' }}>
                 <input
                   id="citizenPassword"
@@ -311,6 +294,23 @@ export default function CitizenLogin() {
                   }}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={handleOpenResetModal}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-primary)',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: '2px 0'
+                  }}
+                >
+                  Forgot Password?
                 </button>
               </div>
             </div>
