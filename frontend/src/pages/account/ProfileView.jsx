@@ -168,6 +168,12 @@ export default function ProfileView() {
     setRevealCountdown(0);
   };
 
+  // Format Phone for display (+91 XXXXXXXXXX without duplicate +91)
+  const rawPhone = user?.phone || '';
+  const displayPhone = rawPhone
+    ? `+91 ${rawPhone.replace(/^(\+91\s*)+/, '').trim()}`
+    : 'Not Provided';
+
   // Format Voter ID masked display
   const rawVoterId = user?.voterId || '';
   const maskedVoterId = rawVoterId
@@ -694,7 +700,7 @@ export default function ProfileView() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', fontWeight: 600 }}>
               <Phone size={16} style={{ color: 'var(--text-muted)' }} />
-              <span>{user?.phone ? `+91 ${user.phone}` : 'Not Provided'}</span>
+              <span>{displayPhone}</span>
             </div>
           </div>
 

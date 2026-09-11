@@ -192,7 +192,7 @@ export default function AccountLayout() {
               </span>
             </div>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
-              {user?.email} {user?.phone ? `• +91 ${user.phone}` : ''}
+              {user?.email} {user?.phone ? `• +91 ${user.phone.replace(/^(\+91\s*)+/, '').trim()}` : ''}
             </div>
           </div>
         </div>
