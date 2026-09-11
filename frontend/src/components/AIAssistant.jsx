@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Send, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
@@ -13,24 +13,94 @@ const SUGGESTED_QUESTIONS = [
   'What can I do on the Citizen Dashboard?'
 ];
 
+// Memoized Chat Bubble to avoid re-rendering committed history messages during streaming
+const ChatMessageItem = React.memo(function ChatMessageItem({ msg }) {
+  const isUser = msg.role === 'user';
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: isUser ? 'flex-end' : 'flex-start',
+        gap: '8px'
+      }}
+    >
+      {!isUser && (
+        <img
+          src={aiAssistantAvatar}
+          alt="AI"
+          style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '50%',
+            objectFit: 'cover',
+            border: '1.5px solid var(--border-subtle, #E2E8F0)',
+            flexShrink: 0,
+            marginTop: '2px'
+          }}
+        />
+      )}
+      <div
+        style={{
+          maxWidth: '82%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: isUser ? 'flex-end' : 'flex-start'
+        }}
+      >
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: isUser ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
+            backgroundColor: isUser ? 'var(--color-primary, #0B4F9C)' : 'var(--bg-surface, #FFFFFF)',
+            color: isUser ? '#FFFFFF' : 'var(--text-primary, #0F172A)',
+            border: isUser ? 'none' : '1px solid var(--border-subtle, #E2E8F0)',
+            fontSize: '0.875rem',
+            lineHeight: 1.5,
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
+          }}
+        >
+          {msg.text}
+        </div>
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted, #94A3B8)', marginTop: '3px', padding: '0 4px' }}>
+          {isUser ? 'You' : 'AI Assistant'}
+        </span>
+      </div>
+    </div>
+  );
+});
+
 export default function AIAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
   const isBusy = isLoading || isStreaming;
 
   const { user } = useAuth();
-  const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
   const abortControllerRef = useRef(null);
 
-  // Clean up any ongoing stream on unmount
+  // Streaming buffers & throttling refs
+  const streamBufferRef = useRef('');
+  const rafIdRef = useRef(null);
+  const lastRenderTimeRef = useRef(0);
+  const isUserAtBottomRef = useRef(true);
+
+  // Clean up any ongoing stream or animation frame on unmount
   useEffect(() => {
     return () => {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -41,21 +111,40 @@ export default function AIAssistant() {
   const citizenName = user?.name ? user.name.trim().split(' ')[0] : '';
   const greetingHeadline = citizenName ? `Hello ${citizenName}! 👋` : 'Hello! 👋';
 
-  // Auto-scroll to latest message
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // Smart auto-scroll: direct scrollTop manipulation without smooth animation clash
+  const scrollToBottom = useCallback((smooth = false) => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    if (smooth) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, []);
 
+  // Track if user has manually scrolled up to avoid forcing them to the bottom
+  const handleScroll = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    // If user is within 60px of the bottom, consider them "at bottom"
+    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight <= 60;
+    isUserAtBottomRef.current = isAtBottom;
+  }, []);
+
+  // Focus & initial scroll when chat window opens
   useEffect(() => {
     if (isOpen) {
-      scrollToBottom();
-      if (window.innerWidth > 640) {
-        setTimeout(() => inputRef.current?.focus(), 150);
-      }
+      isUserAtBottomRef.current = true;
+      setTimeout(() => {
+        scrollToBottom(false);
+        if (window.innerWidth > 640) {
+          inputRef.current?.focus();
+        }
+      }, 50);
     }
-  }, [messages, isOpen, isLoading, isStreaming]);
+  }, [isOpen, scrollToBottom]);
 
-  // Send message to backend Gemini endpoint with progressive streaming
+  // Send message to backend Gemini endpoint with high-performance buffered streaming
   const handleSendMessage = async (textToSend) => {
     const text = (textToSend || inputValue).trim();
     if (!text || isBusy) return;
@@ -64,11 +153,24 @@ export default function AIAssistant() {
     const userMessage = { role: 'user', text };
     const nextMessages = [...messages, userMessage];
 
-    // Optimistically update conversation UI with the user turn
+    // Optimistically commit user message
     setMessages(nextMessages);
     setInputValue('');
     setIsLoading(true);
     setIsStreaming(false);
+    setStreamingText('');
+
+    // Reset stream buffers
+    streamBufferRef.current = '';
+    lastRenderTimeRef.current = 0;
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+
+    // Scroll to bottom after user message
+    isUserAtBottomRef.current = true;
+    setTimeout(() => scrollToBottom(false), 20);
 
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -88,63 +190,91 @@ export default function AIAssistant() {
       await api.streamAIChatMessage(
         text,
         historyPayload,
-        (chunk, fullText) => {
+        (batchChunk, fullText) => {
+          streamBufferRef.current = fullText;
+
           if (!hasReceivedFirstChunk) {
             hasReceivedFirstChunk = true;
-            // First chunk received: stop showing thinking indicator, start streaming
+            // First chunk received: instantly remove thinking indicator & show first text
             setIsLoading(false);
             setIsStreaming(true);
-            setMessages((prev) => [
-              ...prev,
-              { role: 'model', text: fullText }
-            ]);
-          } else {
-            setMessages((prev) => {
-              if (prev.length === 0) return [{ role: 'model', text: fullText }];
-              const updated = [...prev];
-              const lastIdx = updated.length - 1;
-              if (updated[lastIdx].role === 'model') {
-                updated[lastIdx] = { ...updated[lastIdx], text: fullText };
-              } else {
-                updated.push({ role: 'model', text: fullText });
+            setStreamingText(fullText);
+            lastRenderTimeRef.current = performance.now();
+            if (isUserAtBottomRef.current && messagesContainerRef.current) {
+              messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            }
+            return;
+          }
+
+          // Buffer and throttle subsequent chunks to target 25-30 UI updates per second maximum (~33ms)
+          const now = performance.now();
+          if (now - lastRenderTimeRef.current >= 33) {
+            lastRenderTimeRef.current = now;
+            if (rafIdRef.current) {
+              cancelAnimationFrame(rafIdRef.current);
+              rafIdRef.current = null;
+            }
+            setStreamingText(streamBufferRef.current);
+            if (isUserAtBottomRef.current && messagesContainerRef.current) {
+              messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            }
+          } else if (!rafIdRef.current) {
+            rafIdRef.current = requestAnimationFrame(() => {
+              rafIdRef.current = null;
+              lastRenderTimeRef.current = performance.now();
+              setStreamingText(streamBufferRef.current);
+              if (isUserAtBottomRef.current && messagesContainerRef.current) {
+                messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
               }
-              return updated;
             });
           }
         },
         controller.signal
       );
 
-      // In the rare case the stream finished with zero text emitted
-      if (!hasReceivedFirstChunk) {
-        setIsLoading(false);
+      // Clean up any pending animation frame
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+
+      const finalFullText = streamBufferRef.current;
+      if (finalFullText) {
+        // Commit final message into history
+        setMessages((prev) => [
+          ...prev,
+          { role: 'model', text: finalFullText }
+        ]);
+      } else if (!hasReceivedFirstChunk) {
         setErrorMessage('Sorry, no response was generated. Please try again.');
       }
     } catch (err) {
       if (err.name === 'AbortError') {
-        // Chat was intentionally cancelled or cleared
+        // Chat was intentionally cancelled or reset
         return;
       }
       console.error('[AI Assistant] Communication failed:', err);
-      setIsLoading(false);
-      setIsStreaming(false);
 
       const friendlyMsg = err.data?.message || err.message || 'Sorry, the AI Assistant is temporarily unavailable. Please try again later.';
       setErrorMessage(friendlyMsg);
-
-      // If failed mid-stream, remove incomplete model message so conversation history is never corrupted
-      if (hasReceivedFirstChunk) {
-        setMessages((prev) => {
-          if (prev.length > 0 && prev[prev.length - 1].role === 'model') {
-            return prev.slice(0, -1);
-          }
-          return prev;
-        });
-      }
     } finally {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      setStreamingText('');
       setIsLoading(false);
       setIsStreaming(false);
       abortControllerRef.current = null;
+
+      // Final scroll adjustment if user was following
+      if (isUserAtBottomRef.current && messagesContainerRef.current) {
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+          }
+        }, 30);
+      }
     }
   };
 
@@ -156,10 +286,16 @@ export default function AIAssistant() {
   };
 
   const handleClearChat = () => {
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+    streamBufferRef.current = '';
+    setStreamingText('');
     setIsLoading(false);
     setIsStreaming(false);
     setMessages([]);
@@ -294,7 +430,7 @@ export default function AIAssistant() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              {messages.length > 0 && (
+              {(messages.length > 0 || isStreaming) && (
                 <button
                   type="button"
                   onClick={handleClearChat}
@@ -340,6 +476,8 @@ export default function AIAssistant() {
 
           {/* Messages Body */}
           <div
+            ref={messagesContainerRef}
+            onScroll={handleScroll}
             style={{
               flex: 1,
               padding: '16px',
@@ -347,7 +485,8 @@ export default function AIAssistant() {
               display: 'flex',
               flexDirection: 'column',
               gap: '14px',
-              backgroundColor: 'var(--bg-page, #F8FAFC)'
+              backgroundColor: 'var(--bg-page, #F8FAFC)',
+              scrollBehavior: 'auto'
             }}
           >
             {/* Welcome Greeting Banner */}
@@ -388,7 +527,7 @@ export default function AIAssistant() {
             </div>
 
             {/* Suggested Questions Chips (Displayed when conversation is fresh) */}
-            {messages.length === 0 && (
+            {messages.length === 0 && !isStreaming && (
               <div>
                 <div style={{ fontSize: '0.775rem', fontWeight: 600, color: 'var(--text-muted, #64748B)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Suggested questions:
@@ -422,68 +561,67 @@ export default function AIAssistant() {
               </div>
             )}
 
-            {/* Conversation Messages */}
-            {messages.map((msg, index) => {
-              const isUser = msg.role === 'user';
-              return (
-                <div
-                  key={index}
+            {/* Committed Messages */}
+            {messages.map((msg, index) => (
+              <ChatMessageItem key={index} msg={msg} />
+            ))}
+
+            {/* Active Streaming Message */}
+            {isStreaming && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  justifyContent: 'flex-start',
+                  gap: '8px'
+                }}
+              >
+                <img
+                  src={aiAssistantAvatar}
+                  alt="AI"
                   style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '1.5px solid var(--border-subtle, #E2E8F0)',
+                    flexShrink: 0,
+                    marginTop: '2px'
+                  }}
+                />
+                <div
+                  style={{
+                    maxWidth: '82%',
                     display: 'flex',
-                    flexDirection: 'row',
-                    alignItems: 'flex-start',
-                    justifyContent: isUser ? 'flex-end' : 'flex-start',
-                    gap: '8px'
+                    flexDirection: 'column',
+                    alignItems: 'flex-start'
                   }}
                 >
-                  {!isUser && (
-                    <img
-                      src={aiAssistantAvatar}
-                      alt="AI"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        objectFit: 'cover',
-                        border: '1.5px solid var(--border-subtle, #E2E8F0)',
-                        flexShrink: 0,
-                        marginTop: '2px'
-                      }}
-                    />
-                  )}
                   <div
                     style={{
-                      maxWidth: '82%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: isUser ? 'flex-end' : 'flex-start'
+                      padding: '10px 14px',
+                      borderRadius: '14px 14px 14px 2px',
+                      backgroundColor: 'var(--bg-surface, #FFFFFF)',
+                      color: 'var(--text-primary, #0F172A)',
+                      border: '1px solid var(--border-subtle, #E2E8F0)',
+                      fontSize: '0.875rem',
+                      lineHeight: 1.5,
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                     }}
                   >
-                    <div
-                      style={{
-                        padding: '10px 14px',
-                        borderRadius: isUser ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
-                        backgroundColor: isUser ? 'var(--color-primary, #0B4F9C)' : 'var(--bg-surface, #FFFFFF)',
-                        color: isUser ? '#FFFFFF' : 'var(--text-primary, #0F172A)',
-                        border: isUser ? 'none' : '1px solid var(--border-subtle, #E2E8F0)',
-                        fontSize: '0.875rem',
-                        lineHeight: 1.5,
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word',
-                        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
-                      }}
-                    >
-                      {msg.text}
-                    </div>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted, #94A3B8)', marginTop: '3px', padding: '0 4px' }}>
-                      {isUser ? 'You' : 'AI Assistant'}
-                    </span>
+                    {streamingText}
                   </div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted, #94A3B8)', marginTop: '3px', padding: '0 4px' }}>
+                    AI Assistant
+                  </span>
                 </div>
-              );
-            })}
+              </div>
+            )}
 
-            {/* Loading Indicator */}
+            {/* Loading / Thinking Indicator (shown only before first chunk arrives) */}
             {isLoading && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', backgroundColor: 'var(--bg-surface, #FFFFFF)', border: '1px solid var(--border-subtle, #E2E8F0)', borderRadius: '14px 14px 14px 2px', width: 'fit-content', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)' }}>
                 <img
@@ -536,8 +674,6 @@ export default function AIAssistant() {
                 )}
               </div>
             )}
-
-            <div ref={messagesEndRef} />
           </div>
 
           {/* Input Footer */}

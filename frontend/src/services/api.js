@@ -479,6 +479,7 @@ export const api = {
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
+        let batchText = '';
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed || trimmed.startsWith(':')) continue;
@@ -494,10 +495,8 @@ export const api = {
                 throw new Error(parsed.error);
               }
               if (parsed.text) {
+                batchText += parsed.text;
                 accumulatedText += parsed.text;
-                if (onChunk) {
-                  onChunk(parsed.text, accumulatedText);
-                }
               }
             } catch (jsonErr) {
               if (jsonErr.message && !jsonErr.message.includes('JSON')) {
@@ -505,6 +504,10 @@ export const api = {
               }
             }
           }
+        }
+
+        if (batchText && onChunk) {
+          onChunk(batchText, accumulatedText);
         }
       }
 
