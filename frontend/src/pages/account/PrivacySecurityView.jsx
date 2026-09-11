@@ -27,6 +27,43 @@ export default function PrivacySecurityView() {
         </p>
       </div>
 
+      {/* Google-Only Password Setup Prompt */}
+      {user?.hasPassword === false && (
+        <div
+          style={{
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--color-primary)',
+            borderRadius: '12px',
+            padding: '20px 24px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '16px',
+            boxShadow: '0 2px 8px rgba(30, 64, 175, 0.08)'
+          }}
+        >
+          <div style={{ maxWidth: '620px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <KeyRound size={20} style={{ color: 'var(--color-primary)' }} />
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                Set CRP Account Password
+              </h3>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+              You signed in using Google. Set a CRP password to enable password-based login with your email or mobile number and unlock password-protected features such as viewing your masked Voter ID.
+            </p>
+          </div>
+          <Link
+            to="/account/change-password"
+            className="btn btn-primary"
+            style={{ padding: '8px 18px', fontSize: '0.875rem' }}
+          >
+            Set Password
+          </Link>
+        </div>
+      )}
+
       {/* Security Status Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
         <div
@@ -81,8 +118,8 @@ export default function PrivacySecurityView() {
               width: '38px',
               height: '38px',
               borderRadius: '8px',
-              backgroundColor: 'var(--color-accent-blue-bg, #DBEAFE)',
-              color: 'var(--color-primary, #1E40AF)',
+              backgroundColor: user?.hasPassword === false ? 'var(--color-accent-amber-bg, #FEF3C7)' : 'var(--color-accent-blue-bg, #DBEAFE)',
+              color: user?.hasPassword === false ? 'var(--color-accent-amber, #D97706)' : 'var(--color-primary, #1E40AF)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -93,10 +130,12 @@ export default function PrivacySecurityView() {
           </div>
           <div>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Password Hash Protection
+              {user?.hasPassword === false ? 'Password Not Set (Google Auth)' : 'Password Hash Protection'}
             </div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-              Passwords are salted and irreversibly hashed using standard bcrypt algorithms.
+              {user?.hasPassword === false
+                ? 'Your account is authenticated via Google. Set a CRP password to enable password-protected features.'
+                : 'Passwords are salted and irreversibly hashed using standard bcrypt algorithms.'}
             </div>
           </div>
         </div>
@@ -176,7 +215,7 @@ export default function PrivacySecurityView() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <KeyRound size={16} style={{ color: 'var(--color-primary)' }} />
-              <span>Change Password</span>
+              <span>{user?.hasPassword === false ? 'Set Password' : 'Change Password'}</span>
             </div>
             <ExternalLink size={14} style={{ color: 'var(--text-muted)' }} />
           </Link>

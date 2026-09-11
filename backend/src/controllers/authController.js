@@ -304,22 +304,7 @@ const login = async (req, res, next) => {
       success: true,
       message: 'Authentication successful.',
       token,
-      user: {
-        id: user._id,
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        voterId: user.voterId || '',
-        role: clientRole,
-        authorityRole: user.role,
-        assignedCategory: user.assignedCategory || '',
-        department: user.department,
-        designation: user.designation,
-        avatar: user.avatar || '',
-        settings: user.settings,
-        createdAt: user.createdAt
-      }
+      user: formatUserResponse(user)
     });
   } catch (err) {
     next(err);
@@ -981,7 +966,7 @@ const googleAuth = async (req, res, next) => {
     const { sub, email, name, picture } = tokenPayload;
 
     // 1. Check if a citizen account is already linked with this verified Google sub
-    const userWithGoogleId = await User.findOne({ googleId: sub });
+    const userWithGoogleId = await User.findOne({ googleId: sub }).select('+password');
     if (userWithGoogleId) {
       if (userWithGoogleId.role !== 'citizen') {
         return res.status(403).json({
@@ -1326,5 +1311,6 @@ module.exports = {
   googleAuth,
   googleLink,
   googleOnboard,
+  validateAndNormalizePhone,
   _setGoogleTokenVerifierForTesting
 };

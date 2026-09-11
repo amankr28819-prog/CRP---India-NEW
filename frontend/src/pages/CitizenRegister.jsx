@@ -306,9 +306,6 @@ export default function CitizenRegister() {
                 required
               />
             </div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-              Enter 10-digit mobile number starting with 6, 7, 8, or 9
-            </span>
           </div>
 
           <div className="form-group">

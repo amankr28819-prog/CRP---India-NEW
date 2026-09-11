@@ -11,9 +11,12 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function ChangePasswordView() {
   const { showToast } = useToast();
+  const { user, refreshUser } = useAuth();
+  const isSettingPassword = user?.hasPassword === false;
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -60,13 +63,18 @@ export default function ChangePasswordView() {
     setError('');
     setSuccess('');
 
-    if (!currentPassword) {
+    if (!isSettingPassword && !currentPassword) {
       setError('Please enter your current account password.');
       return;
     }
 
     if (newPassword.length < 8) {
       setError('New password must be at least 8 characters long.');
+      return;
+    }
+
+    if (newPassword.length > 128) {
+      setError('New password cannot exceed 128 characters.');
       return;
     }
 
@@ -84,23 +92,31 @@ export default function ChangePasswordView() {
       return;
     }
 
-    if (currentPassword === newPassword) {
+    if (!isSettingPassword && currentPassword === newPassword) {
       setError('New password cannot be identical to your current password.');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const res = await api.changePassword(currentPassword, newPassword, confirmPassword);
+      const res = await api.changePassword(
+        isSettingPassword ? '' : currentPassword,
+        newPassword,
+        confirmPassword
+      );
       if (res.success) {
-        setSuccess('Your password has been changed successfully.');
-        showToast('Password updated successfully', 'success');
+        const successMsg = isSettingPassword
+          ? 'Your CRP password has been created successfully. You can now use this password to sign in or reveal protected account details.'
+          : 'Your password has been changed successfully.';
+        setSuccess(successMsg);
+        showToast(isSettingPassword ? 'Password created successfully' : 'Password updated successfully', 'success');
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
+        await refreshUser();
       }
     } catch (err) {
-      setError(err.message || 'Failed to change password. Please check your credentials.');
+      setError(err.message || (isSettingPassword ? 'Failed to create password.' : 'Failed to change password. Please check your credentials.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -111,10 +127,12 @@ export default function ChangePasswordView() {
       {/* Header */}
       <div>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-          Change Account Password
+          {isSettingPassword ? 'Set Account Password' : 'Change Account Password'}
         </h2>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
-          Update your login password regularly to protect your citizen identity and complaints history.
+          {isSettingPassword
+            ? 'Create a CRP password to enable password-based login and unlock password-protected features such as viewing your registered Voter ID.'
+            : 'Update your login password regularly to protect your citizen identity and complaints history.'}
         </p>
       </div>
 
@@ -128,6 +146,25 @@ export default function ChangePasswordView() {
           maxWidth: '560px'
         }}
       >
+        {isSettingPassword && (
+          <div
+            style={{
+              backgroundColor: 'var(--color-accent-blue-bg, #DBEAFE)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '8px',
+              padding: '14px 16px',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px'
+            }}
+          >
+            <KeyRound size={18} style={{ color: 'var(--color-primary)', flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+              <strong>Google Account Notice:</strong> You currently sign in via Google. Setting a CRP password enables password-based login with your email or mobile number, while keeping your Google Sign-In fully active. It also allows you to view password-protected details like your registered Voter ID.
+            </div>
+          </div>
+        )}
         {success && (
           <div
             style={{
@@ -169,63 +206,65 @@ export default function ChangePasswordView() {
         )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          {/* Current Password */}
-          <div>
-            <label
-              htmlFor="current-password"
-              style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}
-            >
-              Current Password
-            </label>
-            <div style={{ position: 'relative' }}>
-              <Lock
-                size={16}
-                style={{
-                  position: 'absolute',
-                  left: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: 'var(--text-muted)'
-                }}
-              />
-              <input
-                id="current-password"
-                type={showCurrent ? 'text' : 'password'}
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter your current password"
-                required
-                style={{
-                  width: '100%',
-                  padding: '10px 40px 10px 38px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border-subtle)',
-                  backgroundColor: 'var(--bg-subtle)',
-                  color: 'var(--text-primary)',
-                  fontSize: '0.9rem'
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowCurrent(!showCurrent)}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-muted)',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}
-                tabIndex={-1}
+          {/* Current Password (Only when a password already exists) */}
+          {!isSettingPassword && (
+            <div>
+              <label
+                htmlFor="current-password"
+                style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}
               >
-                {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
+                Current Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Lock
+                  size={16}
+                  style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--text-muted)'
+                  }}
+                />
+                <input
+                  id="current-password"
+                  type={showCurrent ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter your current password"
+                  required={!isSettingPassword}
+                  style={{
+                    width: '100%',
+                    padding: '10px 40px 10px 38px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-subtle)',
+                    backgroundColor: 'var(--bg-subtle)',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.9rem'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrent(!showCurrent)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  tabIndex={-1}
+                >
+                  {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* New Password */}
           <div>
@@ -388,19 +427,19 @@ export default function ChangePasswordView() {
           <div style={{ marginTop: '8px' }}>
             <button
               type="submit"
-              disabled={isSubmitting || !currentPassword || !newPassword || !confirmPassword}
+              disabled={isSubmitting || (!isSettingPassword && !currentPassword) || !newPassword || !confirmPassword}
               className="btn btn-primary"
               style={{ width: '100%', justifyContent: 'center', gap: '8px' }}
             >
               {isSubmitting ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  <span>Updating Password...</span>
+                  <span>{isSettingPassword ? 'Setting Password...' : 'Updating Password...'}</span>
                 </>
               ) : (
                 <>
                   <ShieldCheck size={16} />
-                  <span>Update Password</span>
+                  <span>{isSettingPassword ? 'Set Password' : 'Update Password'}</span>
                 </>
               )}
             </button>

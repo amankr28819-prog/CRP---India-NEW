@@ -84,7 +84,7 @@ export default function AccountLayout() {
     },
     {
       id: 'change-password',
-      name: 'Change Password',
+      name: user?.hasPassword === false ? 'Set Password' : 'Change Password',
       path: '/account/change-password',
       icon: <Lock size={18} />
     },

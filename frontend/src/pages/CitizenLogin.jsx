@@ -115,6 +115,8 @@ export default function CitizenLogin() {
           if (btnContainer) {
             btnContainer.innerHTML = '';
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const containerWidth = btnContainer.offsetWidth || 396;
+            const btnWidth = Math.min(Math.max(containerWidth, 200), 400);
             window.google.accounts.id.renderButton(btnContainer, {
               type: 'standard',
               theme: isDark ? 'filled_black' : 'outline',
@@ -122,7 +124,7 @@ export default function CitizenLogin() {
               text: 'signin_with',
               shape: 'rectangular',
               logo_alignment: 'left',
-              width: 360
+              width: btnWidth
             });
             setGoogleLoaded(true);
           }
@@ -565,15 +567,49 @@ export default function CitizenLogin() {
               </div>
             </div>
 
+            <button
+              type="submit"
+              disabled={loading || isTransitioning || googleLoading}
+              className="btn btn-primary btn-lg"
+              style={{ width: '100%', minHeight: '48px', marginTop: '6px' }}
+            >
+              {isTransitioning ? 'Signing In...' : loading ? 'Authenticating...' : 'Sign In as Citizen'}
+            </button>
+
+            {/* Divider */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                margin: '18px 0',
+                gap: '12px'
+              }}
+            >
+              <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
+              <span
+                style={{
+                  fontSize: '0.8125rem',
+                  color: 'var(--text-muted)',
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}
+              >
+                Or continue with
+              </span>
+              <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--border-subtle)' }} />
+            </div>
+
             {/* Google Sign-In for Citizens Only */}
-            <div style={{ marginTop: '14px', marginBottom: '10px' }}>
+            <div style={{ width: '100%' }}>
               <div
                 id="googleSignInBtnDiv"
                 style={{
                   display: googleLoaded ? 'flex' : 'none',
                   justifyContent: 'center',
+                  alignItems: 'center',
                   width: '100%',
-                  minHeight: '44px'
+                  minHeight: '48px'
                 }}
               ></div>
 
@@ -585,16 +621,31 @@ export default function CitizenLogin() {
                   className="btn btn-secondary btn-lg"
                   style={{
                     width: '100%',
+                    minHeight: '48px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '10px',
-                    backgroundColor: 'var(--surface-card, #ffffff)',
-                    border: '1px solid var(--border-default, #cbd5e1)',
+                    gap: '12px',
+                    backgroundColor: 'var(--bg-surface)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-md, 8px)',
                     color: 'var(--text-primary)',
+                    fontFamily: 'var(--font-family)',
+                    fontSize: '1rem',
                     fontWeight: 600,
-                    minHeight: '44px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                    cursor: googleLoading || loading || isTransitioning ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!googleLoading && !loading && !isTransitioning) {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
+                      e.currentTarget.style.borderColor = 'var(--color-primary)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-surface)';
+                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
                   }}
                 >
                   {googleLoading ? (
@@ -606,15 +657,6 @@ export default function CitizenLogin() {
                 </button>
               )}
             </div>
-
-            <button
-              type="submit"
-              disabled={loading || isTransitioning || googleLoading}
-              className="btn btn-primary btn-lg"
-              style={{ width: '100%', marginTop: '6px' }}
-            >
-              {isTransitioning ? 'Signing In...' : loading ? 'Authenticating...' : 'Sign In as Citizen'}
-            </button>
           </form>
 
           <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
@@ -1417,9 +1459,6 @@ export default function CitizenLogin() {
                     required
                   />
                 </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px', display: 'block' }}>
-                  10 digits starting with 6, 7, 8, or 9.
-                </span>
               </div>
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>

@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import {
   User,
   Mail,
@@ -839,94 +840,150 @@ export default function ProfileView() {
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: '420px', textAlign: 'left' }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-              <div
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  backgroundColor: 'var(--color-primary-light, #DBEAFE)',
-                  color: 'var(--color-primary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}
-              >
-                <Lock size={20} />
-              </div>
+            {user?.hasPassword === false ? (
               <div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-                  Confirm Identity
-                </h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
-                  Enter your password to reveal your registered Voter ID
-                </p>
-              </div>
-            </div>
-
-            <form onSubmit={handleVerifyPassword}>
-              <div style={{ marginBottom: '16px' }}>
-                <label
-                  htmlFor="verify-pass"
-                  style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}
-                >
-                  Account Password
-                </label>
-                <input
-                  id="verify-pass"
-                  type="password"
-                  value={verifyPasswordInput}
-                  onChange={(e) => {
-                    setVerifyPasswordInput(e.target.value);
-                    setVerifyPasswordError('');
-                  }}
-                  placeholder="Enter current password"
-                  autoFocus
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: verifyPasswordError ? '1px solid var(--color-status-rejected)' : '1px solid var(--border-subtle)',
-                    backgroundColor: 'var(--bg-subtle)',
-                    color: 'var(--text-primary)',
-                    fontSize: '0.9rem'
-                  }}
-                />
-                {verifyPasswordError && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-status-rejected)', fontSize: '0.8rem', marginTop: '6px' }}>
-                    <AlertCircle size={14} />
-                    <span>{verifyPasswordError}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  <div
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--color-accent-amber-bg, #FEF3C7)',
+                      color: 'var(--color-accent-amber, #D97706)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                  >
+                    <KeyRound size={20} />
                   </div>
-                )}
-              </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                      Password Setup Required
+                    </h3>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
+                      Set a password to unlock protected citizen details
+                    </p>
+                  </div>
+                </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowPasswordModal(false)}
-                  className="btn btn-secondary"
-                  style={{ justifyContent: 'center' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isVerifyingPassword}
-                  className="btn btn-primary"
-                  style={{ justifyContent: 'center', gap: '6px' }}
-                >
-                  {isVerifyingPassword ? (
-                    <>
-                      <Loader2 size={15} className="animate-spin" />
-                      <span>Verifying...</span>
-                    </>
-                  ) : (
-                    <span>Reveal ID</span>
-                  )}
-                </button>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
+                  You signed in via Google and have not configured a CRP password yet. Voter ID viewing requires password verification. Please set a password to continue.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordModal(false)}
+                    className="btn btn-secondary"
+                    style={{ justifyContent: 'center' }}
+                  >
+                    Cancel
+                  </button>
+                  <Link
+                    to="/account/change-password"
+                    className="btn btn-primary"
+                    style={{ justifyContent: 'center', gap: '6px' }}
+                    onClick={() => setShowPasswordModal(false)}
+                  >
+                    <KeyRound size={15} />
+                    <span>Set Password</span>
+                  </Link>
+                </div>
               </div>
-            </form>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  <div
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      backgroundColor: 'var(--color-primary-light, #DBEAFE)',
+                      color: 'var(--color-primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                  >
+                    <Lock size={20} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                      Confirm Identity
+                    </h3>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
+                      Enter your password to reveal your registered Voter ID
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleVerifyPassword}>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label
+                      htmlFor="verify-pass"
+                      style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}
+                    >
+                      Account Password
+                    </label>
+                    <input
+                      id="verify-pass"
+                      type="password"
+                      value={verifyPasswordInput}
+                      onChange={(e) => {
+                        setVerifyPasswordInput(e.target.value);
+                        setVerifyPasswordError('');
+                      }}
+                      placeholder="Enter current password"
+                      autoFocus
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: verifyPasswordError ? '1px solid var(--color-status-rejected)' : '1px solid var(--border-subtle)',
+                        backgroundColor: 'var(--bg-subtle)',
+                        color: 'var(--text-primary)',
+                        fontSize: '0.9rem'
+                      }}
+                    />
+                    {verifyPasswordError && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-status-rejected)', fontSize: '0.8rem', marginTop: '6px' }}>
+                        <AlertCircle size={14} />
+                        <span>{verifyPasswordError}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordModal(false)}
+                      className="btn btn-secondary"
+                      style={{ justifyContent: 'center' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isVerifyingPassword}
+                      className="btn btn-primary"
+                      style={{ justifyContent: 'center', gap: '6px' }}
+                    >
+                      {isVerifyingPassword ? (
+                        <>
+                          <Loader2 size={15} className="animate-spin" />
+                          <span>Verifying...</span>
+                        </>
+                      ) : (
+                        <span>Reveal ID</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}
