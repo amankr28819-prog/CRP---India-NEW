@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Vote = require('../models/Vote');
 const { generateReferenceId } = require('../utils/referenceGenerator');
 const { escapeRegex } = require('../middleware/sanitize');
+const { getUploadedFileUrl } = require('../middleware/upload');
 
 const categoryDepartmentMap = {
   'Roads & Potholes': 'Public Works Department (Roads)',
@@ -188,10 +189,10 @@ const createComplaint = async (req, res, next) => {
     const imagePaths = [];
     if (req.files && req.files.length > 0) {
       req.files.forEach(file => {
-        imagePaths.push(`/uploads/${file.filename}`);
+        imagePaths.push(getUploadedFileUrl(file));
       });
     } else if (req.file) {
-      imagePaths.push(`/uploads/${req.file.filename}`);
+      imagePaths.push(getUploadedFileUrl(req.file));
     }
 
     const referenceId = await generateReferenceId();
@@ -558,7 +559,7 @@ const updateComplaintStatus = async (req, res, next) => {
     // When status is "Resolved", resolution photo proof is strictly required
     if (status === 'Resolved') {
       if (req.file) {
-        complaint.resolutionPhoto = `/uploads/${req.file.filename}`;
+        complaint.resolutionPhoto = getUploadedFileUrl(req.file);
       } else if (!complaint.resolutionPhoto) {
         return res.status(400).json({
           success: false,

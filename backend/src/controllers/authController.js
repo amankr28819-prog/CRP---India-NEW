@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const { getUploadedFileUrl } = require('../middleware/upload');
 
 const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
@@ -393,7 +394,7 @@ const uploadProfilePicture = async (req, res, next) => {
       });
     }
 
-    user.avatar = `/uploads/${req.file.filename}`;
+    user.avatar = getUploadedFileUrl(req.file);
     await user.save();
 
     res.json({
