@@ -46,8 +46,24 @@ const complaintLimiter = rateLimit({
   }
 });
 
+/**
+ * Gemini AI Chat Rate Limiter
+ * Protects Gemini quota while allowing fluid conversational interaction.
+ */
+const aiChatLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  max: process.env.NODE_ENV === 'production' ? 20 : 60, // 20 requests/minute in production
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "You're sending messages a little too quickly. Please wait a moment and try again."
+  }
+});
+
 module.exports = {
   authLimiter,
   apiLimiter,
-  complaintLimiter
+  complaintLimiter,
+  aiChatLimiter
 };

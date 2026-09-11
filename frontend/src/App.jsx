@@ -12,6 +12,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import CitizenProtectedRoute from './components/CitizenProtectedRoute';
 import LogoutConfirmModal from './components/LogoutConfirmModal';
 import PortalSwitchModal from './components/PortalSwitchModal';
+import AIAssistant from './components/AIAssistant';
 
 // Citizen Pages
 import RoleSelection from './pages/RoleSelection';
@@ -140,6 +141,7 @@ function AppLayout() {
           <Route path="/login" element={<CitizenLogin />} />
           <Route path="/register" element={<CitizenRegister />} />
           <Route path="/about" element={<About />} />
+          <Route path="/help" element={<About />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/faqs" element={<FAQs />} />
@@ -211,6 +213,7 @@ function AppLayout() {
         </Routes>
       </main>
       {!isRoleSelection && <Footer />}
+      {['/home', '/about', '/help', '/privacy', '/faqs'].includes(location.pathname) && <AIAssistant />}
       <LogoutConfirmModal />
       <PortalSwitchModal />
     </div>

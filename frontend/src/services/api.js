@@ -411,6 +411,22 @@ export const api = {
       }
       throw err;
     }
+  },
+
+  sendAIChatMessage: async (message, history = []) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/ai/chat`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ message, history })
+      });
+      return await handleResponse(res);
+    } catch (err) {
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please check your network connection.');
+      }
+      throw err;
+    }
   }
 };
 

@@ -1475,3 +1475,55 @@ h1, h2, h3, h4, h5, h6 {
     padding: 24px 0 32px 0;
   }
 }
+
+/* ==========================================================================
+   CRP India AI Assistant Styles
+   ========================================================================== */
+
+@keyframes crpAiFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes crpAiSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.crp-ai-fab {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.crp-ai-fab:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 12px 28px rgba(11, 79, 156, 0.45) !important;
+}
+
+.crp-ai-fab:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.crp-ai-chip {
+  transition: all 0.2s ease-in-out;
+}
+
+.crp-ai-chip:hover {
+  background-color: var(--color-primary-light, #EFF6FF) !important;
+  border-color: var(--color-primary, #1E40AF) !important;
+  color: var(--color-primary, #1E40AF) !important;
+  transform: translateY(-1px);
+}
+
+.crp-ai-spin {
+  animation: crpAiSpin 1.6s linear infinite;
+}

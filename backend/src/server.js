@@ -16,6 +16,7 @@ const complaintRoutes = require('./routes/complaintRoutes');
 const authorityRoutes = require('./routes/authorityRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const citizenRoutes = require('./routes/citizenRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -114,6 +115,7 @@ app.use('/api/complaints', complaintRoutes);
 app.use('/api/authority', authorityRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/citizens', citizenRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Fallback 404 for undefined API endpoints
 app.use('/api/*', (req, res) => {
