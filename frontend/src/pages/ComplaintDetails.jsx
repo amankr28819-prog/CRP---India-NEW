@@ -417,6 +417,12 @@ export default function ComplaintDetails() {
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
               Designated Officer: {complaint.assignedOfficer || 'Pending Allocation'}
             </div>
+            {complaint.assignmentInstruction && (
+              <div style={{ marginTop: '6px', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Authority Instruction: </span>
+                <span style={{ fontStyle: 'italic', color: 'var(--text-primary)' }}>"{complaint.assignmentInstruction}"</span>
+              </div>
+            )}
           </div>
 
           <div>

@@ -253,6 +253,12 @@ export default function TrackComplaint() {
                 <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
                   Officer: {complaint.assignedOfficer || 'Pending Allocation'}
                 </div>
+                {complaint.assignmentInstruction && (
+                  <div style={{ marginTop: '4px', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Instruction: </span>
+                    <span style={{ fontStyle: 'italic', color: 'var(--text-primary)' }}>"{complaint.assignmentInstruction}"</span>
+                  </div>
+                )}
               </div>
 
               <div>

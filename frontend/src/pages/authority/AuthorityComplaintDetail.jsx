@@ -42,6 +42,7 @@ const DEPARTMENTS = [
 export default function AuthorityComplaintDetail() {
   const { id } = useParams();
   const { user } = useAuth();
+  const isUpperAuthority = user?.authorityRole === 'authority_admin' || user?.role === 'authority_admin';
 
   const [complaint, setComplaint] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -85,6 +86,17 @@ export default function AuthorityComplaintDetail() {
         setNewStatus(res.complaint.status);
         setAssignDept(res.complaint.assignedDepartment || DEPARTMENTS[0]);
         setAssignOfficer(res.complaint.assignedOfficer || '');
+        if (res.complaint.assignmentInstruction) {
+          setAssignRemark(res.complaint.assignmentInstruction);
+        } else if (res.complaint.statusHistory) {
+          const assignEntry = res.complaint.statusHistory.slice().reverse().find(h => h.status === 'Assigned' || (h.remark && h.remark.toLowerCase().includes('instruction:')));
+          if (assignEntry?.remark) {
+            const match = assignEntry.remark.match(/Instruction:\s*(.+)$/i);
+            if (match && match[1]) {
+              setAssignRemark(match[1].trim());
+            }
+          }
+        }
         if (res.complaint.resolutionNote) {
           setResolutionNote(res.complaint.resolutionNote);
         }
@@ -762,55 +774,99 @@ export default function AuthorityComplaintDetail() {
 
               {/* Action 2: Department & Officer Allocation */}
               <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '24px' }}>
-                <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
-                  Assign Department & Officer
-                </h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                  <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                    {isUpperAuthority ? 'Assign Department & Officer' : 'Department & Officer Allocation'}
+                  </h2>
+                  {!isUpperAuthority && (
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '3px 8px', borderRadius: '4px', backgroundColor: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
+                      Assigned by Central Authority • Read Only
+                    </span>
+                  )}
+                </div>
 
-                <form onSubmit={handleAssignment}>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.8125rem' }}>Responsible Department</label>
-                    <select
-                      value={assignDept}
-                      onChange={(e) => setAssignDept(e.target.value)}
-                      className="form-select"
+                {isUpperAuthority ? (
+                  <form onSubmit={handleAssignment}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontSize: '0.8125rem' }}>Responsible Department</label>
+                      <select
+                        value={assignDept}
+                        onChange={(e) => setAssignDept(e.target.value)}
+                        className="form-select"
+                      >
+                        {DEPARTMENTS.map((dept, i) => (
+                          <option key={i} value={dept}>{dept}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontSize: '0.8125rem' }}>Assigned Field Officer</label>
+                      <input
+                        type="text"
+                        value={assignOfficer}
+                        onChange={(e) => setAssignOfficer(e.target.value)}
+                        placeholder="e.g. Inspector Ramesh K."
+                        className="form-input"
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontSize: '0.8125rem' }}>Assignment Instructions (Optional)</label>
+                      <input
+                        type="text"
+                        value={assignRemark}
+                        onChange={(e) => setAssignRemark(e.target.value)}
+                        placeholder="e.g. Priority dispatch for monsoon preparedness"
+                        className="form-input"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={actionLoading}
+                      className="btn btn-secondary"
+                      style={{ width: '100%', borderColor: 'var(--border-subtle)' }}
                     >
-                      {DEPARTMENTS.map((dept, i) => (
-                        <option key={i} value={dept}>{dept}</option>
-                      ))}
-                    </select>
-                  </div>
+                      {actionLoading ? 'Saving...' : 'Update Assignment'}
+                    </button>
+                  </form>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-subtle)', borderRadius: '6px', padding: '16px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Responsible Department
+                      </div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {complaint.assignedDepartment || 'Pending Allocation'}
+                      </div>
+                    </div>
 
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.8125rem' }}>Assigned Field Officer</label>
-                    <input
-                      type="text"
-                      value={assignOfficer}
-                      onChange={(e) => setAssignOfficer(e.target.value)}
-                      placeholder="e.g. Inspector Ramesh K."
-                      className="form-input"
-                    />
-                  </div>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Assigned Field Officer
+                      </div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {complaint.assignedOfficer || 'Pending Allocation'}
+                      </div>
+                    </div>
 
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.8125rem' }}>Assignment Instructions (Optional)</label>
-                    <input
-                      type="text"
-                      value={assignRemark}
-                      onChange={(e) => setAssignRemark(e.target.value)}
-                      placeholder="e.g. Priority dispatch for monsoon preparedness"
-                      className="form-input"
-                    />
+                    <div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Upper Authority Assignment Instruction
+                      </div>
+                      {complaint.assignmentInstruction ? (
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic', backgroundColor: 'var(--bg-surface)', padding: '10px 12px', borderRadius: '4px', border: '1px solid var(--border-subtle)', borderLeft: '3px solid var(--color-primary)' }}>
+                          "{complaint.assignmentInstruction}"
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                          No specific assignment instructions provided.
+                        </div>
+                      )}
+                    </div>
                   </div>
-
-                  <button
-                    type="submit"
-                    disabled={actionLoading}
-                    className="btn btn-secondary"
-                    style={{ width: '100%', borderColor: 'var(--border-subtle)' }}
-                  >
-                    {actionLoading ? 'Saving...' : 'Update Assignment'}
-                  </button>
-                </form>
+                )}
               </div>
 
               {/* Action 3: Community Consensus & Administrative Flagging */}

@@ -359,14 +359,27 @@ export default function Timeline({ history = [], currentStatus = null, complaint
                       )}
 
                       {/* Assigned stage specific details */}
-                      {stage === 'Assigned' && complaint?.assignedOfficer && complaint.assignedOfficer !== 'Unassigned' && (
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                          <User size={14} style={{ color: 'var(--text-muted)', marginTop: '2px', flexShrink: 0 }} />
-                          <div>
-                            <span style={{ color: 'var(--text-muted)' }}>Assigned Officer: </span>
-                            <strong>{complaint.assignedOfficer}</strong>
-                          </div>
-                        </div>
+                      {stage === 'Assigned' && (
+                        <>
+                          {complaint?.assignedOfficer && complaint.assignedOfficer !== 'Unassigned' && (
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                              <User size={14} style={{ color: 'var(--text-muted)', marginTop: '2px', flexShrink: 0 }} />
+                              <div>
+                                <span style={{ color: 'var(--text-muted)' }}>Assigned Officer: </span>
+                                <strong>{complaint.assignedOfficer}</strong>
+                              </div>
+                            </div>
+                          )}
+                          {complaint?.assignmentInstruction && (
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginTop: '2px' }}>
+                              <FileText size={14} style={{ color: 'var(--text-muted)', marginTop: '2px', flexShrink: 0 }} />
+                              <div>
+                                <span style={{ color: 'var(--text-muted)' }}>Assignment Instruction: </span>
+                                <strong style={{ fontStyle: 'italic' }}>"{complaint.assignmentInstruction}"</strong>
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
 
                       {/* Remarks / Description */}

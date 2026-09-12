@@ -45,7 +45,7 @@ export default function ComplaintForm() {
     description: '',
     location: '',
     ward: '',
-    city: 'Bengaluru',
+    city: '',
     latitude: '',
     longitude: '',
     citizenName: user ? user.name : '',
@@ -59,6 +59,7 @@ export default function ComplaintForm() {
   const [gpsError, setGpsError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [imageSafetyWarning, setImageSafetyWarning] = useState('');
   const [submittedRef, setSubmittedRef] = useState(null);
   const [copied, setCopied] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -71,6 +72,7 @@ export default function ComplaintForm() {
     formData.description.trim() ||
     formData.location.trim() ||
     formData.ward.trim() ||
+    formData.city.trim() ||
     selectedImages.length > 0 ||
     formData.latitude ||
     formData.longitude
@@ -167,6 +169,7 @@ export default function ComplaintForm() {
 
     const totalFiles = [...selectedImages, ...validFiles].slice(0, 3);
     setSelectedImages(totalFiles);
+    setImageSafetyWarning('');
 
     // Create image previews
     const newPreviews = totalFiles.map(file => URL.createObjectURL(file));
@@ -178,6 +181,7 @@ export default function ComplaintForm() {
     const updatedPreviews = imagePreviews.filter((_, i) => i !== index);
     setSelectedImages(updatedFiles);
     setImagePreviews(updatedPreviews);
+    setImageSafetyWarning('');
   };
 
   const fetchGeolocation = () => {
@@ -295,7 +299,21 @@ export default function ComplaintForm() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err) {
-      setSubmitError(err.message || 'Unable to submit grievance. Please try again.');
+      const errMsg = err.message || 'Unable to submit grievance. Please try again.';
+      if (
+        err.status === 429 ||
+        err.data?.code === 'VISION_MONTHLY_LIMIT_EXCEEDED' ||
+        errMsg.toLowerCase().includes('inappropriate') ||
+        errMsg.toLowerCase().includes('restricted content') ||
+        errMsg.toLowerCase().includes('safety verification') ||
+        errMsg.toLowerCase().includes('limit reached')
+      ) {
+        setImageSafetyWarning(errMsg);
+        setSubmitError('');
+      } else {
+        setSubmitError(errMsg);
+      }
+      window.scrollTo({ top: 100, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
     }
@@ -717,6 +735,32 @@ export default function ComplaintForm() {
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+
+          {imageSafetyWarning && (
+            <div
+              style={{
+                marginTop: '14px',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                padding: '14px 16px',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                border: '1px solid var(--color-status-rejected)',
+                color: 'var(--color-status-rejected)'
+              }}
+            >
+              <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '3px' }}>
+                  Image Content Verification Notice
+                </div>
+                <div style={{ fontSize: '0.8125rem', lineHeight: 1.5 }}>
+                  {imageSafetyWarning}
+                </div>
+              </div>
             </div>
           )}
         </div>

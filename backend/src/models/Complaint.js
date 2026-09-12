@@ -110,6 +110,11 @@ const complaintSchema = new mongoose.Schema(
       trim: true,
       default: 'Unassigned'
     },
+    assignmentInstruction: {
+      type: String,
+      trim: true,
+      default: ''
+    },
     remarks: [
       {
         text: String,

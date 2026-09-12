@@ -4,8 +4,10 @@ const Notification = require('../models/Notification');
 const User = require('../models/User');
 const Vote = require('../models/Vote');
 const { generateReferenceId } = require('../utils/referenceGenerator');
+const path = require('path');
 const { escapeRegex } = require('../middleware/sanitize');
-const { getUploadedFileUrl } = require('../middleware/upload');
+const upload = require('../middleware/upload');
+const { checkImageSafety, reserveVisionUsage, releaseVisionUsage, isVisionSafetyEnabled } = require('../services/imageSafetyService');
 
 const categoryDepartmentMap = {
   'Roads & Potholes': 'Public Works Department (Roads)',
@@ -185,14 +187,62 @@ const createComplaint = async (req, res, next) => {
       });
     }
 
-    // Process uploaded images
+    // Moderate images via Google Cloud Vision SafeSearch BEFORE Cloudinary upload
     const imagePaths = [];
-    if (req.files && req.files.length > 0) {
-      req.files.forEach(file => {
-        imagePaths.push(getUploadedFileUrl(file));
-      });
-    } else if (req.file) {
-      imagePaths.push(getUploadedFileUrl(req.file));
+    const files = req.files && req.files.length > 0 ? req.files : (req.file ? [req.file] : []);
+
+    if (files.length > 0) {
+      // Optional SafeSearch moderation (only active when VISION_SAFETY_ENABLED=true)
+      if (isVisionSafetyEnabled()) {
+        // Step 1: Check SafeSearch on all images. If any image fails, reject immediately without uploading to Cloudinary!
+        for (const file of files) {
+          if (file.buffer) {
+            // Check and atomically reserve a monthly SafeSearch check before calling Google Vision
+            const reservation = await reserveVisionUsage();
+            if (!reservation.allowed) {
+              return res.status(429).json({
+                success: false,
+                code: 'VISION_MONTHLY_LIMIT_EXCEEDED',
+                message: 'Monthly image safety verification limit reached. Please try again next month.'
+              });
+            }
+
+            try {
+              const safety = await checkImageSafety(file.buffer);
+              if (!safety.isSafe) {
+                return res.status(422).json({
+                  success: false,
+                  code: 'IMAGE_CONTENT_RESTRICTED',
+                  message: 'Image cannot be uploaded. This image appears to contain inappropriate or restricted content. Please upload a suitable image related to your complaint.'
+                });
+              }
+            } catch (visionErr) {
+              // Release the reserved slot because Vision API failed/errored out
+              await releaseVisionUsage();
+              console.error('[IMAGE_SAFETY] Google Vision verification error:', visionErr.message);
+              return res.status(503).json({
+                success: false,
+                code: 'IMAGE_SAFETY_UNAVAILABLE',
+                message: 'Image safety verification is temporarily unavailable. Please try again.'
+              });
+            }
+          }
+        }
+      }
+
+      // Step 2: SafeSearch passed (or disabled)! Now upload buffers to Cloudinary (or local fallback)
+      for (const file of files) {
+        if (file.buffer) {
+          const ext = path.extname(file.originalname || '').toLowerCase() || '.jpg';
+          const uploadedUrl = await upload.uploadBufferToCloudinary(file.buffer, {
+            folder: 'crp-india/complaints',
+            ext
+          });
+          imagePaths.push(uploadedUrl);
+        } else {
+          imagePaths.push(upload.getUploadedFileUrl(file));
+        }
+      }
     }
 
     const referenceId = await generateReferenceId();
@@ -649,14 +699,13 @@ const assignComplaint = async (req, res, next) => {
       });
     }
 
-    // Security: Category Authority cannot assign complaints outside their assigned category
-    if (req.user && req.user.role === 'authority_category') {
-      if (complaint.category !== req.user.assignedCategory) {
-        return res.status(403).json({
-          success: false,
-          message: `Access denied: You cannot assign complaints outside your assigned category (${req.user.assignedCategory}).`
-        });
-      }
+    // Backend Authorization: Only authorized upper/main authority can modify assignment
+    const isUpperAuthority = req.user && req.user.role === 'authority_admin';
+    if (!isUpperAuthority) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Only Main Municipal Authority is authorized to assign or reassign Department and Officer.'
+      });
     }
 
     if (assignedDepartment && typeof assignedDepartment === 'string') {
@@ -666,14 +715,20 @@ const assignComplaint = async (req, res, next) => {
       complaint.assignedOfficer = assignedOfficer.trim().slice(0, 100);
     }
 
+    const cleanRemark = (remark && typeof remark === 'string') ? remark.trim().slice(0, 1000) : '';
+    if (cleanRemark) {
+      complaint.assignmentInstruction = cleanRemark;
+    }
+
     // Transition status to Assigned if it was Submitted or Under Review
     if (complaint.status === 'Submitted' || complaint.status === 'Under Review') {
       complaint.status = 'Assigned';
     }
 
     const officerName = req.user ? `${req.user.name} (${req.user.designation || 'Authority'})` : 'Municipal Authority';
-    const cleanRemark = (remark && typeof remark === 'string') ? remark.trim().slice(0, 1000) : '';
-    const assignRemark = cleanRemark || `Assigned to ${complaint.assignedDepartment} - Officer: ${complaint.assignedOfficer}.`;
+    const assignRemark = cleanRemark
+      ? `Assigned to ${complaint.assignedDepartment} (Officer: ${complaint.assignedOfficer}). Instruction: ${cleanRemark}`
+      : `Assigned to ${complaint.assignedDepartment} - Officer: ${complaint.assignedOfficer}.`;
 
     complaint.statusHistory.push({
       status: complaint.status,
@@ -696,10 +751,14 @@ const assignComplaint = async (req, res, next) => {
     // Notify citizen of department/officer assignment
     if (complaint.citizen && complaint.citizen.userId) {
       try {
+        const notifMsg = cleanRemark
+          ? `Your grievance ${complaint.referenceId} has been assigned to ${complaint.assignedDepartment} (Officer: ${complaint.assignedOfficer}). Instruction: "${cleanRemark}"`
+          : `Your grievance ${complaint.referenceId} has been assigned to ${complaint.assignedDepartment} (Officer: ${complaint.assignedOfficer}).`;
+
         await Notification.create({
           recipient: complaint.citizen.userId,
           title: 'Department Assigned',
-          message: `Your grievance ${complaint.referenceId} has been assigned to ${complaint.assignedDepartment} (Officer: ${complaint.assignedOfficer}).`,
+          message: notifMsg,
           type: 'assignment',
           complaintId: complaint._id,
           referenceId: complaint.referenceId
