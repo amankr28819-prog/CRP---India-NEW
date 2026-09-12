@@ -1,5 +1,12 @@
+const dns = require('dns');
+const net = require('net');
 const nodemailer = require('nodemailer');
 const User = require('../models/User');
+
+// Set default DNS result order to IPv4 first in Node.js runtime environments
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 // Safe email masking helper for diagnostic logging
 const maskEmail = (email) => {
@@ -12,7 +19,7 @@ const maskEmail = (email) => {
   return `${maskedName}@${domain}`;
 };
 
-// Configurable SMTP options from environment (Defaults to Gmail SMTP submission via STARTTLS on port 587)
+// Configurable SMTP options from environment (Defaults to Gmail SMTP submission via STARTTLS on port 587, IPv4 family)
 const getSmtpConfig = () => {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
@@ -20,6 +27,7 @@ const getSmtpConfig = () => {
     ? String(process.env.SMTP_SECURE).trim().toLowerCase() === 'true'
     : port === 465;
 
+  const family = parseInt(process.env.SMTP_FAMILY || '4', 10) || 4;
   const user = (process.env.EMAIL_USER || 'crpindianew@gmail.com').trim();
   const rawPass = (process.env.EMAIL_APP_PASSWORD || '').trim();
   // Strip accidental whitespace from Google App Password (e.g. "abcd efgh ijkl mnop")
@@ -31,6 +39,7 @@ const getSmtpConfig = () => {
     port,
     secure,
     requireTLS: !secure,
+    family,
     auth: { user, pass },
     from: `"${fromName}" <${user}>`,
     isConfigured: Boolean(user && pass && pass.length > 0)
@@ -80,6 +89,7 @@ const getTransporter = () => {
     port: config.port,
     secure: config.secure,
     requireTLS: config.requireTLS,
+    family: config.family,
     auth: {
       user: config.auth.user,
       pass: config.auth.pass
@@ -87,7 +97,35 @@ const getTransporter = () => {
     // Safe timeouts so SMTP latency never hangs requests
     connectionTimeout: 10000,
     greetingTimeout: 10000,
-    socketTimeout: 15000
+    socketTimeout: 15000,
+    // Custom socket provider ensuring IPv4 connection to prevent ENETUNREACH on platforms lacking IPv6 routing
+    getSocket: (options, callback) => {
+      let returned = false;
+      const socket = net.connect({
+        host: options.host,
+        port: options.port,
+        family: options.family || 4,
+        timeout: options.connectionTimeout || 10000
+      }, () => {
+        if (returned) return;
+        returned = true;
+        socket.setTimeout(0);
+        callback(null, { connection: socket });
+      });
+
+      socket.once('timeout', () => {
+        if (returned) return;
+        returned = true;
+        socket.destroy();
+        callback(new Error('Connection timeout'));
+      });
+
+      socket.once('error', (err) => {
+        if (returned) return;
+        returned = true;
+        callback(err);
+      });
+    }
   });
 
   return transporter;
@@ -110,7 +148,7 @@ const verifyTransporterSafe = async () => {
   const diag = getSafeConfigDiagnostic();
   const config = getSmtpConfig();
   console.log(`[EMAIL DEBUG] SMTP configuration present: host=${diag.host} port=${diag.port} secure=${diag.secure} user=${diag.user} appPassword=${diag.appPassword}`);
-  console.log(`[EMAIL DEBUG] SMTP target: host=${config.host} port=${config.port} secure=${config.secure} requireTLS=${Boolean(config.requireTLS)}`);
+  console.log(`[EMAIL DEBUG] SMTP target: host=${config.host} port=${config.port} secure=${config.secure} requireTLS=${Boolean(config.requireTLS)} family=${config.family}`);
   console.log(`[EMAIL DEBUG] SMTP appPassword metadata: length=${diag.appPasswordLength}, spacesRemoved=${diag.appPasswordHadSpaces}`);
 
   const activeTransporter = getTransporter();
