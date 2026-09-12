@@ -6,11 +6,6 @@ const Vote = require('../models/Vote');
 const { generateReferenceId } = require('../utils/referenceGenerator');
 const { escapeRegex } = require('../middleware/sanitize');
 const { getUploadedFileUrl } = require('../middleware/upload');
-const {
-  sendStatusUpdateEmail,
-  sendDuplicateNoticeEmail,
-  sendMisinformationNoticeEmail
-} = require('../services/emailService');
 
 const categoryDepartmentMap = {
   'Roads & Potholes': 'Public Works Department (Roads)',
@@ -549,8 +544,6 @@ const updateComplaintStatus = async (req, res, next) => {
       });
     }
 
-    const previousStatus = complaint.status;
-
     // Security: Category Authority cannot update complaints outside their assigned category
     if (req.user && req.user.role === 'authority_category') {
       if (complaint.category !== req.user.assignedCategory) {
@@ -619,32 +612,6 @@ const updateComplaintStatus = async (req, res, next) => {
       } catch (notifErr) {
         console.error('[NOTIFICATION] Failed to create status notification:', notifErr);
       }
-    }
-
-    console.log(`[EMAIL DEBUG] updateComplaintStatus called for ref ${complaint.referenceId}. previousStatus="${previousStatus}", requestedStatus="${status}". Changed: ${previousStatus !== status}`);
-
-    // Send email notification to citizen if status actually changed
-    if (previousStatus !== status) {
-      console.log(`[EMAIL DEBUG] Status-change email dispatch reached for ref ${complaint.referenceId}: "${previousStatus}" -> "${status}"`);
-      try {
-        const emailResult = await sendStatusUpdateEmail({
-          complaint,
-          previousStatus,
-          newStatus: status,
-          remark: auditRemark,
-          resolutionPhoto: complaint.resolutionPhoto,
-          resolutionNote: complaint.resolutionNote
-        });
-        console.log(`[EMAIL DEBUG] sendStatusUpdateEmail dispatch completed for ref ${complaint.referenceId}. Success: ${Boolean(emailResult?.success)}`);
-      } catch (emailErr) {
-        console.error('[EMAIL DEBUG] Failed to dispatch status email:', {
-          name: emailErr.name,
-          message: emailErr.message,
-          code: emailErr.code
-        });
-      }
-    } else {
-      console.log(`[EMAIL DEBUG] Status-change email skipped: status unchanged ("${previousStatus}")`);
     }
 
     res.json({
@@ -730,8 +697,6 @@ const assignComplaint = async (req, res, next) => {
     }
 
     await complaint.save();
-
-    console.log(`[EMAIL DEBUG] assignComplaint called for ref ${complaint.referenceId}. Status="${complaint.status}", assignedDept="${complaint.assignedDepartment}", assignedOfficer="${complaint.assignedOfficer}".`);
 
     // Notify citizen of department/officer assignment
     if (complaint.citizen && complaint.citizen.userId) {
@@ -1059,13 +1024,6 @@ const flagComplaintAsMisinformation = async (req, res, next) => {
       });
     }
 
-    if (complaint.status === 'Misinformation' || complaint.flagStatus === 'misinformation') {
-      return res.status(400).json({
-        success: false,
-        message: 'Complaint has already been flagged as Misinformation.'
-      });
-    }
-
     if (req.user.role === 'authority_category' && complaint.category !== req.user.assignedCategory) {
       return res.status(403).json({
         success: false,
@@ -1127,24 +1085,6 @@ const flagComplaintAsMisinformation = async (req, res, next) => {
       } catch (notifErr) {
         console.error('[NOTIFICATION] Failed to create misinformation notification:', notifErr);
       }
-    }
-
-    // Send misinformation notice email to citizen
-    console.log(`[EMAIL DEBUG] flagComplaintAsMisinformation email dispatch reached for ref ${complaint.referenceId}`);
-    try {
-      const emailResult = await sendMisinformationNoticeEmail({
-        complaint,
-        explanation: cleanExplanation,
-        officerDept,
-        officerName
-      });
-      console.log(`[EMAIL DEBUG] sendMisinformationNoticeEmail dispatch completed for ref ${complaint.referenceId}. Success: ${Boolean(emailResult?.success)}`);
-    } catch (emailErr) {
-      console.error('[EMAIL DEBUG] Failed to dispatch misinformation email:', {
-        name: emailErr.name,
-        message: emailErr.message,
-        code: emailErr.code
-      });
     }
 
     // Change 11 & 12: Accountable Warnings & Suspension for citizen
@@ -1238,13 +1178,6 @@ const flagComplaintAsDuplicate = async (req, res, next) => {
       });
     }
 
-    if (complaint.status === 'Duplicate' || complaint.flagStatus === 'duplicate') {
-      return res.status(400).json({
-        success: false,
-        message: 'Complaint has already been flagged as Duplicate.'
-      });
-    }
-
     if (req.user.role === 'authority_category' && complaint.category !== req.user.assignedCategory) {
       return res.status(403).json({
         success: false,
@@ -1306,24 +1239,6 @@ const flagComplaintAsDuplicate = async (req, res, next) => {
       } catch (notifErr) {
         console.error('[NOTIFICATION] Failed to create duplicate notification:', notifErr);
       }
-    }
-
-    // Send duplicate notice email to citizen
-    console.log(`[EMAIL DEBUG] flagComplaintAsDuplicate email dispatch reached for ref ${complaint.referenceId}`);
-    try {
-      const emailResult = await sendDuplicateNoticeEmail({
-        complaint,
-        explanation: cleanExplanation,
-        officerDept,
-        officerName
-      });
-      console.log(`[EMAIL DEBUG] sendDuplicateNoticeEmail dispatch completed for ref ${complaint.referenceId}. Success: ${Boolean(emailResult?.success)}`);
-    } catch (emailErr) {
-      console.error('[EMAIL DEBUG] Failed to dispatch duplicate email:', {
-        name: emailErr.name,
-        message: emailErr.message,
-        code: emailErr.code
-      });
     }
 
     // Change 11 & 12: Accountable Warnings & Suspension for citizen
