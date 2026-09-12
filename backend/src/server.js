@@ -131,6 +131,15 @@ app.use(errorHandler);
 // Start server
 const server = app.listen(PORT, () => {
   console.log(`[SERVER] CRP India API running on http://localhost:${PORT}`);
+  // Safe, non-blocking SMTP configuration and connection diagnostic on boot
+  try {
+    const { verifyTransporterSafe } = require('./services/emailService');
+    verifyTransporterSafe().catch((err) => {
+      console.warn('[EMAIL DEBUG] Startup SMTP diagnostic failed to complete:', err.message);
+    });
+  } catch (diagErr) {
+    console.warn('[EMAIL DEBUG] Startup SMTP diagnostic error:', diagErr.message);
+  }
 });
 
 // Graceful shutdown handling

@@ -1,6 +1,17 @@
 const nodemailer = require('nodemailer');
 const User = require('../models/User');
 
+// Safe email masking helper for diagnostic logging
+const maskEmail = (email) => {
+  if (!email || typeof email !== 'string') return '[missing]';
+  const parts = email.trim().split('@');
+  if (parts.length !== 2) return '[invalid-email]';
+  const name = parts[0];
+  const domain = parts[1];
+  const maskedName = name.length > 1 ? `${name[0]}***` : `${name}***`;
+  return `${maskedName}@${domain}`;
+};
+
 // Configurable SMTP options from environment
 const getSmtpConfig = () => {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
@@ -9,8 +20,10 @@ const getSmtpConfig = () => {
     ? String(process.env.SMTP_SECURE).trim().toLowerCase() === 'true'
     : port === 465;
 
-  const user = process.env.EMAIL_USER || 'crpindianew@gmail.com';
-  const pass = process.env.EMAIL_APP_PASSWORD || '';
+  const user = (process.env.EMAIL_USER || 'crpindianew@gmail.com').trim();
+  const rawPass = (process.env.EMAIL_APP_PASSWORD || '').trim();
+  // Strip accidental whitespace from Google App Password (e.g. "abcd efgh ijkl mnop")
+  const pass = rawPass.replace(/\s+/g, '');
   const fromName = process.env.EMAIL_FROM_NAME || 'CRP India Grievance Portal';
 
   return {
@@ -19,7 +32,27 @@ const getSmtpConfig = () => {
     secure,
     auth: { user, pass },
     from: `"${fromName}" <${user}>`,
-    isConfigured: Boolean(user && pass && pass.trim().length > 0)
+    isConfigured: Boolean(user && pass && pass.length > 0)
+  };
+};
+
+// Diagnostic metadata helper (strictly booleans/metadata, NEVER leaks secrets)
+const getSafeConfigDiagnostic = () => {
+  const host = process.env.SMTP_HOST;
+  const port = process.env.SMTP_PORT;
+  const secure = process.env.SMTP_SECURE;
+  const user = process.env.EMAIL_USER;
+  const rawPass = process.env.EMAIL_APP_PASSWORD || '';
+  const cleanPass = rawPass.trim().replace(/\s+/g, '');
+
+  return {
+    host: Boolean(host && host.trim().length > 0),
+    port: Boolean(port && String(port).trim().length > 0),
+    secure: Boolean(secure !== undefined && String(secure).trim().length > 0),
+    user: Boolean(user && user.trim().length > 0),
+    appPassword: Boolean(cleanPass.length > 0),
+    appPasswordHadSpaces: rawPass.includes(' '),
+    appPasswordLength: cleanPass.length
   };
 };
 
@@ -69,6 +102,45 @@ const resetTransporterForTesting = () => {
 };
 
 /**
+ * Diagnostic helper to safely verify Nodemailer SMTP connection and credentials.
+ */
+const verifyTransporterSafe = async () => {
+  const diag = getSafeConfigDiagnostic();
+  console.log(`[EMAIL DEBUG] SMTP configuration present: host=${diag.host} port=${diag.port} secure=${diag.secure} user=${diag.user} appPassword=${diag.appPassword}`);
+  console.log(`[EMAIL DEBUG] SMTP appPassword metadata: length=${diag.appPasswordLength}, spacesRemoved=${diag.appPasswordHadSpaces}`);
+
+  const activeTransporter = getTransporter();
+  if (!activeTransporter) {
+    console.log('[EMAIL DEBUG] Transporter verification skipped: SMTP credentials not configured.');
+    return { verified: false, reason: 'NOT_CONFIGURED' };
+  }
+
+  try {
+    console.log('[EMAIL DEBUG] Attempting Nodemailer transporter verification with SMTP server...');
+    await activeTransporter.verify();
+    console.log('[EMAIL DEBUG] Nodemailer transporter verification SUCCEEDED. SMTP connection and credentials are valid.');
+    return { verified: true };
+  } catch (verifyErr) {
+    console.error('[EMAIL DEBUG] Nodemailer transporter verification FAILED:', {
+      name: verifyErr.name || 'Error',
+      code: verifyErr.code || 'UNKNOWN',
+      responseCode: verifyErr.responseCode || null,
+      command: verifyErr.command || null,
+      message: verifyErr.message || 'Verification failed'
+    });
+    return {
+      verified: false,
+      error: {
+        name: verifyErr.name,
+        code: verifyErr.code,
+        responseCode: verifyErr.responseCode,
+        message: verifyErr.message
+      }
+    };
+  }
+};
+
+/**
  * Safely resolves the citizen recipient email, name, and notification preferences.
  * Checks User model first, falling back to complaint.citizen snapshot.
  *
@@ -78,6 +150,7 @@ const resetTransporterForTesting = () => {
 const resolveCitizenRecipient = async (complaint) => {
   try {
     if (!complaint || !complaint.citizen) {
+      console.log('[EMAIL DEBUG] Recipient resolution failed: NO_CITIZEN_DATA');
       return { shouldSend: false, reason: 'NO_CITIZEN_DATA' };
     }
 
@@ -85,11 +158,13 @@ const resolveCitizenRecipient = async (complaint) => {
     let recipientName = (complaint.citizen.name || '').trim() || 'Citizen';
     let emailUpdatesEnabled = true;
     let complaintStatusEnabled = true;
+    let userFound = false;
 
     if (complaint.citizen.userId) {
       try {
         const user = await User.findById(complaint.citizen.userId).select('email name settings');
         if (user) {
+          userFound = true;
           if (user.email && typeof user.email === 'string') {
             recipientEmail = user.email.trim().toLowerCase();
           }
@@ -102,17 +177,29 @@ const resolveCitizenRecipient = async (complaint) => {
           if (user.settings?.notifications?.complaintStatus === false) {
             complaintStatusEnabled = false;
           }
+        } else {
+          console.log(`[EMAIL DEBUG] User record not found for userId: ${complaint.citizen.userId}, falling back to complaint snapshot.`);
         }
       } catch (userLookupErr) {
-        console.warn('[EMAIL] User document lookup failed, using complaint snapshot:', userLookupErr.message);
+        console.warn('[EMAIL DEBUG] User document lookup failed, using complaint snapshot:', userLookupErr.message);
       }
+    } else {
+      console.log('[EMAIL DEBUG] No citizen.userId present on complaint, using complaint snapshot.');
     }
 
+    const masked = maskEmail(recipientEmail);
+    console.log(`[EMAIL DEBUG] Recipient resolved: ${masked} (source: ${userFound ? 'User record' : 'complaint snapshot'})`);
+
+    const prefsAllowed = emailUpdatesEnabled && complaintStatusEnabled;
+    console.log(`[EMAIL DEBUG] Email notification preference: ${prefsAllowed ? 'enabled' : 'disabled'} (emailUpdates=${emailUpdatesEnabled}, complaintStatus=${complaintStatusEnabled})`);
+
     if (!recipientEmail || !recipientEmail.includes('@')) {
+      console.log(`[EMAIL DEBUG] Recipient skipped: INVALID_OR_MISSING_EMAIL (${masked})`);
       return { shouldSend: false, reason: 'INVALID_OR_MISSING_EMAIL' };
     }
 
-    if (!emailUpdatesEnabled || !complaintStatusEnabled) {
+    if (!prefsAllowed) {
+      console.log(`[EMAIL DEBUG] Recipient skipped: USER_PREFERENCE_DISABLED for ${masked}`);
       return { shouldSend: false, reason: 'USER_PREFERENCE_DISABLED' };
     }
 
@@ -122,7 +209,7 @@ const resolveCitizenRecipient = async (complaint) => {
       name: recipientName
     };
   } catch (err) {
-    console.error('[EMAIL] Failed to resolve recipient:', err.message);
+    console.error('[EMAIL DEBUG] Failed to resolve recipient:', err.message);
     return { shouldSend: false, reason: 'RESOLVE_ERROR' };
   }
 };
@@ -131,12 +218,16 @@ const resolveCitizenRecipient = async (complaint) => {
  * Base email dispatch helper with isolated error handling.
  */
 const sendMailSafe = async ({ to, subject, text, html }) => {
+  const maskedTo = maskEmail(to);
   try {
     const config = getSmtpConfig();
+    const configDiag = getSafeConfigDiagnostic();
+    console.log(`[EMAIL DEBUG] SMTP configuration present: host=${configDiag.host} port=${configDiag.port} secure=${configDiag.secure} user=${configDiag.user} appPassword=${configDiag.appPassword}`);
+
     const activeTransporter = getTransporter();
 
     if (!activeTransporter) {
-      console.log(`[EMAIL] SMTP credentials not configured. Skipping email dispatch to ${to} for: "${subject}"`);
+      console.log(`[EMAIL DEBUG] SMTP credentials not configured. Skipping email dispatch to ${maskedTo} for: "${subject}"`);
       return { success: false, reason: 'NOT_CONFIGURED' };
     }
 
@@ -148,12 +239,27 @@ const sendMailSafe = async ({ to, subject, text, html }) => {
       html
     };
 
+    console.log(`[EMAIL DEBUG] Attempting sendMail to ${maskedTo} for subject: "${subject}"`);
     const info = await activeTransporter.sendMail(mailOptions);
-    console.log(`[EMAIL] Notification email successfully sent to ${to} (Message ID: ${info.messageId || 'mocked'})`);
+    console.log(`[EMAIL DEBUG] sendMail succeeded to ${maskedTo} (Message ID: ${info.messageId || 'present'})`);
     return { success: true, messageId: info.messageId };
   } catch (err) {
-    console.error(`[EMAIL] Error sending email to ${to}:`, err.message);
-    return { success: false, error: err.message };
+    console.error(`[EMAIL DEBUG] sendMail failed to ${maskedTo}:`, {
+      name: err.name || 'Error',
+      code: err.code || 'UNKNOWN',
+      responseCode: err.responseCode || null,
+      command: err.command || null,
+      message: err.message || 'Unknown SMTP error'
+    });
+    return {
+      success: false,
+      error: {
+        name: err.name,
+        code: err.code,
+        responseCode: err.responseCode,
+        message: err.message
+      }
+    };
   }
 };
 
@@ -475,6 +581,9 @@ CRP India Civic Grievance Cell
 
 module.exports = {
   getSmtpConfig,
+  getSafeConfigDiagnostic,
+  verifyTransporterSafe,
+  maskEmail,
   getTransporter,
   setTransporterForTesting,
   resetTransporterForTesting,
