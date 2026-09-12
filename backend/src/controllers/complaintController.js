@@ -53,10 +53,10 @@ const maskCitizenPii = (complaint, reqUser) => {
   // Internal Authority Messages are strictly hidden from citizens and public viewers
   if (!isAuthority) {
     delete compObj.authorityMessages;
-  } else if (reqUser.role === 'authority_category') {
+  } else if (reqUser.role === 'authority_category' || reqUser.role === 'authority') {
     // Lower authority only sees messages if complaint matches their category or department
-    const catMatch = compObj.category === reqUser.assignedCategory;
-    const deptMatch = compObj.assignedDepartment && compObj.assignedDepartment === reqUser.department;
+    const catMatch = reqUser.assignedCategory && compObj.category === reqUser.assignedCategory;
+    const deptMatch = reqUser.department && compObj.assignedDepartment && compObj.assignedDepartment === reqUser.department;
     if (!catMatch && !deptMatch) {
       delete compObj.authorityMessages;
     }
@@ -302,12 +302,14 @@ const getComplaintByRefId = async (req, res, next) => {
       });
     }
 
-    // Security: If logged-in user is a category-wise authority, strictly verify complaint category
-    if (req.user && req.user.role === 'authority_category') {
-      if (complaint.category !== req.user.assignedCategory) {
+    // Security: If logged-in user is a category-wise authority, strictly verify complaint category or assigned department
+    if (req.user && (req.user.role === 'authority_category' || req.user.role === 'authority')) {
+      const matchCategory = req.user.assignedCategory && complaint.category === req.user.assignedCategory;
+      const matchDepartment = req.user.department && complaint.assignedDepartment && complaint.assignedDepartment === req.user.department;
+      if (!matchCategory && !matchDepartment) {
         return res.status(403).json({
           success: false,
-          message: `Access denied: You do not have authorization to view complaints outside your assigned category (${req.user.assignedCategory}).`
+          message: `Access denied: You do not have authorization to view complaints outside your assigned category or department.`
         });
       }
     }
@@ -760,6 +762,25 @@ const assignComplaint = async (req, res, next) => {
 
     // Completely clear legacy assignment instruction
     complaint.assignmentInstruction = '';
+
+    const { message, authorityMessage } = req.body;
+    const msgText = (message || authorityMessage || '').trim();
+    if (msgText) {
+      const authMsg = {
+        senderId: req.user._id,
+        senderName: req.user.name,
+        senderRole: 'Main Municipal Authority',
+        senderDesignation: req.user.designation || 'Municipal Commissioner / Chief Administrator',
+        senderDepartment: req.user.department || 'Central Municipal Administration',
+        recipientDepartment: complaint.assignedDepartment || 'Concerned Department',
+        message: msgText.slice(0, 2000),
+        timestamp: new Date()
+      };
+      if (!complaint.authorityMessages) {
+        complaint.authorityMessages = [];
+      }
+      complaint.authorityMessages.push(authMsg);
+    }
 
     const previousStatus = complaint.status || 'Submitted';
     // Transition status to Assigned if it was Submitted or Under Review
@@ -1504,16 +1525,16 @@ const sendAuthorityMessage = async (req, res, next) => {
     const isCategoryAuthority = req.user.role === 'authority_category';
     const isGeneralAuthority = req.user.role === 'authority';
 
-    if (isCategoryAuthority) {
-      const matchCategory = complaint.category === req.user.assignedCategory;
-      const matchDepartment = complaint.assignedDepartment && complaint.assignedDepartment === req.user.department;
+    if (isCategoryAuthority || isGeneralAuthority) {
+      const matchCategory = req.user.assignedCategory && complaint.category === req.user.assignedCategory;
+      const matchDepartment = req.user.department && complaint.assignedDepartment && complaint.assignedDepartment === req.user.department;
       if (!matchCategory && !matchDepartment) {
         return res.status(403).json({
           success: false,
           message: 'Access denied: You are not authorized to communicate on complaints outside your department or category.'
         });
       }
-    } else if (!isUpperAuthority && !isGeneralAuthority) {
+    } else if (!isUpperAuthority) {
       return res.status(403).json({
         success: false,
         message: 'Access denied: Only municipal authorities can communicate regarding complaints.'
@@ -1577,16 +1598,16 @@ const getAuthorityMessages = async (req, res, next) => {
     const isCategoryAuthority = req.user.role === 'authority_category';
     const isGeneralAuthority = req.user.role === 'authority';
 
-    if (isCategoryAuthority) {
-      const matchCategory = complaint.category === req.user.assignedCategory;
-      const matchDepartment = complaint.assignedDepartment && complaint.assignedDepartment === req.user.department;
+    if (isCategoryAuthority || isGeneralAuthority) {
+      const matchCategory = req.user.assignedCategory && complaint.category === req.user.assignedCategory;
+      const matchDepartment = req.user.department && complaint.assignedDepartment && complaint.assignedDepartment === req.user.department;
       if (!matchCategory && !matchDepartment) {
         return res.status(403).json({
           success: false,
-          message: 'Access denied: You are not authorized to view messages for complaints outside your department.'
+          message: 'Access denied: You are not authorized to view messages for complaints outside your department or category.'
         });
       }
-    } else if (!isUpperAuthority && !isGeneralAuthority) {
+    } else if (!isUpperAuthority) {
       return res.status(403).json({
         success: false,
         message: 'Access denied: Only municipal authorities can view internal complaint messages.'

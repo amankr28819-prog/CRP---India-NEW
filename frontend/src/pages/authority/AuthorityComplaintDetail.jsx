@@ -121,6 +121,19 @@ export default function AuthorityComplaintDetail() {
         if (res.complaint.resolutionNote) {
           setResolutionNote(res.complaint.resolutionNote);
         }
+
+        // Fetch authority messages explicitly for real-time consistency
+        try {
+          const msgRes = await api.getAuthorityMessages(res.complaint._id || id);
+          if (msgRes.success && Array.isArray(msgRes.authorityMessages)) {
+            setComplaint(prev => ({
+              ...prev,
+              authorityMessages: msgRes.authorityMessages
+            }));
+          }
+        } catch {
+          // Silently continue if message fetch fails or access restricted
+        }
       } else {
         setError('Complaint record not found.');
       }
@@ -223,14 +236,22 @@ export default function AuthorityComplaintDetail() {
     setError('');
 
     try {
-      const res = await api.assignComplaint(complaint._id, {
+      const payload = {
         assignedDepartment: assignDept,
         assignedOfficer: assignOfficer || 'Not Assigned',
         remark: `Department assigned to ${assignDept} (Officer: ${assignOfficer || 'Not Assigned'})`
-      });
+      };
+      if (authorityMessageText.trim()) {
+        payload.message = authorityMessageText.trim();
+      }
+
+      const res = await api.assignComplaint(complaint._id, payload);
 
       if (res.success) {
         setComplaint(res.complaint);
+        if (authorityMessageText.trim()) {
+          setAuthorityMessageText('');
+        }
         setActionSuccess('Department & Officer allocation updated successfully.');
         setTimeout(() => setActionSuccess(''), 4000);
       }
@@ -655,10 +676,12 @@ export default function AuthorityComplaintDetail() {
                   <span style={{ color: 'var(--text-muted)' }}>Assigned Department:</span>{' '}
                   <strong>{complaint.assignedDepartment || 'Not assigned'}</strong>
                 </div>
-                <div>
-                  <span style={{ color: 'var(--text-muted)' }}>Assigned Officer:</span>{' '}
-                  <strong>{complaint.assignedOfficer || 'Not assigned'}</strong>
-                </div>
+                {isUpperAuthority && (
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Assigned Officer:</span>{' '}
+                    <strong>{complaint.assignedOfficer || 'Not assigned'}</strong>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -853,18 +876,36 @@ export default function AuthorityComplaintDetail() {
                         onChange={(e) => setAssignOfficer(e.target.value)}
                         className="form-select"
                       >
-                        {departmentOfficers
-                          .filter(o => o.department === assignDept)
-                          .map(o => (
+                        {(() => {
+                          const seenNames = new Set();
+                          const filtered = departmentOfficers.filter(o => o.department === assignDept);
+                          const uniqueOptions = [];
+                          for (const o of filtered) {
+                            if (!seenNames.has(o.name)) {
+                              seenNames.add(o.name);
+                              uniqueOptions.push(o);
+                            }
+                          }
+                          return uniqueOptions.map(o => (
                             <option key={o.id || o.name} value={o.name}>
                               {o.name} {o.designation ? `— ${o.designation}` : ''}
                             </option>
-                          ))}
-                        {departmentOfficers.filter(o => o.department === assignDept).length === 0 && (
-                          <option value="Not Assigned">Not Assigned</option>
-                        )}
+                          ));
+                        })()}
                         <option value="Not Assigned">Not Assigned</option>
                       </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontSize: '0.8125rem' }}>Message to Lower Authority (Optional)</label>
+                      <textarea
+                        value={authorityMessageText}
+                        onChange={(e) => setAuthorityMessageText(e.target.value.slice(0, 2000))}
+                        rows={2}
+                        placeholder="Attach an official directive or instruction for the department authority..."
+                        className="form-textarea"
+                        style={{ fontSize: '0.84rem' }}
+                      />
                     </div>
 
                     <button
@@ -884,15 +925,6 @@ export default function AuthorityComplaintDetail() {
                       </div>
                       <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                         {complaint.assignedDepartment || 'Not Assigned'}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        Assigned Field Officer
-                      </div>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {complaint.assignedOfficer || 'Not Assigned'}
                       </div>
                     </div>
                   </div>
@@ -923,11 +955,13 @@ export default function AuthorityComplaintDetail() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '18px' }}>
                   {(!complaint.authorityMessages || complaint.authorityMessages.length === 0) ? (
                     <div style={{ padding: '14px', backgroundColor: 'var(--bg-app)', borderRadius: '6px', border: '1px dashed var(--border-subtle)', color: 'var(--text-muted)', fontSize: '0.8125rem', textAlign: 'center' }}>
-                      No official authority messages or directives have been logged for this complaint yet.
+                      {isUpperAuthority
+                        ? 'No official authority messages or directives have been logged for this complaint yet.'
+                        : 'No official messages or directives have been issued by the Upper Authority for this complaint yet.'}
                     </div>
                   ) : (
                     complaint.authorityMessages.map((msg, index) => {
-                      const isSenderAdmin = msg.senderRole === 'authority_admin';
+                      const isSenderAdmin = msg.senderRole === 'authority_admin' || msg.senderRole === 'Main Municipal Authority' || (msg.senderDepartment && msg.senderDepartment.includes('Central Municipal'));
                       return (
                         <div
                           key={msg._id || index}

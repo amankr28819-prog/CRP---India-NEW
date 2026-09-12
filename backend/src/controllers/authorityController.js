@@ -250,19 +250,49 @@ const getDeletedComplaints = async (req, res, next) => {
 // @route GET /api/authority/officers
 const getDepartmentOfficers = async (req, res, next) => {
   try {
+    // Only fetch subordinate departmental officers (exclude Central Commissioner 'authority_admin')
     const officers = await User.find({
-      role: { $in: ['authority', 'authority_category', 'authority_admin'] }
+      role: { $in: ['authority_category', 'authority'] }
     }).select('name email role department designation assignedCategory').lean();
+
+    // Deduplicate by user account ID first
+    const seenUserIds = new Set();
+    const uniqueOfficers = [];
+    for (const o of officers) {
+      const idStr = o._id.toString();
+      if (!seenUserIds.has(idStr)) {
+        seenUserIds.add(idStr);
+        uniqueOfficers.push(o);
+      }
+    }
+
+    // Ensure 1 officer per department:
+    // If a department has an 'authority_category' officer, prefer it as canonical.
+    // Otherwise, use the generic 'authority' officer for that department.
+    const deptOfficerMap = new Map();
+    for (const o of uniqueOfficers) {
+      if (!o.department) continue;
+      if (!deptOfficerMap.has(o.department)) {
+        deptOfficerMap.set(o.department, o);
+      } else {
+        const existing = deptOfficerMap.get(o.department);
+        if (existing.role !== 'authority_category' && o.role === 'authority_category') {
+          deptOfficerMap.set(o.department, o);
+        }
+      }
+    }
+
+    const canonicalOfficers = Array.from(deptOfficerMap.values());
 
     res.json({
       success: true,
-      officers: officers.map(o => ({
+      officers: canonicalOfficers.map(o => ({
         id: o._id,
         name: o.name,
         role: o.role,
         department: o.department,
-        designation: o.designation,
-        assignedCategory: o.assignedCategory
+        designation: o.designation || '',
+        assignedCategory: o.assignedCategory || ''
       }))
     });
   } catch (err) {
