@@ -555,6 +555,13 @@ const updateComplaintStatus = async (req, res, next) => {
     }
 
     const officerName = req.user ? `${req.user.name} (${req.user.designation || 'Authority'})` : 'Municipal Authority';
+    const previousStatus = complaint.status || 'Submitted';
+
+    // If moving backward away from Resolved, clear active resolved state
+    if (previousStatus === 'Resolved' && status !== 'Resolved') {
+      complaint.resolvedAt = null;
+      complaint.resolvedBy = '';
+    }
 
     // When status is "Resolved", resolution photo proof is strictly required
     if (status === 'Resolved') {
@@ -572,26 +579,84 @@ const updateComplaintStatus = async (req, res, next) => {
       complaint.resolvedBy = officerName;
     }
 
-    const auditRemark = (status === 'Resolved' && complaint.resolutionNote)
-      ? `Resolved: ${complaint.resolutionNote}`
-      : (remark || `Status updated to ${status}.`);
+    // If complaint was flagged as Duplicate or Misinformation and authority moves it to an active status, clear administrative flag
+    if (['duplicate', 'misinformation'].includes(complaint.flagStatus) && !['Duplicate', 'Misinformation'].includes(status)) {
+      const priorFlag = complaint.flagStatus;
+      complaint.flagStatus = 'none';
+      complaint.flagDetails = {
+        flagType: null,
+        flaggedBy: null,
+        flaggedByName: '',
+        flaggedAt: null,
+        explanation: ''
+      };
+      complaint.flagHistory.push({
+        flagStatus: 'none',
+        flagType: null,
+        changedBy: 'Municipal Authority',
+        changedByName: req.user?.name || officerName,
+        explanation: `Status transitioned to ${status}. Administrative flag (${priorFlag}) cleared.`,
+        date: new Date()
+      });
+    }
+
+    // Determine if this is a backward status transition / rollback
+    const STATUS_STAGES = ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved'];
+    const prevIdx = STATUS_STAGES.indexOf(previousStatus);
+    const newIdx = STATUS_STAGES.indexOf(status);
+
+    let isBackward = false;
+    if (prevIdx !== -1 && newIdx !== -1 && newIdx < prevIdx) {
+      isBackward = true;
+    } else if (['Rejected', 'Duplicate', 'Misinformation'].includes(previousStatus) && STATUS_STAGES.includes(status)) {
+      isBackward = true;
+    }
+
+    // Generate clear, explicit transition audit remark
+    let defaultRemark = `Status updated to ${status}.`;
+    if (isBackward) {
+      if (previousStatus === 'Assigned') {
+        const assignedTarget = (complaint.assignedOfficer && complaint.assignedOfficer !== 'Unassigned')
+          ? `${complaint.assignedOfficer} (${complaint.assignedDepartment || 'Department'})`
+          : (complaint.assignedDepartment || 'Department');
+        defaultRemark = `Complaint was assigned to ${assignedTarget}, but was moved back to ${status} by ${officerName}.`;
+      } else if (previousStatus === 'In Progress') {
+        defaultRemark = `Complaint was In Progress, but was moved back to ${status} by ${officerName}.`;
+      } else if (previousStatus === 'Resolved') {
+        defaultRemark = `Complaint was Resolved, but was moved back to ${status} by ${officerName}.`;
+      } else if (previousStatus === 'Rejected') {
+        defaultRemark = `Complaint was rejected by ${officerName}, but was moved back to ${status} by ${officerName}.`;
+      } else if (previousStatus === 'Duplicate') {
+        defaultRemark = `Complaint was marked Duplicate, but was moved back to ${status} by ${officerName}.`;
+      } else if (previousStatus === 'Misinformation') {
+        defaultRemark = `Complaint was marked Misinformation, but was moved back to ${status} by ${officerName}.`;
+      } else {
+        defaultRemark = `Complaint was moved back from ${previousStatus} to ${status} by ${officerName}.`;
+      }
+    } else if (status === 'Resolved' && complaint.resolutionNote) {
+      defaultRemark = `Resolved: ${complaint.resolutionNote}`;
+    }
+
+    const cleanUserRemark = (remark && typeof remark === 'string') ? remark.trim() : '';
+    const auditRemark = cleanUserRemark
+      ? (isBackward ? `${defaultRemark} (Reason: ${cleanUserRemark})` : cleanUserRemark)
+      : defaultRemark;
 
     complaint.status = status;
     complaint.statusHistory.push({
       status,
+      previousStatus,
       changedBy: officerName,
       department: req.user?.department || complaint.assignedDepartment || '',
       remark: auditRemark,
       timestamp: new Date()
     });
 
-    if (remark || (status === 'Resolved' && complaint.resolutionNote)) {
-      complaint.remarks.push({
-        text: remark || complaint.resolutionNote,
-        author: officerName,
-        createdAt: new Date()
-      });
-    }
+    complaint.remarks.push({
+      text: auditRemark,
+      author: officerName,
+      createdAt: new Date()
+    });
 
     await complaint.save();
 
@@ -670,6 +735,7 @@ const assignComplaint = async (req, res, next) => {
       complaint.assignmentInstruction = cleanRemark;
     }
 
+    const previousStatus = complaint.status || 'Submitted';
     // Transition status to Assigned if it was Submitted or Under Review
     if (complaint.status === 'Submitted' || complaint.status === 'Under Review') {
       complaint.status = 'Assigned';
@@ -682,6 +748,7 @@ const assignComplaint = async (req, res, next) => {
 
     complaint.statusHistory.push({
       status: complaint.status,
+      previousStatus,
       changedBy: officerName,
       department: complaint.assignedDepartment || req.user?.department || '',
       remark: assignRemark,
@@ -1036,6 +1103,7 @@ const flagComplaintAsMisinformation = async (req, res, next) => {
     const actionDate = new Date();
     const cleanExplanation = explanation.trim();
 
+    const previousStatus = complaint.status || 'Submitted';
     complaint.status = 'Misinformation';
     complaint.flagStatus = 'misinformation';
     complaint.flagDetails = {
@@ -1057,6 +1125,7 @@ const flagComplaintAsMisinformation = async (req, res, next) => {
 
     complaint.statusHistory.push({
       status: 'Misinformation',
+      previousStatus,
       changedBy: officerName,
       department: officerDept,
       remark: `Complaint marked as Misinformation. Reason: ${cleanExplanation}`,
@@ -1190,6 +1259,7 @@ const flagComplaintAsDuplicate = async (req, res, next) => {
     const actionDate = new Date();
     const cleanExplanation = explanation.trim();
 
+    const previousStatus = complaint.status || 'Submitted';
     complaint.status = 'Duplicate';
     complaint.flagStatus = 'duplicate';
     complaint.flagDetails = {
@@ -1211,6 +1281,7 @@ const flagComplaintAsDuplicate = async (req, res, next) => {
 
     complaint.statusHistory.push({
       status: 'Duplicate',
+      previousStatus,
       changedBy: officerName,
       department: officerDept,
       remark: `Complaint marked as Duplicate. Reason: ${cleanExplanation}`,
@@ -1342,6 +1413,30 @@ const removeComplaintFlag = async (req, res, next) => {
       explanation: explanation || `Administrative flag (${priorFlag}) cleared by municipal authority. Complaint returned to Active pool.`,
       date: new Date()
     });
+
+    // If complaint.status was Duplicate or Misinformation, restore it to its prior active status
+    if (['Duplicate', 'Misinformation'].includes(complaint.status)) {
+      let targetStatus = 'Under Review';
+      if (complaint.statusHistory && complaint.statusHistory.length > 0) {
+        const prior = complaint.statusHistory.slice().reverse().find(h => !['Duplicate', 'Misinformation'].includes(h.status));
+        if (prior && prior.status) {
+          targetStatus = prior.status;
+        }
+      }
+      const previousStatus = complaint.status;
+      const officerName = req.user ? `${req.user.name} (${req.user.designation || 'Authority'})` : 'Municipal Authority';
+      complaint.status = targetStatus;
+      complaint.statusHistory.push({
+        status: targetStatus,
+        previousStatus,
+        changedBy: officerName,
+        department: req.user?.department || complaint.assignedDepartment || '',
+        remark: explanation
+          ? `Administrative flag (${priorFlag}) cleared. Moved back to ${targetStatus}. (Reason: ${explanation.trim()})`
+          : `Administrative flag (${priorFlag}) cleared. Moved back to ${targetStatus}.`,
+        timestamp: new Date()
+      });
+    }
 
     await complaint.save();
 

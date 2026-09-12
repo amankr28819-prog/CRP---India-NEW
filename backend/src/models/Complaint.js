@@ -6,6 +6,10 @@ const statusHistorySchema = new mongoose.Schema({
     enum: ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved', 'Rejected', 'Duplicate', 'Misinformation'],
     required: true
   },
+  previousStatus: {
+    type: String,
+    default: ''
+  },
   changedBy: {
     type: String,
     default: 'System / Citizen'
