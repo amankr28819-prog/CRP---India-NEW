@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import BackButton from '../components/BackButton';
 import AuthTransition from '../components/AuthTransition';
-import loginBg from '../assets/citizen-login-bg.jpg';
+import loginBg from '../assets/background.png';
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>

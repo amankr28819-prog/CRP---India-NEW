@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { UserPlus, AlertCircle, Info, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import BackButton from '../components/BackButton';
-import loginBg from '../assets/citizen-login-bg.jpg';
+import loginBg from '../assets/background.png';
 
 export default function CitizenRegister() {
   const [formData, setFormData] = useState({
