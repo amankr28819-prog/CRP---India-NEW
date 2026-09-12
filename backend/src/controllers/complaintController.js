@@ -6,6 +6,11 @@ const Vote = require('../models/Vote');
 const { generateReferenceId } = require('../utils/referenceGenerator');
 const { escapeRegex } = require('../middleware/sanitize');
 const { getUploadedFileUrl } = require('../middleware/upload');
+const {
+  sendStatusUpdateEmail,
+  sendDuplicateNoticeEmail,
+  sendMisinformationNoticeEmail
+} = require('../services/emailService');
 
 const categoryDepartmentMap = {
   'Roads & Potholes': 'Public Works Department (Roads)',
@@ -544,6 +549,8 @@ const updateComplaintStatus = async (req, res, next) => {
       });
     }
 
+    const previousStatus = complaint.status;
+
     // Security: Category Authority cannot update complaints outside their assigned category
     if (req.user && req.user.role === 'authority_category') {
       if (complaint.category !== req.user.assignedCategory) {
@@ -611,6 +618,22 @@ const updateComplaintStatus = async (req, res, next) => {
         });
       } catch (notifErr) {
         console.error('[NOTIFICATION] Failed to create status notification:', notifErr);
+      }
+    }
+
+    // Send email notification to citizen if status actually changed
+    if (previousStatus !== status) {
+      try {
+        await sendStatusUpdateEmail({
+          complaint,
+          previousStatus,
+          newStatus: status,
+          remark: auditRemark,
+          resolutionPhoto: complaint.resolutionPhoto,
+          resolutionNote: complaint.resolutionNote
+        });
+      } catch (emailErr) {
+        console.error('[EMAIL] Failed to dispatch status email:', emailErr.message);
       }
     }
 
@@ -1024,6 +1047,13 @@ const flagComplaintAsMisinformation = async (req, res, next) => {
       });
     }
 
+    if (complaint.status === 'Misinformation' || complaint.flagStatus === 'misinformation') {
+      return res.status(400).json({
+        success: false,
+        message: 'Complaint has already been flagged as Misinformation.'
+      });
+    }
+
     if (req.user.role === 'authority_category' && complaint.category !== req.user.assignedCategory) {
       return res.status(403).json({
         success: false,
@@ -1085,6 +1115,18 @@ const flagComplaintAsMisinformation = async (req, res, next) => {
       } catch (notifErr) {
         console.error('[NOTIFICATION] Failed to create misinformation notification:', notifErr);
       }
+    }
+
+    // Send misinformation notice email to citizen
+    try {
+      await sendMisinformationNoticeEmail({
+        complaint,
+        explanation: cleanExplanation,
+        officerDept,
+        officerName
+      });
+    } catch (emailErr) {
+      console.error('[EMAIL] Failed to dispatch misinformation email:', emailErr.message);
     }
 
     // Change 11 & 12: Accountable Warnings & Suspension for citizen
@@ -1178,6 +1220,13 @@ const flagComplaintAsDuplicate = async (req, res, next) => {
       });
     }
 
+    if (complaint.status === 'Duplicate' || complaint.flagStatus === 'duplicate') {
+      return res.status(400).json({
+        success: false,
+        message: 'Complaint has already been flagged as Duplicate.'
+      });
+    }
+
     if (req.user.role === 'authority_category' && complaint.category !== req.user.assignedCategory) {
       return res.status(403).json({
         success: false,
@@ -1239,6 +1288,18 @@ const flagComplaintAsDuplicate = async (req, res, next) => {
       } catch (notifErr) {
         console.error('[NOTIFICATION] Failed to create duplicate notification:', notifErr);
       }
+    }
+
+    // Send duplicate notice email to citizen
+    try {
+      await sendDuplicateNoticeEmail({
+        complaint,
+        explanation: cleanExplanation,
+        officerDept,
+        officerName
+      });
+    } catch (emailErr) {
+      console.error('[EMAIL] Failed to dispatch duplicate email:', emailErr.message);
     }
 
     // Change 11 & 12: Accountable Warnings & Suspension for citizen
