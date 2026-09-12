@@ -256,7 +256,7 @@ export default function AuthorityAssignedComplaints() {
                       <StatusBadge status={c.status} />
                     </td>
                     <td style={{ padding: '14px 16px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '0.8125rem' }}>
-                      {c.assignedOfficer || 'Unassigned'}
+                      {(c.assignedOfficer && c.assignedOfficer !== 'Unassigned') ? c.assignedOfficer : 'Pending Allocation'}
                     </td>
                     <td style={{ padding: '14px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <Link

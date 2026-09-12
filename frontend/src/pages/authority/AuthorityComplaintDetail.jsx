@@ -97,6 +97,17 @@ export default function AuthorityComplaintDetail() {
     fetchOfficers();
   }, []);
 
+  useEffect(() => {
+    if (departmentOfficers.length > 0 && complaint) {
+      if (!assignOfficer || assignOfficer === 'Pending Allocation' || assignOfficer === 'Unassigned' || assignOfficer === 'Not Assigned') {
+        const match = departmentOfficers.find(o => o.department === (complaint.assignedDepartment || assignDept));
+        if (match) {
+          setAssignOfficer(match.name);
+        }
+      }
+    }
+  }, [departmentOfficers, complaint, assignOfficer, assignDept]);
+
   const handleDepartmentChange = (newDept) => {
     setAssignDept(newDept);
     // Dynamically find officer matching the new department, preventing stale officer retention
@@ -676,12 +687,10 @@ export default function AuthorityComplaintDetail() {
                   <span style={{ color: 'var(--text-muted)' }}>Assigned Department:</span>{' '}
                   <strong>{complaint.assignedDepartment || 'Not assigned'}</strong>
                 </div>
-                {isUpperAuthority && (
-                  <div>
-                    <span style={{ color: 'var(--text-muted)' }}>Assigned Officer:</span>{' '}
-                    <strong>{complaint.assignedOfficer || 'Not assigned'}</strong>
-                  </div>
-                )}
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Assigned Officer:</span>{' '}
+                  <strong>{(complaint.assignedOfficer && complaint.assignedOfficer !== 'Unassigned') ? complaint.assignedOfficer : 'Pending Allocation'}</strong>
+                </div>
               </div>
             </div>
           ) : (
@@ -925,6 +934,15 @@ export default function AuthorityComplaintDetail() {
                       </div>
                       <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                         {complaint.assignedDepartment || 'Not Assigned'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Assigned Field Officer
+                      </div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {(complaint.assignedOfficer && complaint.assignedOfficer !== 'Unassigned') ? complaint.assignedOfficer : 'Pending Allocation'}
                       </div>
                     </div>
                   </div>

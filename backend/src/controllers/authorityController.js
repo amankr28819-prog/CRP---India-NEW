@@ -1,6 +1,7 @@
 const Complaint = require('../models/Complaint');
 const User = require('../models/User');
 const { escapeRegex } = require('../middleware/sanitize');
+const { getCanonicalDeptOfficerMap, resolveAssignedOfficer } = require('./complaintController');
 
 const categoryDepartmentMap = {
   'Roads & Potholes': 'Public Works Department (Roads)',
@@ -233,13 +234,19 @@ const getDeletedComplaints = async (req, res, next) => {
       .skip(skip)
       .limit(cleanLimit);
 
+    const deptOfficerMap = await getCanonicalDeptOfficerMap();
+    const formattedComplaints = complaints.map(c => {
+      const obj = c.toObject ? c.toObject() : { ...c };
+      return resolveAssignedOfficer(obj, deptOfficerMap);
+    });
+
     res.json({
       success: true,
-      count: complaints.length,
+      count: formattedComplaints.length,
       total,
       page: cleanPage,
       pages: Math.ceil(total / cleanLimit),
-      complaints
+      complaints: formattedComplaints
     });
   } catch (err) {
     next(err);

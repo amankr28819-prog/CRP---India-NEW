@@ -18,12 +18,121 @@ const categoryDepartmentMap = {
 };
 
 /**
+ * Canonical Department Officer Resolution
+ * Dynamically resolves canonical field officers from the User collection by department
+ */
+let cachedDeptOfficerMap = null;
+let lastOfficerFetchTime = 0;
+
+const getCanonicalDeptOfficerMap = async () => {
+  const now = Date.now();
+  if (cachedDeptOfficerMap && (now - lastOfficerFetchTime < 60000)) {
+    return cachedDeptOfficerMap;
+  }
+  try {
+    const officers = await User.find({
+      role: { $in: ['authority_category', 'authority'] }
+    }).select('name email role department designation assignedCategory').lean();
+
+    const deptMap = new Map();
+    for (const o of officers) {
+      if (!o.department) continue;
+      if (!deptMap.has(o.department)) {
+        deptMap.set(o.department, o);
+      } else {
+        const existing = deptMap.get(o.department);
+        if (existing.role !== 'authority_category' && o.role === 'authority_category') {
+          deptMap.set(o.department, o);
+        }
+      }
+    }
+    cachedDeptOfficerMap = deptMap;
+    lastOfficerFetchTime = now;
+    return deptMap;
+  } catch {
+    return cachedDeptOfficerMap || new Map();
+  }
+};
+
+const resolveAssignedOfficer = (compObj, deptOfficerMap) => {
+  if (!compObj) return compObj;
+
+  const comp = compObj.toObject ? compObj.toObject() : { ...compObj };
+  const currentOfficer = (comp.assignedOfficer || '').trim();
+
+  // If already a valid specific officer name (not placeholder text)
+  if (
+    currentOfficer &&
+    currentOfficer !== 'Pending Allocation' &&
+    currentOfficer !== 'Unassigned' &&
+    currentOfficer !== 'Not Assigned'
+  ) {
+    return comp;
+  }
+
+  // If status is 'Submitted', genuinely NO officer is assigned yet -> keep Pending Allocation
+  if (comp.status === 'Submitted') {
+    comp.assignedOfficer = 'Pending Allocation';
+    return comp;
+  }
+
+  // Check status history for an explicit field officer assignment
+  if (Array.isArray(comp.statusHistory) && comp.statusHistory.length > 0) {
+    for (let i = comp.statusHistory.length - 1; i >= 0; i--) {
+      const entry = comp.statusHistory[i];
+      const remarkText = entry ? (entry.remark || entry.remarks || '') : '';
+      if (remarkText) {
+        const match = remarkText.match(/(?:Field Officer:?|Assigned to (?:Field )?(?:Officer )?)\s*([^).]+)/i);
+        if (match && match[1]) {
+          const officerFromRemark = match[1].trim();
+          if (
+            officerFromRemark &&
+            officerFromRemark !== 'Pending Allocation' &&
+            officerFromRemark !== 'Unassigned' &&
+            officerFromRemark !== 'Not Assigned'
+          ) {
+            comp.assignedOfficer = officerFromRemark;
+            return comp;
+          }
+        }
+      }
+    }
+  }
+
+  // If the complaint has an assigned department and has been assigned/progressed
+  // resolve the actual officer belonging to that department from User collection
+  const dept = comp.assignedDepartment;
+  const mapToUse = deptOfficerMap || cachedDeptOfficerMap;
+  if (dept && dept !== 'Public Grievance Cell' && mapToUse) {
+    const officer = (typeof mapToUse.get === 'function') ? mapToUse.get(dept) : mapToUse[dept];
+    if (officer) {
+      const officerName = (typeof officer === 'object' && officer.name) ? officer.name : (typeof officer === 'string' ? officer : null);
+      if (officerName) {
+        comp.assignedOfficer = officerName;
+        return comp;
+      }
+    }
+  }
+
+  // If explicitly 'Not Assigned'
+  if (currentOfficer === 'Not Assigned') {
+    comp.assignedOfficer = 'Not Assigned';
+    return comp;
+  }
+
+  comp.assignedOfficer = currentOfficer || 'Pending Allocation';
+  return comp;
+};
+
+/**
  * Data Minimization / Privacy Masking
  * Masks citizen contact details for public and unauthorized requests
  */
-const maskCitizenPii = (complaint, reqUser) => {
+const maskCitizenPii = (complaint, reqUser, deptOfficerMap) => {
   if (!complaint) return null;
   const compObj = complaint.toObject ? complaint.toObject() : { ...complaint };
+
+  resolveAssignedOfficer(compObj, deptOfficerMap);
 
   const isAuthority = reqUser && ['authority', 'authority_admin', 'authority_category'].includes(reqUser.role);
   const isOwner = reqUser && compObj.citizen?.userId && reqUser._id && compObj.citizen.userId.toString() === reqUser._id.toString();
@@ -314,7 +423,8 @@ const getComplaintByRefId = async (req, res, next) => {
       }
     }
 
-    const masked = maskCitizenPii(complaint, req.user);
+    const deptOfficerMap = await getCanonicalDeptOfficerMap();
+    const masked = maskCitizenPii(complaint, req.user, deptOfficerMap);
     if (req.user && req.user.role === 'citizen') {
       const existingVote = await Vote.findOne({ citizen: req.user._id, complaint: complaint._id });
       masked.userVote = existingVote ? existingVote.voteType : null;
@@ -437,8 +547,9 @@ const getComplaints = async (req, res, next) => {
       userVotes.forEach(v => voteMap.set(v.complaint.toString(), v.voteType));
     }
 
+    const deptOfficerMap = await getCanonicalDeptOfficerMap();
     const formattedComplaints = complaints.map(c => {
-      const masked = maskCitizenPii(c, req.user);
+      const masked = maskCitizenPii(c, req.user, deptOfficerMap);
       masked.userVote = voteMap.get(c._id.toString()) || null;
       return masked;
     });
@@ -503,8 +614,9 @@ const getCitizenDashboardStats = async (req, res, next) => {
       userVotes.forEach(v => voteMap.set(v.complaint.toString(), v.voteType));
     }
 
+    const deptOfficerMap = await getCanonicalDeptOfficerMap();
     const recentComplaints = rawRecent.map(c => {
-      const masked = maskCitizenPii(c, req.user);
+      const masked = maskCitizenPii(c, req.user, deptOfficerMap);
       masked.userVote = voteMap.get(c._id.toString()) || null;
       return masked;
     });
@@ -663,6 +775,17 @@ const updateComplaintStatus = async (req, res, next) => {
       ? (isBackward ? `${defaultRemark} (Reason: ${cleanUserRemark})` : cleanUserRemark)
       : defaultRemark;
 
+    const deptOfficerMap = await getCanonicalDeptOfficerMap();
+
+    // When status moves forward to Assigned, In Progress, or Resolved, ensure assignedOfficer is resolved if pending
+    if (['Assigned', 'In Progress', 'Resolved'].includes(status)) {
+      if (!complaint.assignedOfficer || complaint.assignedOfficer === 'Pending Allocation' || complaint.assignedOfficer === 'Unassigned') {
+        if (complaint.assignedDepartment && deptOfficerMap.has(complaint.assignedDepartment)) {
+          complaint.assignedOfficer = deptOfficerMap.get(complaint.assignedDepartment).name;
+        }
+      }
+    }
+
     complaint.status = status;
     complaint.statusHistory.push({
       status,
@@ -703,7 +826,7 @@ const updateComplaintStatus = async (req, res, next) => {
     res.json({
       success: true,
       message: `Complaint status updated to ${status}.`,
-      complaint
+      complaint: maskCitizenPii(complaint, req.user, deptOfficerMap)
     });
   } catch (err) {
     next(err);
@@ -753,10 +876,18 @@ const assignComplaint = async (req, res, next) => {
       complaint.assignedDepartment = cleanDept;
     }
 
-    if (assignedOfficer && typeof assignedOfficer === 'string') {
+    const deptOfficerMap = await getCanonicalDeptOfficerMap();
+
+    if (assignedOfficer && typeof assignedOfficer === 'string' && assignedOfficer.trim() !== 'Pending Allocation') {
       complaint.assignedOfficer = assignedOfficer.trim().slice(0, 100);
+    } else if (assignedOfficer === 'Pending Allocation' || !assignedOfficer) {
+      if (complaint.assignedDepartment && deptOfficerMap.has(complaint.assignedDepartment)) {
+        complaint.assignedOfficer = deptOfficerMap.get(complaint.assignedDepartment).name;
+      } else {
+        complaint.assignedOfficer = 'Not Assigned';
+      }
     } else if (departmentChanged) {
-      // If department changed and no officer specified for the new department, prevent stale officer assignment
+      // If department changed and no officer specified for the new department, prevent stale officer retention
       complaint.assignedOfficer = 'Not Assigned';
     }
 
@@ -823,7 +954,7 @@ const assignComplaint = async (req, res, next) => {
     res.json({
       success: true,
       message: `Complaint assigned to ${complaint.assignedDepartment}.`,
-      complaint: maskCitizenPii(complaint, req.user)
+      complaint: maskCitizenPii(complaint, req.user, deptOfficerMap)
     });
   } catch (err) {
     next(err);
@@ -871,10 +1002,13 @@ const getMyComplaints = async (req, res, next) => {
     const sortOption = sort === 'oldest' ? { createdAt: 1 } : { createdAt: -1 };
     const complaints = await Complaint.find(query).sort(sortOption).limit(200);
 
+    const deptOfficerMap = await getCanonicalDeptOfficerMap();
+    const formattedComplaints = complaints.map(c => maskCitizenPii(c, req.user, deptOfficerMap));
+
     res.json({
       success: true,
-      count: complaints.length,
-      complaints
+      count: formattedComplaints.length,
+      complaints: formattedComplaints
     });
   } catch (err) {
     next(err);
@@ -1637,5 +1771,7 @@ module.exports = {
   flagComplaintAsDuplicate,
   removeComplaintFlag,
   sendAuthorityMessage,
-  getAuthorityMessages
+  getAuthorityMessages,
+  getCanonicalDeptOfficerMap,
+  resolveAssignedOfficer
 };

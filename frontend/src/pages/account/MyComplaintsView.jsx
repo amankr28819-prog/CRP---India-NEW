@@ -590,7 +590,9 @@ export default function MyComplaintsView() {
               </div>
               <div>
                 <span style={{ color: 'var(--text-muted)' }}>Assigned Officer: </span>
-                <strong style={{ color: 'var(--text-primary)' }}>{selectedComplaint.assignedOfficer}</strong>
+                <strong style={{ color: 'var(--text-primary)' }}>
+                  {(selectedComplaint.assignedOfficer && selectedComplaint.assignedOfficer !== 'Unassigned') ? selectedComplaint.assignedOfficer : 'Pending Allocation'}
+                </strong>
               </div>
             </div>
 

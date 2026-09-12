@@ -474,7 +474,7 @@ export default function Timeline({ history = [], currentStatus = null, complaint
                         {/* Assigned stage specific details */}
                         {stage === 'Assigned' && (
                           <>
-                            {complaint?.assignedOfficer && complaint.assignedOfficer !== 'Unassigned' && (
+                            {complaint?.assignedOfficer && complaint.assignedOfficer !== 'Unassigned' && complaint.assignedOfficer !== 'Pending Allocation' && complaint.assignedOfficer !== 'Not Assigned' && (
                               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                                 <User size={14} style={{ color: 'var(--text-muted)', marginTop: '2px', flexShrink: 0 }} />
                                 <div>

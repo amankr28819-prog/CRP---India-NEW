@@ -251,7 +251,7 @@ export default function TrackComplaint() {
                   {complaint.assignedDepartment || 'Central Grievance Redressal Cell'}
                 </div>
                 <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-                  Officer: {complaint.assignedOfficer || 'Pending Allocation'}
+                  Officer: {(complaint.assignedOfficer && complaint.assignedOfficer !== 'Unassigned') ? complaint.assignedOfficer : 'Pending Allocation'}
                 </div>
                 {complaint.assignmentInstruction && (
                   <div style={{ marginTop: '4px', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>

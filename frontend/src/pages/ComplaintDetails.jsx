@@ -415,7 +415,7 @@ export default function ComplaintDetails() {
               {complaint.assignedDepartment || 'Central Grievance Redressal Cell'}
             </div>
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
-              Designated Officer: {complaint.assignedOfficer || 'Pending Allocation'}
+              Designated Officer: {(complaint.assignedOfficer && complaint.assignedOfficer !== 'Unassigned') ? complaint.assignedOfficer : 'Pending Allocation'}
             </div>
             {complaint.assignmentInstruction && (
               <div style={{ marginTop: '6px', fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>
