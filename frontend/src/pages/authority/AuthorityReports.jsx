@@ -24,11 +24,15 @@ export default function AuthorityReports() {
   const [error, setError] = useState('');
   const [timeRange, setTimeRange] = useState('All Time');
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = async (selectedRange = timeRange) => {
     setLoading(true);
     setError('');
     try {
-      const res = await api.getAuthorityDashboard();
+      const params = {};
+      if (selectedRange && selectedRange !== 'All Time') {
+        params.timeRange = selectedRange;
+      }
+      const res = await api.getAuthorityDashboard(params);
       if (res.success && res.data) {
         setData(res.data);
       }
@@ -39,8 +43,13 @@ export default function AuthorityReports() {
     }
   };
 
+  const handleTimeRangeChange = (newRange) => {
+    setTimeRange(newRange);
+    fetchMetrics(newRange);
+  };
+
   useEffect(() => {
-    fetchMetrics();
+    fetchMetrics('All Time');
   }, []);
 
   const stats = data?.stats || {
@@ -50,26 +59,24 @@ export default function AuthorityReports() {
     assigned: 0,
     inProgress: 0,
     resolved: 0,
-    rejected: 0,
+    activeBacklog: 0,
+    resolutionRate: 0,
     deletedCount: 0,
-    avgTurnaroundHours: '34.5'
+    avgTurnaroundHours: null,
+    avgTurnaroundDisplay: 'N/A'
   };
 
   const totalComplaints = stats.total || 0;
-  const resolutionRate = totalComplaints > 0 ? Math.round(((stats.resolved || 0) / totalComplaints) * 100) : 0;
-  const activeBacklog = (stats.submitted || 0) + (stats.underReview || 0) + (stats.assigned || 0) + (stats.inProgress || 0);
+  const resolutionRate = stats.resolutionRate !== undefined
+    ? Math.round(stats.resolutionRate)
+    : (totalComplaints > 0 ? Math.round(((stats.resolved || 0) / totalComplaints) * 100) : 0);
+  const activeBacklog = stats.activeBacklog !== undefined
+    ? stats.activeBacklog
+    : ((stats.submitted || 0) + (stats.underReview || 0) + (stats.assigned || 0) + (stats.inProgress || 0));
 
-  const departmentMetrics = data?.departmentStats && data.departmentStats.length > 0
-    ? data.departmentStats
-    : [
-        { category: 'Roads & Potholes', departmentName: 'Public Works Department (Roads)', total: 0, resolved: 0, activeBacklog: 0, efficiency: 0 },
-        { category: 'Garbage & Sanitation', departmentName: 'Solid Waste & Sanitation Department', total: 0, resolved: 0, activeBacklog: 0, efficiency: 0 },
-        { category: 'Streetlights', departmentName: 'Municipal Electrical & Lighting Division', total: 0, resolved: 0, activeBacklog: 0, efficiency: 0 },
-        { category: 'Water Supply', departmentName: 'Water Supply & Jal Board', total: 0, resolved: 0, activeBacklog: 0, efficiency: 0 },
-        { category: 'Drainage', departmentName: 'Stormwater Drainage & Sewerage Board', total: 0, resolved: 0, activeBacklog: 0, efficiency: 0 },
-        { category: 'Public Spaces', departmentName: 'Parks & Public Amenities Directorate', total: 0, resolved: 0, activeBacklog: 0, efficiency: 0 },
-        { category: 'Other Issues', departmentName: 'General Civic Redressal', total: 0, resolved: 0, activeBacklog: 0, efficiency: 0 }
-      ];
+  const turnaroundDisplay = stats.avgTurnaroundDisplay || (stats.avgTurnaroundHours !== null && stats.avgTurnaroundHours !== undefined ? `${stats.avgTurnaroundHours} hrs` : 'N/A');
+
+  const departmentMetrics = data?.departmentStats || [];
 
   const statusItems = [
     { label: 'Submitted', count: stats.submitted || 0, color: 'var(--color-primary, #3B82F6)', bg: 'var(--color-primary-light, #EFF6FF)' },
@@ -82,6 +89,8 @@ export default function AuthorityReports() {
   const handlePrint = () => {
     window.print();
   };
+
+  const jurisdictionTitle = data?.authorityScope?.scopeTitle || user?.department || (user?.assignedCategory ? `${user.assignedCategory} Division` : 'Municipal Jurisdiction');
 
   return (
     <div className="container" style={{ padding: '36px 20px 80px 20px' }}>
@@ -96,13 +105,38 @@ export default function AuthorityReports() {
           </div>
           <h1 className="page-title">Reports & Redressal Analytics</h1>
           <p className="page-subtitle">
-            Comprehensive grievance throughput, department SLA adherence, and civic performance metrics for <strong>Bengaluru Municipal Region</strong>.
+            Comprehensive grievance throughput, department SLA adherence, and civic performance metrics for <strong>{jurisdictionTitle}</strong>.
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Time Range Selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '6px', padding: '6px 12px' }}>
+            <Calendar size={14} style={{ color: 'var(--text-secondary)' }} />
+            <select
+              value={timeRange}
+              onChange={(e) => handleTimeRangeChange(e.target.value)}
+              disabled={loading}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-primary)',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="All Time">All Time</option>
+              <option value="Today">Today</option>
+              <option value="This Week">This Week</option>
+              <option value="This Month">This Month</option>
+              <option value="This Year">This Year</option>
+            </select>
+          </div>
+
           <button
-            onClick={fetchMetrics}
+            onClick={() => fetchMetrics(timeRange)}
             className="btn btn-secondary btn-sm"
             title="Refresh metrics"
             disabled={loading}
@@ -120,6 +154,13 @@ export default function AuthorityReports() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="alert alert-error" style={{ marginBottom: '24px' }}>
+          <AlertTriangle size={18} />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Top Level Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
@@ -140,10 +181,10 @@ export default function AuthorityReports() {
             Average Turnaround Time
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--color-primary)', lineHeight: 1 }}>
-            {stats.avgTurnaroundHours || '34.5'} hrs
+            {turnaroundDisplay}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--color-accent-green)', marginTop: '8px' }}>
-            Within 48-Hour Citizen Charter SLA
+          <div style={{ fontSize: '0.75rem', color: stats.avgTurnaroundHours !== null ? 'var(--color-accent-green)' : 'var(--text-muted)', marginTop: '8px' }}>
+            {stats.avgTurnaroundHours !== null ? 'Calculated from resolved grievances' : 'No resolved grievances in scope'}
           </div>
         </div>
 
@@ -231,48 +272,56 @@ export default function AuthorityReports() {
               </tr>
             </thead>
             <tbody>
-              {departmentMetrics.map((dept, idx) => {
-                const efficiency = dept.total > 0 ? Math.round((dept.resolved / dept.total) * 100) : 0;
-                const sharePct = totalComplaints > 0 ? ((dept.total / totalComplaints) * 100).toFixed(1) : '0.0';
-                return (
-                  <tr key={idx} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                    <td style={{ padding: '14px 16px', fontWeight: 500, color: 'var(--text-primary)' }}>
-                      <div>{dept.departmentName}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{dept.category}</div>
-                    </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      <div>{dept.total}</div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{sharePct}% of total</div>
-                    </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'center', color: '#B45309', fontWeight: 600 }}>
-                      {dept.activeBacklog} active
-                    </td>
-                    <td style={{ padding: '14px 16px', minWidth: '180px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ flex: 1, height: '8px', backgroundColor: 'var(--bg-subtle)', borderRadius: '4px', overflow: 'hidden' }}>
-                          <div style={{ width: `${efficiency}%`, height: '100%', backgroundColor: efficiency >= 50 ? 'var(--color-accent-green, #16A34A)' : 'var(--color-primary)' }} />
+              {departmentMetrics.length > 0 ? (
+                departmentMetrics.map((dept, idx) => {
+                  const efficiency = dept.total > 0 ? Math.round((dept.resolved / dept.total) * 100) : 0;
+                  const sharePct = totalComplaints > 0 ? ((dept.total / totalComplaints) * 100).toFixed(1) : '0.0';
+                  return (
+                    <tr key={idx} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                      <td style={{ padding: '14px 16px', fontWeight: 500, color: 'var(--text-primary)' }}>
+                        <div>{dept.departmentName}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{dept.category}</div>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        <div>{dept.total}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{sharePct}% of total</div>
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'center', color: '#B45309', fontWeight: 600 }}>
+                        {dept.activeBacklog} active
+                      </td>
+                      <td style={{ padding: '14px 16px', minWidth: '180px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ flex: 1, height: '8px', backgroundColor: 'var(--bg-subtle)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${efficiency}%`, height: '100%', backgroundColor: efficiency >= 50 ? 'var(--color-accent-green, #16A34A)' : 'var(--color-primary)' }} />
+                          </div>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                            {dept.resolved} / {dept.total} ({efficiency}%)
+                          </span>
                         </div>
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          {dept.resolved} / {dept.total} ({efficiency}%)
+                      </td>
+                      <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          backgroundColor: dept.total === 0 ? 'var(--bg-subtle)' : efficiency >= 50 ? 'var(--color-accent-green-bg)' : 'var(--color-accent-amber-bg)',
+                          color: dept.total === 0 ? 'var(--text-muted)' : efficiency >= 50 ? '#15803D' : '#B45309',
+                          fontSize: '0.75rem',
+                          fontWeight: 600
+                        }}>
+                          {dept.total === 0 ? 'No Grievances' : efficiency >= 50 ? 'Charter Met' : 'Active Resolution'}
                         </span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      <span style={{
-                        display: 'inline-block',
-                        padding: '3px 8px',
-                        borderRadius: '4px',
-                        backgroundColor: dept.total === 0 ? 'var(--bg-subtle)' : efficiency >= 50 ? 'var(--color-accent-green-bg)' : 'var(--color-accent-amber-bg)',
-                        color: dept.total === 0 ? 'var(--text-muted)' : efficiency >= 50 ? '#15803D' : '#B45309',
-                        fontSize: '0.75rem',
-                        fontWeight: 600
-                      }}>
-                        {dept.total === 0 ? 'No Grievances' : efficiency >= 50 ? 'Charter Met' : 'Active Resolution'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    No departmental grievances recorded for this jurisdiction.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

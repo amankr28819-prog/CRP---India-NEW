@@ -10,56 +10,195 @@ const categoryDepartmentMap = {
   'Water Supply': 'Water Supply & Jal Board',
   'Drainage': 'Stormwater Drainage & Sewerage Board',
   'Public Spaces': 'Parks & Public Amenities Directorate',
-  'Other Issues': 'General Civic Redressal'
+  'Other Issues': 'Central Civic Redressal Cell'
+};
+
+/**
+ * Resolves the authorized query scope for an authority user.
+ * - Upper authority (authority_admin): Organization-wide access (no category/dept constraint).
+ * - Lower authority (authority_category or authority with category/dept): Strictly constrained
+ *   to complaints belonging to their assigned category or assigned department.
+ */
+const getAuthorityComplaintScope = (user) => {
+  if (!user) {
+    return { _id: null };
+  }
+
+  // Upper municipal authority: organization-wide scope
+  if (user.role === 'authority_admin') {
+    return {};
+  }
+
+  // Lower municipal authority
+  const orConditions = [];
+  if (user.assignedCategory && typeof user.assignedCategory === 'string' && user.assignedCategory.trim()) {
+    orConditions.push({ category: user.assignedCategory.trim() });
+  }
+  if (user.department && typeof user.department === 'string' && user.department.trim()) {
+    orConditions.push({ assignedDepartment: user.department.trim() });
+    // Also map department to standard category if applicable
+    const matchedCategory = Object.keys(categoryDepartmentMap).find(
+      cat => categoryDepartmentMap[cat] === user.department.trim()
+    );
+    if (matchedCategory && matchedCategory !== user.assignedCategory) {
+      orConditions.push({ category: matchedCategory });
+    }
+  }
+
+  if (orConditions.length === 1) {
+    return orConditions[0];
+  } else if (orConditions.length > 1) {
+    return { $or: orConditions };
+  }
+
+  // Fallback: If lower authority has neither category nor department assigned, deny data
+  return { _id: null };
+};
+
+/**
+ * Parses optional timeRange query parameters:
+ * Supports: 'All Time' (default), 'Today', 'This Week', 'This Month', 'This Year', or 'custom'
+ */
+const parseDateRange = (timeRange, customStart, customEnd) => {
+  if (!timeRange || timeRange === 'All Time' || timeRange === 'all') {
+    return null;
+  }
+
+  const now = new Date();
+  let startDate = null;
+  let endDate = new Date(now.getTime());
+
+  if (timeRange === 'Today' || timeRange === 'today') {
+    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  } else if (timeRange === 'This Week' || timeRange === 'week' || timeRange === '7days') {
+    startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  } else if (timeRange === 'This Month' || timeRange === 'month' || timeRange === '30days') {
+    startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  } else if (timeRange === 'This Year' || timeRange === 'year' || timeRange === '365days') {
+    startDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+  } else if (timeRange === 'custom' && customStart) {
+    startDate = new Date(customStart);
+    if (customEnd) {
+      endDate = new Date(customEnd);
+      if (customEnd.length <= 10) {
+        endDate.setHours(23, 59, 59, 999);
+      }
+    }
+  }
+
+  if (startDate && !isNaN(startDate.getTime())) {
+    return {
+      $gte: startDate,
+      $lte: !isNaN(endDate.getTime()) ? endDate : now
+    };
+  }
+
+  return null;
 };
 
 // @desc Get Authority Dashboard metrics and recent complaints
 // @route GET /api/authority/dashboard
 const getDashboardStats = async (req, res, next) => {
   try {
-    // If category-wise authority, strictly scope queries to assigned category
-    const isCategoryAuth = req.user && req.user.role === 'authority_category';
-    const baseQuery = isCategoryAuth
-      ? { category: req.user.assignedCategory, deletedByCitizen: { $ne: true } }
-      : { deletedByCitizen: { $ne: true } };
+    const isUpperAuthority = req.user && req.user.role === 'authority_admin';
+    const scopeFilter = getAuthorityComplaintScope(req.user);
+    const dateFilter = parseDateRange(req.query.timeRange, req.query.startDate, req.query.endDate);
 
-    const activeQuery = { ...baseQuery, flagStatus: 'none' };
+    // Single authoritative base query enforcing authority boundaries and citizen deletion status
+    const baseQuery = {
+      ...scopeFilter,
+      deletedByCitizen: { $ne: true }
+    };
 
+    if (dateFilter) {
+      baseQuery.createdAt = dateFilter;
+    }
+
+    // Active complaints query excluding administrative flags (misinformation, duplicate)
+    const activeQuery = {
+      ...baseQuery,
+      flagStatus: 'none'
+    };
+
+    // 1. Current Status Metrics strictly derived from the single scoped dataset
     const total = await Complaint.countDocuments(activeQuery);
     const submitted = await Complaint.countDocuments({ ...activeQuery, status: 'Submitted' });
     const underReview = await Complaint.countDocuments({ ...activeQuery, status: 'Under Review' });
     const assigned = await Complaint.countDocuments({ ...activeQuery, status: 'Assigned' });
     const inProgress = await Complaint.countDocuments({ ...activeQuery, status: 'In Progress' });
     const resolved = await Complaint.countDocuments({ ...activeQuery, status: 'Resolved' });
-    const deletedCount = await Complaint.countDocuments(
-      isCategoryAuth
-        ? { category: req.user.assignedCategory, deletedByCitizen: true }
-        : { deletedByCitizen: true }
-    );
-    const misinformationCount = await Complaint.countDocuments({ ...baseQuery, flagStatus: 'misinformation' });
-    const duplicateCount = await Complaint.countDocuments({ ...baseQuery, flagStatus: 'duplicate' });
 
-    // Category breakdown
-    const categoryPipeline = [
-      { $match: { ...baseQuery, flagStatus: 'none' } }
-    ];
-    if (isCategoryAuth) {
-      categoryPipeline.push({ $match: { category: req.user.assignedCategory } });
-    }
-    categoryPipeline.push(
-      { $group: { _id: '$category', count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
-    );
-    const categoryStats = await Complaint.aggregate(categoryPipeline);
+    // Active operational backlog (all non-resolved, non-flagged active stages)
+    const activeBacklog = submitted + underReview + assigned + inProgress;
 
-    // Departmental Live Resolution Metrics
+    // Mathematical resolution rate: (resolved / total) * 100
+    const resolutionRate = total > 0 ? Number(((resolved / total) * 100).toFixed(1)) : 0;
+
+    // Archival & Flagged metrics scoped strictly to authority boundary
+    const deletedQuery = {
+      ...scopeFilter,
+      deletedByCitizen: true,
+      ...(dateFilter ? { createdAt: dateFilter } : {})
+    };
+    const deletedCount = await Complaint.countDocuments(deletedQuery);
+    const misinformationCount = await Complaint.countDocuments({
+      ...baseQuery,
+      flagStatus: 'misinformation'
+    });
+    const duplicateCount = await Complaint.countDocuments({
+      ...baseQuery,
+      flagStatus: 'duplicate'
+    });
+
+    // 2. Average Turnaround Time for Resolved Grievances
+    // Only resolved complaints with valid resolved timestamps >= created timestamps are averaged
+    const resolvedComplaints = await Complaint.find({
+      ...activeQuery,
+      status: 'Resolved'
+    }).select('createdAt resolvedAt statusHistory');
+
+    let totalDurationMs = 0;
+    let validResolvedCount = 0;
+
+    resolvedComplaints.forEach((c) => {
+      const start = c.createdAt ? new Date(c.createdAt).getTime() : NaN;
+      let end = c.resolvedAt ? new Date(c.resolvedAt).getTime() : null;
+
+      if (!end && Array.isArray(c.statusHistory) && c.statusHistory.length > 0) {
+        const resolvedEntry = c.statusHistory.slice().reverse().find(h => h.status === 'Resolved');
+        if (resolvedEntry && resolvedEntry.timestamp) {
+          end = new Date(resolvedEntry.timestamp).getTime();
+        }
+      }
+
+      if (!isNaN(start) && end !== null && !isNaN(end) && end >= start) {
+        totalDurationMs += (end - start);
+        validResolvedCount++;
+      }
+    });
+
+    const avgTurnaroundHours = validResolvedCount > 0
+      ? Number((totalDurationMs / (validResolvedCount * 3600 * 1000)).toFixed(1))
+      : null;
+
+    const avgTurnaroundDisplay = avgTurnaroundHours !== null
+      ? `${avgTurnaroundHours} hrs`
+      : 'N/A';
+
+    // 3. Departmental Live Resolution Metrics
+    // For Lower Authority: strictly restricted to their authorized department(s)
+    // For Upper Authority: lists all municipal departments
+    const authorizedCategories = isUpperAuthority
+      ? Object.keys(categoryDepartmentMap)
+      : Object.keys(categoryDepartmentMap).filter(cat => {
+          const deptName = categoryDepartmentMap[cat];
+          const matchCat = req.user.assignedCategory && cat === req.user.assignedCategory;
+          const matchDept = req.user.department && deptName === req.user.department;
+          return matchCat || matchDept;
+        });
+
     const departmentPipeline = [
-      { $match: { ...baseQuery, flagStatus: 'none' } }
-    ];
-    if (isCategoryAuth) {
-      departmentPipeline.push({ $match: { category: req.user.assignedCategory } });
-    }
-    departmentPipeline.push(
+      { $match: activeQuery },
       {
         $group: {
           _id: '$category',
@@ -72,82 +211,66 @@ const getDashboardStats = async (req, res, next) => {
         }
       },
       { $sort: { total: -1 } }
-    );
+    ];
+
     const rawDeptStats = await Complaint.aggregate(departmentPipeline);
 
-    const departmentStats = Object.keys(categoryDepartmentMap)
-      .filter(cat => !isCategoryAuth || cat === req.user.assignedCategory)
-      .map(category => {
-        const found = rawDeptStats.find(d => d._id === category);
-        const catTotal = found ? found.total : 0;
-        const catResolved = found ? found.resolved : 0;
-        const catInProgress = found ? found.inProgress : 0;
-        const catAssigned = found ? found.assigned : 0;
-        const catUnderReview = found ? found.underReview : 0;
-        const catSubmitted = found ? found.submitted : 0;
-        const efficiency = catTotal > 0 ? Math.round((catResolved / catTotal) * 100) : 0;
+    const departmentStats = authorizedCategories.map(category => {
+      const found = rawDeptStats.find(d => d._id === category);
+      const catTotal = found ? found.total : 0;
+      const catResolved = found ? found.resolved : 0;
+      const catInProgress = found ? found.inProgress : 0;
+      const catAssigned = found ? found.assigned : 0;
+      const catUnderReview = found ? found.underReview : 0;
+      const catSubmitted = found ? found.submitted : 0;
+      const efficiency = catTotal > 0 ? Number(((catResolved / catTotal) * 100).toFixed(1)) : 0;
 
-        return {
-          category,
-          departmentName: categoryDepartmentMap[category],
-          total: catTotal,
-          resolved: catResolved,
-          inProgress: catInProgress,
-          assigned: catAssigned,
-          underReview: catUnderReview,
-          submitted: catSubmitted,
-          rejected: 0,
-          activeBacklog: catSubmitted + catUnderReview + catAssigned + catInProgress,
-          efficiency
-        };
-      });
-
-    // Average Turnaround Time for Resolved Grievances
-    const resolvedComplaints = await Complaint.find({
-      ...activeQuery,
-      status: 'Resolved'
-    }).select('createdAt resolvedAt statusHistory');
-
-    let totalDurationMs = 0;
-    let validResolvedCount = 0;
-
-    resolvedComplaints.forEach((c) => {
-      const start = new Date(c.createdAt).getTime();
-      let end = c.resolvedAt ? new Date(c.resolvedAt).getTime() : null;
-      if (!end && c.statusHistory && c.statusHistory.length > 0) {
-        const resolvedEntry = c.statusHistory.slice().reverse().find(h => h.status === 'Resolved');
-        if (resolvedEntry && resolvedEntry.timestamp) {
-          end = new Date(resolvedEntry.timestamp).getTime();
-        }
-      }
-      if (start && end && end >= start) {
-        totalDurationMs += (end - start);
-        validResolvedCount++;
-      }
+      return {
+        category,
+        departmentName: categoryDepartmentMap[category] || category,
+        total: catTotal,
+        resolved: catResolved,
+        inProgress: catInProgress,
+        assigned: catAssigned,
+        underReview: catUnderReview,
+        submitted: catSubmitted,
+        activeBacklog: catSubmitted + catUnderReview + catAssigned + catInProgress,
+        efficiency
+      };
     });
 
-    const avgTurnaroundHours = validResolvedCount > 0
-      ? (totalDurationMs / (validResolvedCount * 3600 * 1000)).toFixed(1)
-      : '34.5';
-
-    // Ward breakdown (top active wards)
-    const wardPipeline = [
-      { $match: { ...baseQuery, flagStatus: 'none' } }
+    // 4. Category breakdown (scoped to activeQuery)
+    const categoryPipeline = [
+      { $match: activeQuery },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
     ];
-    if (isCategoryAuth) {
-      wardPipeline.push({ $match: { category: req.user.assignedCategory } });
-    }
-    wardPipeline.push(
+    const categoryStats = await Complaint.aggregate(categoryPipeline);
+
+    // 5. Ward breakdown (scoped to activeQuery)
+    const wardPipeline = [
+      { $match: activeQuery },
       { $group: { _id: '$ward', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
-      { $limit: 6 }
-    );
+      { $limit: 8 }
+    ];
     const wardStats = await Complaint.aggregate(wardPipeline);
 
-    // Recent 8 complaints
+    // 6. Recent 8 complaints (scoped to activeQuery)
     const recentComplaints = await Complaint.find(activeQuery)
       .sort({ createdAt: -1 })
       .limit(8);
+
+    // 7. Authority Scope Metadata for UI display
+    const authorityScope = {
+      role: req.user.role,
+      isUpperAuthority,
+      assignedCategory: req.user.assignedCategory || '',
+      department: req.user.department || '',
+      scopeTitle: isUpperAuthority
+        ? 'Central Municipal Administration (All Departments)'
+        : (req.user.department || (req.user.assignedCategory ? `${req.user.assignedCategory} Division` : 'Assigned Department'))
+    };
 
     res.json({
       success: true,
@@ -159,16 +282,19 @@ const getDashboardStats = async (req, res, next) => {
           assigned,
           inProgress,
           resolved,
-          rejected,
+          activeBacklog,
+          resolutionRate,
           deletedCount,
           misinformationCount,
           duplicateCount,
-          avgTurnaroundHours
+          avgTurnaroundHours,
+          avgTurnaroundDisplay
         },
         categoryStats,
         departmentStats,
         wardStats,
-        recentComplaints
+        recentComplaints,
+        authorityScope
       }
     });
   } catch (err) {
@@ -310,5 +436,7 @@ const getDepartmentOfficers = async (req, res, next) => {
 module.exports = {
   getDashboardStats,
   getDeletedComplaints,
-  getDepartmentOfficers
+  getDepartmentOfficers,
+  getAuthorityComplaintScope,
+  categoryDepartmentMap
 };

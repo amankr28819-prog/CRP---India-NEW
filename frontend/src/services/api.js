@@ -287,9 +287,11 @@ export const api = {
   },
 
   // Authority API
-  getAuthorityDashboard: async () => {
+  getAuthorityDashboard: async (params = {}) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/authority/dashboard`, {
+      const query = new URLSearchParams(params).toString();
+      const url = `${API_BASE_URL}/authority/dashboard${query ? `?${query}` : ''}`;
+      const res = await fetch(url, {
         method: 'GET',
         headers: getHeaders()
       });

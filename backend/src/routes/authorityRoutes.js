@@ -4,6 +4,7 @@ const { getDashboardStats, getDeletedComplaints, getDepartmentOfficers } = requi
 const { verifyToken, isAuthority } = require('../middleware/auth');
 
 router.get('/dashboard', verifyToken, isAuthority, getDashboardStats);
+router.get('/reports', verifyToken, isAuthority, getDashboardStats);
 router.get('/deleted-complaints', verifyToken, isAuthority, getDeletedComplaints);
 router.get('/officers', verifyToken, isAuthority, getDepartmentOfficers);
 
