@@ -90,8 +90,35 @@ export default function CitizenLogin() {
     let isMounted = true;
     let resizeTimer = null;
     let resizeObserver = null;
-    let themeObserver = null;
     let activeClientId = '';
+
+    const getAvailableWidth = () => {
+      // 1. Measure from parent form if available
+      const form = googleWrapperRef.current?.closest('form') || document.querySelector('.citizen-auth-card form');
+      if (form && form.clientWidth > 0) {
+        return form.clientWidth;
+      }
+
+      // 2. Measure from card content box (clientWidth minus left/right padding)
+      const card = document.querySelector('.citizen-auth-card');
+      if (card && card.clientWidth > 0) {
+        const style = window.getComputedStyle(card);
+        const pLeft = parseFloat(style.paddingLeft) || 18;
+        const pRight = parseFloat(style.paddingRight) || 18;
+        return card.clientWidth - pLeft - pRight;
+      }
+
+      // 3. Measure from googleWrapperRef
+      if (googleWrapperRef.current && googleWrapperRef.current.clientWidth > 0) {
+        return googleWrapperRef.current.clientWidth;
+      }
+
+      // 4. Viewport calculation fallback
+      const vw = typeof window !== 'undefined' ? window.innerWidth : 360;
+      if (vw <= 360) return Math.max(vw - 48, 200);
+      if (vw <= 480) return Math.max(vw - 60, 200);
+      return Math.min(vw - 64, 396);
+    };
 
     const renderGIS = () => {
       if (!isMounted || !window.google?.accounts?.id || !activeClientId) return;
@@ -105,16 +132,15 @@ export default function CitizenLogin() {
         const btnContainer = document.getElementById('googleSignInBtnDiv');
         if (btnContainer) {
           btnContainer.innerHTML = '';
-          const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-          // Measure container width accurately from visible wrapper or parent
-          const measuredWidth = googleWrapperRef.current?.clientWidth || btnContainer.parentElement?.clientWidth || 396;
-          // Constrain within Google Identity Services allowed button width (200px to 400px)
-          const btnWidth = Math.floor(Math.min(Math.max(measuredWidth, 200), 400));
+          const availWidth = getAvailableWidth();
+          // GIS strictly requires an integer width between 200 and 400.
+          // Never allow btnWidth to exceed availWidth.
+          const btnWidth = Math.floor(Math.min(Math.max(availWidth, 200), 400));
           lastRenderedWidthRef.current = btnWidth;
 
           window.google.accounts.id.renderButton(btnContainer, {
             type: 'standard',
-            theme: isDark ? 'filled_black' : 'outline',
+            theme: 'outline', // Always use light/outline theme across all app themes
             size: 'large',
             text: 'signin_with',
             shape: 'rectangular',
@@ -130,9 +156,9 @@ export default function CitizenLogin() {
 
     const handleResize = () => {
       if (!isMounted || !window.google?.accounts?.id || !activeClientId) return;
-      const measuredWidth = googleWrapperRef.current?.clientWidth || 396;
-      const targetBtnWidth = Math.floor(Math.min(Math.max(measuredWidth, 200), 400));
-      if (Math.abs(targetBtnWidth - lastRenderedWidthRef.current) >= 8) {
+      const availWidth = getAvailableWidth();
+      const targetBtnWidth = Math.floor(Math.min(Math.max(availWidth, 200), 400));
+      if (Math.abs(targetBtnWidth - lastRenderedWidthRef.current) >= 6) {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
           if (isMounted) renderGIS();
@@ -159,34 +185,35 @@ export default function CitizenLogin() {
         setGoogleClientId(clientId);
       }
 
+      const scheduleRender = () => {
+        if (typeof requestAnimationFrame !== 'undefined') {
+          requestAnimationFrame(() => {
+            if (isMounted) renderGIS();
+          });
+        } else {
+          renderGIS();
+        }
+      };
+
       if (window.google?.accounts?.id) {
-        renderGIS();
+        scheduleRender();
       } else {
         const interval = setInterval(() => {
           if (window.google?.accounts?.id) {
             clearInterval(interval);
-            renderGIS();
+            scheduleRender();
           }
         }, 300);
         setTimeout(() => clearInterval(interval), 5000);
       }
 
-      // Responsive observer on container width changes
-      if (googleWrapperRef.current && typeof ResizeObserver !== 'undefined') {
+      // Observe the form or card element for responsive width changes
+      const formOrCard = document.querySelector('.citizen-auth-card form') || document.querySelector('.citizen-auth-card') || googleWrapperRef.current;
+      if (formOrCard && typeof ResizeObserver !== 'undefined') {
         resizeObserver = new ResizeObserver(() => handleResize());
-        resizeObserver.observe(googleWrapperRef.current);
+        resizeObserver.observe(formOrCard);
       }
       window.addEventListener('resize', handleResize);
-
-      // Re-render button if theme changes (dark/light)
-      themeObserver = new MutationObserver((mutations) => {
-        for (const mutation of mutations) {
-          if (mutation.attributeName === 'data-theme') {
-            renderGIS();
-          }
-        }
-      });
-      themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     };
 
     setupGoogle();
@@ -195,7 +222,6 @@ export default function CitizenLogin() {
       isMounted = false;
       if (resizeTimer) clearTimeout(resizeTimer);
       if (resizeObserver) resizeObserver.disconnect();
-      if (themeObserver) themeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
     };
   }, []);
@@ -655,11 +681,11 @@ export default function CitizenLogin() {
               <div
                 id="googleSignInBtnDiv"
                 style={{
-                  display: googleLoaded ? 'flex' : 'none',
+                  display: 'flex',
                   justifyContent: 'center',
                   alignItems: 'center',
                   width: '100%',
-                  minHeight: '44px'
+                  minHeight: googleLoaded ? '44px' : '0px'
                 }}
               ></div>
 
@@ -676,26 +702,26 @@ export default function CitizenLogin() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '10px',
-                    backgroundColor: 'var(--bg-surface)',
-                    border: '1px solid var(--border-subtle)',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #dadce0',
                     borderRadius: 'var(--radius-md, 8px)',
-                    color: 'var(--text-primary)',
+                    color: '#3c4043',
                     fontFamily: 'var(--font-family)',
                     fontSize: '0.9375rem',
                     fontWeight: 600,
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                    boxShadow: '0 1px 2px rgba(60, 64, 67, 0.08)',
                     cursor: googleLoading || loading || isTransitioning ? 'not-allowed' : 'pointer',
                     transition: 'all 0.15s ease'
                   }}
                   onMouseEnter={(e) => {
                     if (!googleLoading && !loading && !isTransitioning) {
-                      e.currentTarget.style.backgroundColor = 'var(--bg-subtle)';
-                      e.currentTarget.style.borderColor = 'var(--color-primary)';
+                      e.currentTarget.style.backgroundColor = '#f8fafd';
+                      e.currentTarget.style.borderColor = '#c2e7ff';
                     }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--bg-surface)';
-                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                    e.currentTarget.style.backgroundColor = '#ffffff';
+                    e.currentTarget.style.borderColor = '#dadce0';
                   }}
                 >
                   {googleLoading ? (
