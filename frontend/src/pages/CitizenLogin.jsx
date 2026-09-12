@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { User, Lock, AlertCircle, Building2, ArrowRight, Info, ShieldCheck, Eye, EyeOff, KeyRound, CheckCircle2, X, Loader2 } from 'lucide-react';
+import { User, AlertCircle, Building2, Info, ShieldCheck, Eye, EyeOff, KeyRound, CheckCircle2, X, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import BackButton from '../components/BackButton';
@@ -36,11 +36,14 @@ export default function CitizenLogin() {
   const [loading, setLoading] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // Google Sign-In State
+  // Google Sign-In State & Refs
   const [googleClientId, setGoogleClientId] = useState('');
   const [googleLoaded, setGoogleLoaded] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [pendingGoogleCredential, setPendingGoogleCredential] = useState('');
+  const googleWrapperRef = useRef(null);
+  const lastRenderedWidthRef = useRef(0);
+  const handleGoogleCredentialResponseRef = useRef(null);
 
   // Account Linking Modal State
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -85,6 +88,57 @@ export default function CitizenLogin() {
   // Initialize Google Identity Services
   useEffect(() => {
     let isMounted = true;
+    let resizeTimer = null;
+    let resizeObserver = null;
+    let themeObserver = null;
+    let activeClientId = '';
+
+    const renderGIS = () => {
+      if (!isMounted || !window.google?.accounts?.id || !activeClientId) return;
+      try {
+        window.google.accounts.id.initialize({
+          client_id: activeClientId,
+          callback: (res) => handleGoogleCredentialResponseRef.current?.(res),
+          cancel_on_tap_outside: true
+        });
+
+        const btnContainer = document.getElementById('googleSignInBtnDiv');
+        if (btnContainer) {
+          btnContainer.innerHTML = '';
+          const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+          // Measure container width accurately from visible wrapper or parent
+          const measuredWidth = googleWrapperRef.current?.clientWidth || btnContainer.parentElement?.clientWidth || 396;
+          // Constrain within Google Identity Services allowed button width (200px to 400px)
+          const btnWidth = Math.floor(Math.min(Math.max(measuredWidth, 200), 400));
+          lastRenderedWidthRef.current = btnWidth;
+
+          window.google.accounts.id.renderButton(btnContainer, {
+            type: 'standard',
+            theme: isDark ? 'filled_black' : 'outline',
+            size: 'large',
+            text: 'signin_with',
+            shape: 'rectangular',
+            logo_alignment: 'left',
+            width: btnWidth
+          });
+          setGoogleLoaded(true);
+        }
+      } catch (e) {
+        console.warn('[GIS] Error initializing Google Sign-In:', e);
+      }
+    };
+
+    const handleResize = () => {
+      if (!isMounted || !window.google?.accounts?.id || !activeClientId) return;
+      const measuredWidth = googleWrapperRef.current?.clientWidth || 396;
+      const targetBtnWidth = Math.floor(Math.min(Math.max(measuredWidth, 200), 400));
+      if (Math.abs(targetBtnWidth - lastRenderedWidthRef.current) >= 8) {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          if (isMounted) renderGIS();
+        }, 150);
+      }
+    };
 
     const setupGoogle = async () => {
       let clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -100,38 +154,10 @@ export default function CitizenLogin() {
       }
 
       if (!isMounted) return;
-      if (clientId) setGoogleClientId(clientId);
-
-      const renderGIS = () => {
-        if (!window.google?.accounts?.id || !clientId) return;
-        try {
-          window.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: handleGoogleCredentialResponse,
-            cancel_on_tap_outside: true
-          });
-
-          const btnContainer = document.getElementById('googleSignInBtnDiv');
-          if (btnContainer) {
-            btnContainer.innerHTML = '';
-            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            const containerWidth = btnContainer.offsetWidth || 396;
-            const btnWidth = Math.min(Math.max(containerWidth, 200), 400);
-            window.google.accounts.id.renderButton(btnContainer, {
-              type: 'standard',
-              theme: isDark ? 'filled_black' : 'outline',
-              size: 'large',
-              text: 'signin_with',
-              shape: 'rectangular',
-              logo_alignment: 'left',
-              width: btnWidth
-            });
-            setGoogleLoaded(true);
-          }
-        } catch (e) {
-          console.warn('[GIS] Error initializing Google Sign-In:', e);
-        }
-      };
+      if (clientId) {
+        activeClientId = clientId;
+        setGoogleClientId(clientId);
+      }
 
       if (window.google?.accounts?.id) {
         renderGIS();
@@ -144,12 +170,33 @@ export default function CitizenLogin() {
         }, 300);
         setTimeout(() => clearInterval(interval), 5000);
       }
+
+      // Responsive observer on container width changes
+      if (googleWrapperRef.current && typeof ResizeObserver !== 'undefined') {
+        resizeObserver = new ResizeObserver(() => handleResize());
+        resizeObserver.observe(googleWrapperRef.current);
+      }
+      window.addEventListener('resize', handleResize);
+
+      // Re-render button if theme changes (dark/light)
+      themeObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          if (mutation.attributeName === 'data-theme') {
+            renderGIS();
+          }
+        }
+      });
+      themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     };
 
     setupGoogle();
 
     return () => {
       isMounted = false;
+      if (resizeTimer) clearTimeout(resizeTimer);
+      if (resizeObserver) resizeObserver.disconnect();
+      if (themeObserver) themeObserver.disconnect();
+      window.removeEventListener('resize', handleResize);
     };
   }, []);
 
@@ -232,6 +279,9 @@ export default function CitizenLogin() {
       setGoogleLoading(false);
     }
   };
+  useEffect(() => {
+    handleGoogleCredentialResponseRef.current = handleGoogleCredentialResponse;
+  });
 
   const handleGoogleSignInClick = () => {
     if (!googleClientId) {
@@ -451,11 +501,11 @@ export default function CitizenLogin() {
           }}
         />
         <div
+          className="citizen-auth-card"
           style={{
             backgroundColor: 'var(--bg-surface)',
             border: '1px solid var(--border-subtle)',
             borderRadius: '12px',
-            padding: '32px',
             boxShadow: '0 20px 45px rgba(0, 0, 0, 0.45)',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)'
@@ -601,7 +651,7 @@ export default function CitizenLogin() {
             </div>
 
             {/* Google Sign-In for Citizens Only */}
-            <div style={{ width: '100%' }}>
+            <div ref={googleWrapperRef} className="google-signin-wrapper">
               <div
                 id="googleSignInBtnDiv"
                 style={{
@@ -609,7 +659,7 @@ export default function CitizenLogin() {
                   justifyContent: 'center',
                   alignItems: 'center',
                   width: '100%',
-                  minHeight: '48px'
+                  minHeight: '44px'
                 }}
               ></div>
 
@@ -618,20 +668,20 @@ export default function CitizenLogin() {
                   type="button"
                   onClick={handleGoogleSignInClick}
                   disabled={googleLoading || loading || isTransitioning}
-                  className="btn btn-secondary btn-lg"
+                  className="btn btn-secondary btn-lg google-fallback-btn"
                   style={{
                     width: '100%',
-                    minHeight: '48px',
+                    minHeight: '44px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '12px',
+                    gap: '10px',
                     backgroundColor: 'var(--bg-surface)',
                     border: '1px solid var(--border-subtle)',
                     borderRadius: 'var(--radius-md, 8px)',
                     color: 'var(--text-primary)',
                     fontFamily: 'var(--font-family)',
-                    fontSize: '1rem',
+                    fontSize: '0.9375rem',
                     fontWeight: 600,
                     boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
                     cursor: googleLoading || loading || isTransitioning ? 'not-allowed' : 'pointer',
