@@ -210,27 +210,32 @@ const boxLeave = (e) => {
             style={{
               backgroundColor: isCitizenHovered
                 ? 'rgba(15, 23, 42, 0.45)'
-                : 'rgba(15, 23, 42, 0.12)',
+                : 'rgba(15, 23, 42, 0.18)',
 
-              backdropFilter: isCitizenHovered ? 'blur(12px)' : 'none',
-              WebkitBackdropFilter: isCitizenHovered ? 'blur(12px)' : 'none',
+              backdropFilter: isCitizenHovered ? 'blur(12px)' : 'blur(8px)',
+              WebkitBackdropFilter: isCitizenHovered ? 'blur(12px)' : 'blur(8px)',
 
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              border: isCitizenHovered
+                ? '1px solid rgba(255, 255, 255, 0.28)'
+                : '1px solid rgba(255, 255, 255, 0.12)',
 
-              borderRadius: '8px',
+              borderRadius: isCitizenHovered ? '24px' : '14px',
               padding: '28px 24px',
               cursor: 'pointer',
 
+              transform: isCitizenHovered ? 'translateY(-5px)' : 'translateY(0)',
+
               transition:
-                'background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease',
+                'transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), border-radius 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.28s ease, border-color 0.28s ease',
 
               boxShadow: isCitizenHovered
-                ? '0 8px 30px rgba(0, 0, 0, 0.35)'
-                : '0 4px 20px rgba(0, 0, 0, 0.15)',
+                ? '0 16px 36px rgba(0, 0, 0, 0.35), 0 0 24px rgba(59, 130, 246, 0.22)'
+                : '0 4px 20px rgba(0, 0, 0, 0.18)',
 
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'space-between'
+              justifyContent: 'space-between',
+              willChange: 'transform, border-radius, box-shadow'
             }}
           >
             <div>
@@ -269,21 +274,26 @@ const boxLeave = (e) => {
             style={{
               backgroundColor: isAuthorityHovered
                 ? 'rgba(15, 23, 42, 0.45)'
-                : 'rgba(15, 23, 42, 0.12)',
+                : 'rgba(15, 23, 42, 0.18)',
 
-              backdropFilter: isAuthorityHovered ? 'blur(12px)' : 'none',
-              WebkitBackdropFilter: isAuthorityHovered ? 'blur(12px)' : 'none',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: '8px',
+              backdropFilter: isAuthorityHovered ? 'blur(12px)' : 'blur(8px)',
+              WebkitBackdropFilter: isAuthorityHovered ? 'blur(12px)' : 'blur(8px)',
+              border: isAuthorityHovered
+                ? '1px solid rgba(255, 255, 255, 0.28)'
+                : '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: isAuthorityHovered ? '24px' : '14px',
               padding: '28px 24px',
               cursor: 'pointer',
-              transition: 'background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease',
+              transform: isAuthorityHovered ? 'translateY(-5px)' : 'translateY(0)',
+              transition:
+                'transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), border-radius 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.28s ease, border-color 0.28s ease',
               boxShadow: isAuthorityHovered
-                ? '0 8px 30px rgba(0, 0, 0, 0.35)'
-                : '0 4px 20px rgba(0, 0, 0, 0.15)',
+                ? '0 16px 36px rgba(0, 0, 0, 0.35), 0 0 24px rgba(59, 130, 246, 0.22)'
+                : '0 4px 20px rgba(0, 0, 0, 0.18)',
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'space-between'
+              justifyContent: 'space-between',
+              willChange: 'transform, border-radius, box-shadow'
             }}
             onMouseEnter={() => setIsAuthorityHovered(true)}
             onMouseLeave={() => setIsAuthorityHovered(false)}
