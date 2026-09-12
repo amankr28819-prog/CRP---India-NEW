@@ -19,7 +19,7 @@ const { complaintLimiter } = require('../middleware/rateLimiter');
 const upload = require('../middleware/upload');
 
 // Public or Citizen routes
-router.post('/', verifyToken, complaintLimiter, upload.complaintUpload.array('images', 3), createComplaint);
+router.post('/', verifyToken, complaintLimiter, upload.array('images', 3), createComplaint);
 router.get('/', optionalAuth, getComplaints);
 router.get('/dashboard-stats', optionalAuth, getCitizenDashboardStats);
 router.get('/my', verifyToken, getMyComplaints);

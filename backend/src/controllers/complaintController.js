@@ -4,10 +4,8 @@ const Notification = require('../models/Notification');
 const User = require('../models/User');
 const Vote = require('../models/Vote');
 const { generateReferenceId } = require('../utils/referenceGenerator');
-const path = require('path');
 const { escapeRegex } = require('../middleware/sanitize');
-const upload = require('../middleware/upload');
-const { checkImageSafety, reserveVisionUsage, releaseVisionUsage, isVisionSafetyEnabled } = require('../services/imageSafetyService');
+const { getUploadedFileUrl } = require('../middleware/upload');
 
 const categoryDepartmentMap = {
   'Roads & Potholes': 'Public Works Department (Roads)',
@@ -187,62 +185,14 @@ const createComplaint = async (req, res, next) => {
       });
     }
 
-    // Moderate images via Google Cloud Vision SafeSearch BEFORE Cloudinary upload
+    // Process uploaded images
     const imagePaths = [];
-    const files = req.files && req.files.length > 0 ? req.files : (req.file ? [req.file] : []);
-
-    if (files.length > 0) {
-      // Optional SafeSearch moderation (only active when VISION_SAFETY_ENABLED=true)
-      if (isVisionSafetyEnabled()) {
-        // Step 1: Check SafeSearch on all images. If any image fails, reject immediately without uploading to Cloudinary!
-        for (const file of files) {
-          if (file.buffer) {
-            // Check and atomically reserve a monthly SafeSearch check before calling Google Vision
-            const reservation = await reserveVisionUsage();
-            if (!reservation.allowed) {
-              return res.status(429).json({
-                success: false,
-                code: 'VISION_MONTHLY_LIMIT_EXCEEDED',
-                message: 'Monthly image safety verification limit reached. Please try again next month.'
-              });
-            }
-
-            try {
-              const safety = await checkImageSafety(file.buffer);
-              if (!safety.isSafe) {
-                return res.status(422).json({
-                  success: false,
-                  code: 'IMAGE_CONTENT_RESTRICTED',
-                  message: 'Image cannot be uploaded. This image appears to contain inappropriate or restricted content. Please upload a suitable image related to your complaint.'
-                });
-              }
-            } catch (visionErr) {
-              // Release the reserved slot because Vision API failed/errored out
-              await releaseVisionUsage();
-              console.error('[IMAGE_SAFETY] Google Vision verification error:', visionErr.message);
-              return res.status(503).json({
-                success: false,
-                code: 'IMAGE_SAFETY_UNAVAILABLE',
-                message: 'Image safety verification is temporarily unavailable. Please try again.'
-              });
-            }
-          }
-        }
-      }
-
-      // Step 2: SafeSearch passed (or disabled)! Now upload buffers to Cloudinary (or local fallback)
-      for (const file of files) {
-        if (file.buffer) {
-          const ext = path.extname(file.originalname || '').toLowerCase() || '.jpg';
-          const uploadedUrl = await upload.uploadBufferToCloudinary(file.buffer, {
-            folder: 'crp-india/complaints',
-            ext
-          });
-          imagePaths.push(uploadedUrl);
-        } else {
-          imagePaths.push(upload.getUploadedFileUrl(file));
-        }
-      }
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        imagePaths.push(getUploadedFileUrl(file));
+      });
+    } else if (req.file) {
+      imagePaths.push(getUploadedFileUrl(req.file));
     }
 
     const referenceId = await generateReferenceId();

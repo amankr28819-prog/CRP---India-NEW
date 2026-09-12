@@ -84,64 +84,8 @@ const getUploadedFileUrl = (file) => {
   }
   return `/uploads/${file.filename}`;
 };
-
-const memoryStorage = multer.memoryStorage();
-
-const complaintUpload = multer({
-  storage: memoryStorage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: fileFilter
-});
-
-/**
- * Uploads an in-memory image buffer to Cloudinary (or writes to local uploadsDir fallback).
- * This ensures that image moderation happens on the buffer BEFORE any permanent upload occurs.
- *
- * @param {Buffer} buffer - In-memory image buffer
- * @param {Object} options - Upload options (folder, ext, etc.)
- * @returns {Promise<string>} The permanent image URL (HTTPS Cloudinary URL or /uploads/<filename>)
- */
-const uploadBufferToCloudinary = (buffer, options = {}) => {
-  return new Promise((resolve, reject) => {
-    const ext = (options.ext || '.jpg').toLowerCase();
-    const cleanExt = ALLOWED_EXTENSIONS.has(ext) ? ext.replace('.', '') : 'jpg';
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-
-    if (!isCloudinaryConfigured) {
-      const filename = `complaint-${uniqueSuffix}.${cleanExt}`;
-      const filePath = path.join(uploadsDir, filename);
-      fs.writeFile(filePath, buffer, (err) => {
-        if (err) return reject(err);
-        resolve(`/uploads/${filename}`);
-      });
-      return;
-    }
-
-    const folder = options.folder || 'crp-india/complaints';
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        format: cleanExt,
-        public_id: `complaint-${uniqueSuffix}`,
-        transformation: [
-          { quality: 'auto', fetch_format: 'auto' }
-        ]
-      },
-      (error, result) => {
-        if (error) return reject(error);
-        resolve(result.secure_url || result.url);
-      }
-    );
-    uploadStream.end(buffer);
-  });
-};
-
 upload.getUploadedFileUrl = getUploadedFileUrl;
-upload.complaintUpload = complaintUpload;
-upload.uploadBufferToCloudinary = uploadBufferToCloudinary;
 
 module.exports = upload;
 module.exports.upload = upload;
-module.exports.complaintUpload = complaintUpload;
-module.exports.uploadBufferToCloudinary = uploadBufferToCloudinary;
 module.exports.getUploadedFileUrl = getUploadedFileUrl;
