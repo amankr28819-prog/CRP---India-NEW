@@ -19,28 +19,29 @@ const {
 } = require('../controllers/authController');
 const { verifyToken } = require('../middleware/auth');
 const upload = require('../middleware/upload');
-const { passwordResetLimiter } = require('../middleware/rateLimiter');
+const { authLimiter, passwordResetLimiter } = require('../middleware/rateLimiter');
 
-router.post('/register', register);
-router.post('/login', login);
+// Credential-sensitive authentication endpoints protected by authLimiter
+router.post('/register', authLimiter, register);
+router.post('/login', authLimiter, login);
 router.get('/me', verifyToken, getMe);
 
-// Google Sign-In Flow for Citizens
+// Google Sign-In Flow for Citizens (Credential operations protected by authLimiter)
 router.get('/google/config', getGoogleConfig);
-router.post('/google', googleAuth);
-router.post('/google/link', googleLink);
-router.post('/google/onboard', googleOnboard);
+router.post('/google', authLimiter, googleAuth);
+router.post('/google/link', authLimiter, googleLink);
+router.post('/google/onboard', authLimiter, googleOnboard);
 
-// Citizen Password Reset Flow (Protected with dedicated rate limiter)
+// Citizen Password Reset Flow (Protected with dedicated passwordResetLimiter)
 router.post('/reset-password/verify', passwordResetLimiter, verifyCitizenReset);
 router.post('/reset-password/confirm', passwordResetLimiter, confirmCitizenPasswordReset);
 
-// Citizen Account Management (Protected)
+// Citizen Account Management (Protected by verifyToken; password verification/change protected by authLimiter)
 router.patch('/profile', verifyToken, updateProfile);
 router.patch('/profile-picture', verifyToken, upload.single('avatar'), uploadProfilePicture);
 router.delete('/profile-picture', verifyToken, removeProfilePicture);
-router.post('/verify-password', verifyToken, verifyPassword);
-router.patch('/change-password', verifyToken, changePassword);
+router.post('/verify-password', verifyToken, authLimiter, verifyPassword);
+router.patch('/change-password', verifyToken, authLimiter, changePassword);
 router.patch('/settings', verifyToken, updateSettings);
 
 module.exports = router;

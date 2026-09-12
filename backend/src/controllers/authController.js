@@ -29,12 +29,12 @@ const generateToken = (user) => {
 };
 
 // Helper to validate and normalize mobile numbers
-const validateAndNormalizePhone = (phoneInput) => {
+const validateAndNormalizePhone = (phoneInput, defaultMsg = 'Mobile number is required.') => {
   if (!phoneInput || typeof phoneInput !== 'string' || !phoneInput.trim()) {
-    return { valid: false, error: 'Mobile number is required for citizen registration.' };
+    return { valid: false, error: defaultMsg };
   }
   const trimmed = phoneInput.trim();
-  let digits = trimmed;
+  let digits = trimmed.replace(/[\s\-]/g, '');
   if (digits.startsWith('+91')) {
     digits = digits.slice(3).trim();
   } else if (digits.startsWith('91') && digits.length === 12) {
@@ -435,8 +435,41 @@ const updateProfile = async (req, res, next) => {
       }
     }
 
-    if (phone !== undefined && typeof phone === 'string') {
-      user.phone = phone.trim();
+    if (phone !== undefined) {
+      if (typeof phone !== 'string' || !phone.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Mobile number cannot be empty.'
+        });
+      }
+
+      const phoneValidation = validateAndNormalizePhone(phone, 'Valid mobile number is required.');
+      if (!phoneValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: phoneValidation.error
+        });
+      }
+
+      // Check unique mobile number across other accounts (allow user to retain their own number)
+      const existingPhone = await User.findOne({
+        _id: { $ne: user._id },
+        $or: [
+          { phone: phoneValidation.normalized },
+          { phone: phoneValidation.digits },
+          { phone: `+91 ${phoneValidation.digits.slice(0, 5)} ${phoneValidation.digits.slice(5)}` },
+          { phone: `+91 ${phoneValidation.digits}` }
+        ]
+      });
+
+      if (existingPhone) {
+        return res.status(400).json({
+          success: false,
+          message: 'This mobile number is already associated with an existing account.'
+        });
+      }
+
+      user.phone = phoneValidation.normalized;
     }
 
     await user.save();

@@ -5,10 +5,10 @@ const path = require('path');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const { connectDB } = require('./config/db');
-const { seedData, seedAuthorityAccounts, seedCitizenAccountsAndComplaints } = require('./utils/seed');
+const { seedData } = require('./utils/seed');
 const errorHandler = require('./middleware/errorHandler');
 const { sanitizeMiddleware } = require('./middleware/sanitize');
-const { authLimiter, apiLimiter } = require('./middleware/rateLimiter');
+const { apiLimiter } = require('./middleware/rateLimiter');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
@@ -32,16 +32,15 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
-// Connect to Database & seed demo data
+// Connect to Database
 connectDB().then(async () => {
-  if (process.env.NODE_ENV !== 'production') {
-    await seedData(false);
-  } else {
+  // Demo auto-seeding is strictly disabled in production to protect real account credentials and grievance data.
+  // In development/testing, explicit seeding can be enabled via AUTO_SEED=true environment variable or 'npm run seed'.
+  if (process.env.NODE_ENV !== 'production' && process.env.AUTO_SEED === 'true') {
     try {
-      await seedAuthorityAccounts();
-      await seedCitizenAccountsAndComplaints();
+      await seedData(false);
     } catch (err) {
-      console.error('[SEED] Failed to verify demo accounts and complaints:', err.message);
+      console.error('[SEED] Failed to seed demo data in development:', err.message);
     }
   }
 });
@@ -109,8 +108,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Mount Routes with Auth Rate Limiting
-app.use('/api/auth', authLimiter, authRoutes);
+// Mount Routes (Sensitive auth endpoints are protected by authLimiter in authRoutes.js)
+app.use('/api/auth', authRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/authority', authorityRoutes);
 app.use('/api/notifications', notificationRoutes);

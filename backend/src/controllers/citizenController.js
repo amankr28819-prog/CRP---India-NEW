@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Complaint = require('../models/Complaint');
+const { escapeRegex } = require('../middleware/sanitize');
 
 // @desc Search citizens by name and/or constituency (Public directory)
 // @route GET /api/citizens/search
@@ -11,11 +12,17 @@ const searchCitizens = async (req, res, next) => {
     const query = { role: 'citizen' };
 
     if (q && typeof q === 'string' && q.trim()) {
-      query.name = { $regex: q.trim(), $options: 'i' };
+      const cleanQ = escapeRegex(q.trim().slice(0, 100));
+      if (cleanQ) {
+        query.name = { $regex: cleanQ, $options: 'i' };
+      }
     }
 
     if (constituency && typeof constituency === 'string' && constituency.trim()) {
-      query.constituency = { $regex: constituency.trim(), $options: 'i' };
+      const cleanConstituency = escapeRegex(constituency.trim().slice(0, 100));
+      if (cleanConstituency) {
+        query.constituency = { $regex: cleanConstituency, $options: 'i' };
+      }
     }
 
     // Select strictly non-confidential public fields. Never select voterId, email, phone, password, tokens
