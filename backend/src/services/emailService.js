@@ -125,20 +125,20 @@ const verifyTransporterSafe = async () => {
     console.log('[EMAIL DEBUG] Nodemailer transporter verification SUCCEEDED. SMTP connection and credentials are valid.');
     return { verified: true };
   } catch (verifyErr) {
-    console.error('[EMAIL DEBUG] Nodemailer transporter verification FAILED:', {
-      name: verifyErr.name || 'Error',
-      code: verifyErr.code || 'UNKNOWN',
-      responseCode: verifyErr.responseCode || null,
-      command: verifyErr.command || null,
-      message: verifyErr.message || 'Verification failed'
-    });
+    const errName = verifyErr.name || 'Error';
+    const errCode = verifyErr.code || 'UNKNOWN';
+    const errResponseCode = verifyErr.responseCode !== undefined ? verifyErr.responseCode : null;
+    const errCommand = verifyErr.command || 'NONE';
+    const errMessage = (verifyErr.message || 'Verification failed').replace(/[\r\n]+/g, ' ');
+
+    console.error(`[EMAIL DEBUG] SMTP verification error: name="${errName}" code="${errCode}" responseCode=${errResponseCode} command="${errCommand}" message="${errMessage}"`);
     return {
       verified: false,
       error: {
-        name: verifyErr.name,
-        code: verifyErr.code,
-        responseCode: verifyErr.responseCode,
-        message: verifyErr.message
+        name: errName,
+        code: errCode,
+        responseCode: errResponseCode,
+        message: errMessage
       }
     };
   }
@@ -248,20 +248,20 @@ const sendMailSafe = async ({ to, subject, text, html }) => {
     console.log(`[EMAIL DEBUG] sendMail succeeded to ${maskedTo} (Message ID: ${info.messageId || 'present'})`);
     return { success: true, messageId: info.messageId };
   } catch (err) {
-    console.error(`[EMAIL DEBUG] sendMail failed to ${maskedTo}:`, {
-      name: err.name || 'Error',
-      code: err.code || 'UNKNOWN',
-      responseCode: err.responseCode || null,
-      command: err.command || null,
-      message: err.message || 'Unknown SMTP error'
-    });
+    const errName = err.name || 'Error';
+    const errCode = err.code || 'UNKNOWN';
+    const errResponseCode = err.responseCode !== undefined ? err.responseCode : null;
+    const errCommand = err.command || 'NONE';
+    const errMessage = (err.message || 'Unknown SMTP error').replace(/[\r\n]+/g, ' ');
+
+    console.error(`[EMAIL DEBUG] sendMail failed to ${maskedTo}: name="${errName}" code="${errCode}" responseCode=${errResponseCode} command="${errCommand}" message="${errMessage}"`);
     return {
       success: false,
       error: {
-        name: err.name,
-        code: err.code,
-        responseCode: err.responseCode,
-        message: err.message
+        name: errName,
+        code: errCode,
+        responseCode: errResponseCode,
+        message: errMessage
       }
     };
   }
