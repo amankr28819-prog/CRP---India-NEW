@@ -12,10 +12,10 @@ const maskEmail = (email) => {
   return `${maskedName}@${domain}`;
 };
 
-// Configurable SMTP options from environment
+// Configurable SMTP options from environment (Defaults to Gmail SMTP submission via STARTTLS on port 587)
 const getSmtpConfig = () => {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || '465', 10);
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
   const secure = process.env.SMTP_SECURE !== undefined
     ? String(process.env.SMTP_SECURE).trim().toLowerCase() === 'true'
     : port === 465;
@@ -30,6 +30,7 @@ const getSmtpConfig = () => {
     host,
     port,
     secure,
+    requireTLS: !secure,
     auth: { user, pass },
     from: `"${fromName}" <${user}>`,
     isConfigured: Boolean(user && pass && pass.length > 0)
@@ -78,6 +79,7 @@ const getTransporter = () => {
     host: config.host,
     port: config.port,
     secure: config.secure,
+    requireTLS: config.requireTLS,
     auth: {
       user: config.auth.user,
       pass: config.auth.pass
@@ -106,7 +108,9 @@ const resetTransporterForTesting = () => {
  */
 const verifyTransporterSafe = async () => {
   const diag = getSafeConfigDiagnostic();
+  const config = getSmtpConfig();
   console.log(`[EMAIL DEBUG] SMTP configuration present: host=${diag.host} port=${diag.port} secure=${diag.secure} user=${diag.user} appPassword=${diag.appPassword}`);
+  console.log(`[EMAIL DEBUG] SMTP target: host=${config.host} port=${config.port} secure=${config.secure} requireTLS=${Boolean(config.requireTLS)}`);
   console.log(`[EMAIL DEBUG] SMTP appPassword metadata: length=${diag.appPasswordLength}, spacesRemoved=${diag.appPasswordHadSpaces}`);
 
   const activeTransporter = getTransporter();
