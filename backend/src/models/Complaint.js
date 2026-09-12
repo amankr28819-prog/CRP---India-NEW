@@ -28,6 +28,49 @@ const statusHistorySchema = new mongoose.Schema({
   }
 });
 
+const authorityMessageSchema = new mongoose.Schema({
+  senderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  senderName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  senderRole: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  senderDesignation: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  senderDepartment: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  recipientDepartment: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  message: {
+    type: String,
+    required: [true, 'Message text is required'],
+    trim: true,
+    maxlength: [2000, 'Message cannot exceed 2000 characters']
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now
+  }
+});
+
 const complaintSchema = new mongoose.Schema(
   {
     referenceId: {
@@ -100,7 +143,7 @@ const complaintSchema = new mongoose.Schema(
     ],
     status: {
       type: String,
-      enum: ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved', 'Rejected', 'Duplicate', 'Misinformation'],
+      enum: ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved', 'Duplicate', 'Misinformation'],
       default: 'Submitted',
       index: true
     },
@@ -127,6 +170,7 @@ const complaintSchema = new mongoose.Schema(
       }
     ],
     statusHistory: [statusHistorySchema],
+    authorityMessages: [authorityMessageSchema],
     resolutionPhoto: {
       type: String,
       default: ''

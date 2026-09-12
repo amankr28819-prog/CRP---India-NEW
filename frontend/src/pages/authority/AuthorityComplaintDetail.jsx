@@ -21,7 +21,8 @@ import {
   ExternalLink,
   Flag,
   Copy,
-  ThumbsUp
+  ThumbsUp,
+  MessageSquare
 } from 'lucide-react';
 import { api, getImageUrl } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -59,10 +60,16 @@ export default function AuthorityComplaintDetail() {
   const [fullscreenImage, setFullscreenImage] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Assignment form state
+  // Assignment & Officer Allocation state
   const [assignDept, setAssignDept] = useState('');
   const [assignOfficer, setAssignOfficer] = useState('');
-  const [assignRemark, setAssignRemark] = useState('');
+  const [departmentOfficers, setDepartmentOfficers] = useState([]);
+
+  // Internal Authority Messaging state
+  const [authorityMessageText, setAuthorityMessageText] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [messageSuccess, setMessageSuccess] = useState('');
+  const [messageError, setMessageError] = useState('');
 
   const isValidCoordinate = (lat, lng) => {
     if (lat === null || lat === undefined || lat === '' || lng === null || lng === undefined || lng === '') {
@@ -76,6 +83,31 @@ export default function AuthorityComplaintDetail() {
     return true;
   };
 
+  useEffect(() => {
+    const fetchOfficers = async () => {
+      try {
+        const res = await api.getDepartmentOfficers();
+        if (res.success && Array.isArray(res.officers)) {
+          setDepartmentOfficers(res.officers);
+        }
+      } catch (err) {
+        console.error('Failed to load department officers:', err);
+      }
+    };
+    fetchOfficers();
+  }, []);
+
+  const handleDepartmentChange = (newDept) => {
+    setAssignDept(newDept);
+    // Dynamically find officer matching the new department, preventing stale officer retention
+    const match = departmentOfficers.find(o => o.department === newDept);
+    if (match) {
+      setAssignOfficer(match.name);
+    } else {
+      setAssignOfficer('Not Assigned');
+    }
+  };
+
   const fetchComplaint = async () => {
     setLoading(true);
     setError('');
@@ -85,18 +117,7 @@ export default function AuthorityComplaintDetail() {
         setComplaint(res.complaint);
         setNewStatus(res.complaint.status);
         setAssignDept(res.complaint.assignedDepartment || DEPARTMENTS[0]);
-        setAssignOfficer(res.complaint.assignedOfficer || '');
-        if (res.complaint.assignmentInstruction) {
-          setAssignRemark(res.complaint.assignmentInstruction);
-        } else if (res.complaint.statusHistory) {
-          const assignEntry = res.complaint.statusHistory.slice().reverse().find(h => h.status === 'Assigned' || (h.remark && h.remark.toLowerCase().includes('instruction:')));
-          if (assignEntry?.remark) {
-            const match = assignEntry.remark.match(/Instruction:\s*(.+)$/i);
-            if (match && match[1]) {
-              setAssignRemark(match[1].trim());
-            }
-          }
-        }
+        setAssignOfficer(res.complaint.assignedOfficer || 'Not Assigned');
         if (res.complaint.resolutionNote) {
           setResolutionNote(res.complaint.resolutionNote);
         }
@@ -204,20 +225,46 @@ export default function AuthorityComplaintDetail() {
     try {
       const res = await api.assignComplaint(complaint._id, {
         assignedDepartment: assignDept,
-        assignedOfficer: assignOfficer.trim() || 'Designated Field Officer',
-        remark: assignRemark.trim() || `Department assigned to ${assignDept}`
+        assignedOfficer: assignOfficer || 'Not Assigned',
+        remark: `Department assigned to ${assignDept} (Officer: ${assignOfficer || 'Not Assigned'})`
       });
 
       if (res.success) {
         setComplaint(res.complaint);
         setActionSuccess('Department & Officer allocation updated successfully.');
-        setAssignRemark('');
         setTimeout(() => setActionSuccess(''), 4000);
       }
     } catch (err) {
       setError(err.message || 'Failed to update assignment.');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleSendAuthorityMessage = async (e) => {
+    if (e) e.preventDefault();
+    if (!authorityMessageText.trim() || sendingMessage) return;
+
+    setSendingMessage(true);
+    setMessageError('');
+    setMessageSuccess('');
+
+    try {
+      const res = await api.sendAuthorityMessage(complaint._id, authorityMessageText.trim());
+      if (res.success) {
+        if (res.complaint) {
+          setComplaint(res.complaint);
+        } else if (res.authorityMessages) {
+          setComplaint(prev => ({ ...prev, authorityMessages: res.authorityMessages }));
+        }
+        setAuthorityMessageText('');
+        setMessageSuccess(isUpperAuthority ? 'Directive dispatched to Department Authority.' : 'Official response sent to Upper Authority.');
+        setTimeout(() => setMessageSuccess(''), 4000);
+      }
+    } catch (err) {
+      setMessageError(err.message || 'Failed to dispatch authority message.');
+    } finally {
+      setSendingMessage(false);
     }
   };
 
@@ -635,7 +682,6 @@ export default function AuthorityComplaintDetail() {
                       <option value="Assigned">Assigned</option>
                       <option value="In Progress">In Progress</option>
                       <option value="Resolved">Resolved</option>
-                      <option value="Rejected">Rejected</option>
                     </select>
                   </div>
 
@@ -791,7 +837,7 @@ export default function AuthorityComplaintDetail() {
                       <label className="form-label" style={{ fontSize: '0.8125rem' }}>Responsible Department</label>
                       <select
                         value={assignDept}
-                        onChange={(e) => setAssignDept(e.target.value)}
+                        onChange={(e) => handleDepartmentChange(e.target.value)}
                         className="form-select"
                       >
                         {DEPARTMENTS.map((dept, i) => (
@@ -802,24 +848,23 @@ export default function AuthorityComplaintDetail() {
 
                     <div className="form-group">
                       <label className="form-label" style={{ fontSize: '0.8125rem' }}>Assigned Field Officer</label>
-                      <input
-                        type="text"
+                      <select
                         value={assignOfficer}
                         onChange={(e) => setAssignOfficer(e.target.value)}
-                        placeholder="e.g. Inspector Ramesh K."
-                        className="form-input"
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontSize: '0.8125rem' }}>Assignment Instructions (Optional)</label>
-                      <input
-                        type="text"
-                        value={assignRemark}
-                        onChange={(e) => setAssignRemark(e.target.value)}
-                        placeholder="e.g. Priority dispatch for monsoon preparedness"
-                        className="form-input"
-                      />
+                        className="form-select"
+                      >
+                        {departmentOfficers
+                          .filter(o => o.department === assignDept)
+                          .map(o => (
+                            <option key={o.id || o.name} value={o.name}>
+                              {o.name} {o.designation ? `— ${o.designation}` : ''}
+                            </option>
+                          ))}
+                        {departmentOfficers.filter(o => o.department === assignDept).length === 0 && (
+                          <option value="Not Assigned">Not Assigned</option>
+                        )}
+                        <option value="Not Assigned">Not Assigned</option>
+                      </select>
                     </div>
 
                     <button
@@ -838,7 +883,7 @@ export default function AuthorityComplaintDetail() {
                         Responsible Department
                       </div>
                       <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {complaint.assignedDepartment || 'Pending Allocation'}
+                        {complaint.assignedDepartment || 'Not Assigned'}
                       </div>
                     </div>
 
@@ -847,26 +892,145 @@ export default function AuthorityComplaintDetail() {
                         Assigned Field Officer
                       </div>
                       <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                        {complaint.assignedOfficer || 'Pending Allocation'}
+                        {complaint.assignedOfficer || 'Not Assigned'}
                       </div>
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        Upper Authority Assignment Instruction
-                      </div>
-                      {complaint.assignmentInstruction ? (
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic', backgroundColor: 'var(--bg-surface)', padding: '10px 12px', borderRadius: '4px', border: '1px solid var(--border-subtle)', borderLeft: '3px solid var(--color-primary)' }}>
-                          "{complaint.assignmentInstruction}"
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                          No specific assignment instructions provided.
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Action 2.5: Internal Authority Communication (Directives & Messages) */}
+              <div style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <MessageSquare size={18} style={{ color: 'var(--color-primary)' }} />
+                    <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                      {isUpperAuthority ? 'Message to Lower Authority' : 'Message from Upper Authority'}
+                    </h2>
+                  </div>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '3px 8px', borderRadius: '4px', backgroundColor: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border-subtle)' }}>
+                    Internal Communication • Not Visible to Citizens
+                  </span>
+                </div>
+
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '16px' }}>
+                  {isUpperAuthority
+                    ? 'Issue official directives and operational instructions to the responsible department authority for this grievance. All communications are logged with your official name, designation, and timestamp.'
+                    : 'Review official instructions and directives issued by the Central Municipal Authority for this grievance, and send official departmental updates or replies.'}
+                </p>
+
+                {/* Message Thread History */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '18px' }}>
+                  {(!complaint.authorityMessages || complaint.authorityMessages.length === 0) ? (
+                    <div style={{ padding: '14px', backgroundColor: 'var(--bg-app)', borderRadius: '6px', border: '1px dashed var(--border-subtle)', color: 'var(--text-muted)', fontSize: '0.8125rem', textAlign: 'center' }}>
+                      No official authority messages or directives have been logged for this complaint yet.
+                    </div>
+                  ) : (
+                    complaint.authorityMessages.map((msg, index) => {
+                      const isSenderAdmin = msg.senderRole === 'authority_admin';
+                      return (
+                        <div
+                          key={msg._id || index}
+                          style={{
+                            padding: '14px',
+                            backgroundColor: isSenderAdmin ? 'rgba(15, 23, 42, 0.03)' : 'var(--bg-app)',
+                            borderRadius: '6px',
+                            border: `1px solid ${isSenderAdmin ? 'var(--color-primary-subtle, #cbd5e1)' : 'var(--border-subtle)'}`,
+                            borderLeft: `4px solid ${isSenderAdmin ? 'var(--color-primary)' : 'var(--color-status-inprogress)'}`
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                  {msg.senderName}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: '0.6875rem',
+                                    fontWeight: 600,
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    backgroundColor: isSenderAdmin ? 'var(--color-primary)' : 'var(--bg-subtle)',
+                                    color: isSenderAdmin ? '#ffffff' : 'var(--text-secondary)'
+                                  }}
+                                >
+                                  {isSenderAdmin ? 'Upper Authority Directive' : 'Department Authority Reply'}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                {msg.senderDesignation ? `${msg.senderDesignation} • ` : ''}{msg.senderDepartment || 'Municipal Authority'}
+                              </div>
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                              {msg.timestamp ? new Date(msg.timestamp).toLocaleString('en-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: true
+                              }) : ''}
+                            </div>
+                          </div>
+
+                          <div style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                            {msg.message}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Feedback Alerts */}
+                {messageSuccess && (
+                  <div style={{ padding: '10px 12px', borderRadius: '6px', backgroundColor: '#DCFCE7', color: '#15803D', fontSize: '0.8125rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <CheckCircle2 size={15} />
+                    <span>{messageSuccess}</span>
+                  </div>
+                )}
+                {messageError && (
+                  <div style={{ padding: '10px 12px', borderRadius: '6px', backgroundColor: '#FEE2E2', color: '#B91C1C', fontSize: '0.8125rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <AlertCircle size={15} />
+                    <span>{messageError}</span>
+                  </div>
+                )}
+
+                {/* Message Composer */}
+                <form onSubmit={handleSendAuthorityMessage}>
+                  <div className="form-group" style={{ marginBottom: '8px' }}>
+                    <label className="form-label" style={{ fontSize: '0.8125rem' }}>
+                      {isUpperAuthority ? 'New Directive / Instruction' : 'Reply to Upper Authority'}
+                    </label>
+                    <textarea
+                      value={authorityMessageText}
+                      onChange={(e) => setAuthorityMessageText(e.target.value.slice(0, 2000))}
+                      rows={3}
+                      placeholder={isUpperAuthority
+                        ? 'Write official directive or instructions for the department authority regarding this complaint...'
+                        : 'Write official response, status update, or inquiry for the Upper Authority...'}
+                      className="form-textarea"
+                      style={{ fontSize: '0.84rem' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <span style={{ fontSize: '0.72rem', color: authorityMessageText.length >= 1900 ? '#DC2626' : 'var(--text-muted)' }}>
+                      {authorityMessageText.length} / 2000 characters
+                    </span>
+
+                    <button
+                      type="submit"
+                      disabled={sendingMessage || !authorityMessageText.trim()}
+                      className="btn btn-primary"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', padding: '6px 14px' }}
+                    >
+                      <Send size={14} />
+                      <span>{sendingMessage ? 'Sending...' : (isUpperAuthority ? 'Send Directive' : 'Send Reply')}</span>
+                    </button>
+                  </div>
+                </form>
               </div>
 
               {/* Action 3: Community Consensus & Administrative Flagging */}

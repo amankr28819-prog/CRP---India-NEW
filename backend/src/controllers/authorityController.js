@@ -1,4 +1,5 @@
 const Complaint = require('../models/Complaint');
+const User = require('../models/User');
 const { escapeRegex } = require('../middleware/sanitize');
 
 const categoryDepartmentMap = {
@@ -29,7 +30,6 @@ const getDashboardStats = async (req, res, next) => {
     const assigned = await Complaint.countDocuments({ ...activeQuery, status: 'Assigned' });
     const inProgress = await Complaint.countDocuments({ ...activeQuery, status: 'In Progress' });
     const resolved = await Complaint.countDocuments({ ...activeQuery, status: 'Resolved' });
-    const rejected = await Complaint.countDocuments({ ...activeQuery, status: 'Rejected' });
     const deletedCount = await Complaint.countDocuments(
       isCategoryAuth
         ? { category: req.user.assignedCategory, deletedByCitizen: true }
@@ -67,8 +67,7 @@ const getDashboardStats = async (req, res, next) => {
           underReview: { $sum: { $cond: [{ $eq: ['$status', 'Under Review'] }, 1, 0] } },
           assigned: { $sum: { $cond: [{ $eq: ['$status', 'Assigned'] }, 1, 0] } },
           inProgress: { $sum: { $cond: [{ $eq: ['$status', 'In Progress'] }, 1, 0] } },
-          resolved: { $sum: { $cond: [{ $eq: ['$status', 'Resolved'] }, 1, 0] } },
-          rejected: { $sum: { $cond: [{ $eq: ['$status', 'Rejected'] }, 1, 0] } }
+          resolved: { $sum: { $cond: [{ $eq: ['$status', 'Resolved'] }, 1, 0] } }
         }
       },
       { $sort: { total: -1 } }
@@ -85,7 +84,6 @@ const getDashboardStats = async (req, res, next) => {
         const catAssigned = found ? found.assigned : 0;
         const catUnderReview = found ? found.underReview : 0;
         const catSubmitted = found ? found.submitted : 0;
-        const catRejected = found ? found.rejected : 0;
         const efficiency = catTotal > 0 ? Math.round((catResolved / catTotal) * 100) : 0;
 
         return {
@@ -97,7 +95,7 @@ const getDashboardStats = async (req, res, next) => {
           assigned: catAssigned,
           underReview: catUnderReview,
           submitted: catSubmitted,
-          rejected: catRejected,
+          rejected: 0,
           activeBacklog: catSubmitted + catUnderReview + catAssigned + catInProgress,
           efficiency
         };
@@ -248,7 +246,32 @@ const getDeletedComplaints = async (req, res, next) => {
   }
 };
 
+// @desc Get real authority officers mapped to their departments
+// @route GET /api/authority/officers
+const getDepartmentOfficers = async (req, res, next) => {
+  try {
+    const officers = await User.find({
+      role: { $in: ['authority', 'authority_category', 'authority_admin'] }
+    }).select('name email role department designation assignedCategory').lean();
+
+    res.json({
+      success: true,
+      officers: officers.map(o => ({
+        id: o._id,
+        name: o.name,
+        role: o.role,
+        department: o.department,
+        designation: o.designation,
+        assignedCategory: o.assignedCategory
+      }))
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getDashboardStats,
-  getDeletedComplaints
+  getDeletedComplaints,
+  getDepartmentOfficers
 };

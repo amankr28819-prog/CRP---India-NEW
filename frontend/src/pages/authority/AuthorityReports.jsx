@@ -76,8 +76,7 @@ export default function AuthorityReports() {
     { label: 'Under Review', count: stats.underReview || 0, color: '#D97706', bg: 'var(--color-accent-amber-bg, #FEF3C7)' },
     { label: 'Assigned', count: stats.assigned || 0, color: '#7C3AED', bg: '#EDE9FE' },
     { label: 'In Progress', count: stats.inProgress || 0, color: '#0284C7', bg: '#E0F2FE' },
-    { label: 'Resolved', count: stats.resolved || 0, color: 'var(--color-accent-green, #15803D)', bg: 'var(--color-accent-green-bg, #DCFCE7)' },
-    { label: 'Rejected', count: stats.rejected || 0, color: 'var(--color-status-rejected, #DC2626)', bg: 'var(--color-accent-red-bg, #FEE2E2)' }
+    { label: 'Resolved', count: stats.resolved || 0, color: 'var(--color-accent-green, #15803D)', bg: 'var(--color-accent-green-bg, #DCFCE7)' }
   ];
 
   const handlePrint = () => {

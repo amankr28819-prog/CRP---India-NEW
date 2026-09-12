@@ -50,6 +50,18 @@ const maskCitizenPii = (complaint, reqUser) => {
     };
   }
 
+  // Internal Authority Messages are strictly hidden from citizens and public viewers
+  if (!isAuthority) {
+    delete compObj.authorityMessages;
+  } else if (reqUser.role === 'authority_category') {
+    // Lower authority only sees messages if complaint matches their category or department
+    const catMatch = compObj.category === reqUser.assignedCategory;
+    const deptMatch = compObj.assignedDepartment && compObj.assignedDepartment === reqUser.department;
+    if (!catMatch && !deptMatch) {
+      delete compObj.authorityMessages;
+    }
+  }
+
   return compObj;
 };
 
@@ -525,7 +537,14 @@ const updateComplaintStatus = async (req, res, next) => {
     const { id } = req.params;
     const { status, remark, resolutionNote } = req.body;
 
-    const allowedStatuses = ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved', 'Rejected'];
+    if (status === 'Rejected') {
+      return res.status(400).json({
+        success: false,
+        message: "Status cannot be set to 'Rejected'. Rejection has been permanently removed as an allowed municipal action in CRP India."
+      });
+    }
+
+    const allowedStatuses = ['Submitted', 'Under Review', 'Assigned', 'In Progress', 'Resolved'];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -723,17 +742,24 @@ const assignComplaint = async (req, res, next) => {
       });
     }
 
+    let departmentChanged = false;
     if (assignedDepartment && typeof assignedDepartment === 'string') {
-      complaint.assignedDepartment = assignedDepartment.trim().slice(0, 150);
-    }
-    if (assignedOfficer && typeof assignedOfficer === 'string') {
-      complaint.assignedOfficer = assignedOfficer.trim().slice(0, 100);
+      const cleanDept = assignedDepartment.trim().slice(0, 150);
+      if (complaint.assignedDepartment && complaint.assignedDepartment !== cleanDept) {
+        departmentChanged = true;
+      }
+      complaint.assignedDepartment = cleanDept;
     }
 
-    const cleanRemark = (remark && typeof remark === 'string') ? remark.trim().slice(0, 1000) : '';
-    if (cleanRemark) {
-      complaint.assignmentInstruction = cleanRemark;
+    if (assignedOfficer && typeof assignedOfficer === 'string') {
+      complaint.assignedOfficer = assignedOfficer.trim().slice(0, 100);
+    } else if (departmentChanged) {
+      // If department changed and no officer specified for the new department, prevent stale officer assignment
+      complaint.assignedOfficer = 'Not Assigned';
     }
+
+    // Completely clear legacy assignment instruction
+    complaint.assignmentInstruction = '';
 
     const previousStatus = complaint.status || 'Submitted';
     // Transition status to Assigned if it was Submitted or Under Review
@@ -742,9 +768,7 @@ const assignComplaint = async (req, res, next) => {
     }
 
     const officerName = req.user ? `${req.user.name} (${req.user.designation || 'Authority'})` : 'Municipal Authority';
-    const assignRemark = cleanRemark
-      ? `Assigned to ${complaint.assignedDepartment} (Officer: ${complaint.assignedOfficer}). Instruction: ${cleanRemark}`
-      : `Assigned to ${complaint.assignedDepartment} - Officer: ${complaint.assignedOfficer}.`;
+    const assignRemark = `Assigned to ${complaint.assignedDepartment} (Field Officer: ${complaint.assignedOfficer}).`;
 
     complaint.statusHistory.push({
       status: complaint.status,
@@ -755,22 +779,12 @@ const assignComplaint = async (req, res, next) => {
       timestamp: new Date()
     });
 
-    if (cleanRemark) {
-      complaint.remarks.push({
-        text: cleanRemark,
-        author: officerName,
-        createdAt: new Date()
-      });
-    }
-
     await complaint.save();
 
     // Notify citizen of department/officer assignment
     if (complaint.citizen && complaint.citizen.userId) {
       try {
-        const notifMsg = cleanRemark
-          ? `Your grievance ${complaint.referenceId} has been assigned to ${complaint.assignedDepartment} (Officer: ${complaint.assignedOfficer}). Instruction: "${cleanRemark}"`
-          : `Your grievance ${complaint.referenceId} has been assigned to ${complaint.assignedDepartment} (Officer: ${complaint.assignedOfficer}).`;
+        const notifMsg = `Your grievance ${complaint.referenceId} has been assigned to ${complaint.assignedDepartment} (Field Officer: ${complaint.assignedOfficer}).`;
 
         await Notification.create({
           recipient: complaint.citizen.userId,
@@ -781,14 +795,14 @@ const assignComplaint = async (req, res, next) => {
           referenceId: complaint.referenceId
         });
       } catch (notifErr) {
-        console.error('[NOTIFICATION] Failed to create assignment notification:', notifErr);
+        console.error('[ASSIGN NOTIF ERROR]', notifErr.message);
       }
     }
 
     res.json({
       success: true,
-      message: 'Complaint assignment updated successfully.',
-      complaint
+      message: `Complaint assigned to ${complaint.assignedDepartment}.`,
+      complaint: maskCitizenPii(complaint, req.user)
     });
   } catch (err) {
     next(err);
@@ -1450,6 +1464,144 @@ const removeComplaintFlag = async (req, res, next) => {
   }
 };
 
+// @desc Send a communication message between Upper Authority and Lower Authority for a specific complaint
+// @route POST /api/complaints/:id/authority-messages
+const sendAuthorityMessage = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
+
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Message text is required and cannot be empty.'
+      });
+    }
+
+    const cleanMessage = message.trim();
+    if (cleanMessage.length > 2000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Message cannot exceed 2000 characters.'
+      });
+    }
+
+    const complaint = mongoose.Types.ObjectId.isValid(id)
+      ? await Complaint.findById(id)
+      : await Complaint.findOne({ referenceId: id });
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: 'Complaint not found.'
+      });
+    }
+
+    // Authorization:
+    // Upper Authority (authority_admin) can send directives/inquiries on any complaint.
+    // Lower Authority (authority_category) can send messages on complaints in their category/department.
+    const isUpperAuthority = req.user.role === 'authority_admin';
+    const isCategoryAuthority = req.user.role === 'authority_category';
+    const isGeneralAuthority = req.user.role === 'authority';
+
+    if (isCategoryAuthority) {
+      const matchCategory = complaint.category === req.user.assignedCategory;
+      const matchDepartment = complaint.assignedDepartment && complaint.assignedDepartment === req.user.department;
+      if (!matchCategory && !matchDepartment) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: You are not authorized to communicate on complaints outside your department or category.'
+        });
+      }
+    } else if (!isUpperAuthority && !isGeneralAuthority) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Only municipal authorities can communicate regarding complaints.'
+      });
+    }
+
+    // Derive sender info strictly from authenticated user/token
+    const senderRoleTitle = isUpperAuthority
+      ? 'Main Municipal Authority'
+      : (req.user.designation || 'Department Authority');
+
+    const authorityMessage = {
+      senderId: req.user._id,
+      senderName: req.user.name,
+      senderRole: senderRoleTitle,
+      senderDesignation: req.user.designation || (isUpperAuthority ? 'Municipal Commissioner / Chief Administrator' : 'Department Officer'),
+      senderDepartment: req.user.department || (isUpperAuthority ? 'Central Municipal Administration' : complaint.assignedDepartment),
+      recipientDepartment: isUpperAuthority ? (complaint.assignedDepartment || 'Concerned Department') : 'Central Municipal Administration',
+      message: cleanMessage,
+      timestamp: new Date()
+    };
+
+    if (!complaint.authorityMessages) {
+      complaint.authorityMessages = [];
+    }
+
+    complaint.authorityMessages.push(authorityMessage);
+    await complaint.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Authority message sent successfully.',
+      authorityMessage,
+      authorityMessages: complaint.authorityMessages,
+      complaint
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc Get communication messages between Upper Authority and Lower Authority for a specific complaint
+// @route GET /api/complaints/:id/authority-messages
+const getAuthorityMessages = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const complaint = mongoose.Types.ObjectId.isValid(id)
+      ? await Complaint.findById(id)
+      : await Complaint.findOne({ referenceId: id });
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: 'Complaint not found.'
+      });
+    }
+
+    // Authorization check:
+    const isUpperAuthority = req.user.role === 'authority_admin';
+    const isCategoryAuthority = req.user.role === 'authority_category';
+    const isGeneralAuthority = req.user.role === 'authority';
+
+    if (isCategoryAuthority) {
+      const matchCategory = complaint.category === req.user.assignedCategory;
+      const matchDepartment = complaint.assignedDepartment && complaint.assignedDepartment === req.user.department;
+      if (!matchCategory && !matchDepartment) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access denied: You are not authorized to view messages for complaints outside your department.'
+        });
+      }
+    } else if (!isUpperAuthority && !isGeneralAuthority) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: Only municipal authorities can view internal complaint messages.'
+      });
+    }
+
+    res.json({
+      success: true,
+      authorityMessages: complaint.authorityMessages || []
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createComplaint,
   getComplaintByRefId,
@@ -1462,5 +1614,7 @@ module.exports = {
   voteOnComplaint,
   flagComplaintAsMisinformation,
   flagComplaintAsDuplicate,
-  removeComplaintFlag
+  removeComplaintFlag,
+  sendAuthorityMessage,
+  getAuthorityMessages
 };

@@ -12,7 +12,9 @@ const {
   voteOnComplaint,
   flagComplaintAsMisinformation,
   flagComplaintAsDuplicate,
-  removeComplaintFlag
+  removeComplaintFlag,
+  sendAuthorityMessage,
+  getAuthorityMessages
 } = require('../controllers/complaintController');
 const { verifyToken, isAuthority, isCitizen, checkSuspension, optionalAuth } = require('../middleware/auth');
 const { complaintLimiter } = require('../middleware/rateLimiter');
@@ -32,6 +34,10 @@ router.post('/:id/vote', verifyToken, isCitizen, checkSuspension, voteOnComplain
 // Authority protected routes
 router.patch('/:id/status', verifyToken, isAuthority, upload.single('resolutionPhoto'), updateComplaintStatus);
 router.patch('/:id/assign', verifyToken, isAuthority, assignComplaint);
+
+// Internal Authority Complaint Messaging routes (Upper ↔ Lower Authority)
+router.post('/:id/authority-messages', verifyToken, isAuthority, sendAuthorityMessage);
+router.get('/:id/authority-messages', verifyToken, isAuthority, getAuthorityMessages);
 
 // Administrative Flagging routes (Municipal Authority only)
 router.post('/:id/flag-misinformation', verifyToken, isAuthority, flagComplaintAsMisinformation);

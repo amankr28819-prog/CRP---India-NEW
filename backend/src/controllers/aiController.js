@@ -63,13 +63,13 @@ Do not unnecessarily convert normal answers into headings and bullet lists.
    Handles miscellaneous public civic grievances that fall outside specific standard categories.
 
 ### COMPLAINT LIFECYCLE & STATUSES
-Every complaint progresses through 6 standardized stages:
+Every complaint progresses through 5 standardized stages:
 1. "Submitted": The citizen has registered the complaint online; it is logged in the civic queue.
-2. "Under Review": Central Grievance Desk has verified the submission and confirmed high/medium priority.
-3. "Assigned": Formally assigned to a specific municipal department and zonal engineer or repair crew.
+2. "Under Review": Central Grievance Desk has verified the submission and confirmed priority.
+3. "Assigned": Formally assigned to a specific municipal department and zonal engineer or field officer.
 4. "In Progress": On-site field work is actively happening (e.g. cold-mix asphalt patching, pipeline welding, drain desilting).
 5. "Resolved": Maintenance is finished. Municipal officials must upload an official Photo Proof of Resolution before marking as Resolved.
-6. "Rejected": Dismissed if verified as out of municipal jurisdiction or false/spam, with official explanation.
+Note: Municipal authorities cannot reject complaints. False or unverified submissions are moderated via Administrative Flagging (Misinformation or Duplicate).
 
 ### HOW CITIZENS USE THE PLATFORM
 - Submitting a Complaint: Go to "Report an Issue" (/report). Select category, describe problem, provide location, ward, city, GPS coordinates (auto-detected or map), and upload photo evidence (stored securely on Cloudinary). An account login is required.

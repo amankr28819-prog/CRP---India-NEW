@@ -80,7 +80,7 @@ export default function MyComplaintsView() {
     }
   };
 
-  const statusTabs = ['All', 'Submitted', 'In Progress', 'Resolved', 'Duplicate', 'Misinformation', 'Rejected'];
+  const statusTabs = ['All', 'Submitted', 'In Progress', 'Resolved', 'Duplicate', 'Misinformation'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

@@ -210,6 +210,29 @@ export const api = {
     return await handleResponse(res);
   },
 
+  sendAuthorityMessage: async (id, message) => {
+    const res = await fetch(`${API_BASE_URL}/complaints/${encodeURIComponent(id)}/authority-messages`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ message })
+    });
+    return await handleResponse(res);
+  },
+
+  getAuthorityMessages: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/complaints/${encodeURIComponent(id)}/authority-messages`, {
+      headers: getHeaders()
+    });
+    return await handleResponse(res);
+  },
+
+  getDepartmentOfficers: async () => {
+    const res = await fetch(`${API_BASE_URL}/authority/officers`, {
+      headers: getHeaders()
+    });
+    return await handleResponse(res);
+  },
+
   deleteComplaint: async (id) => {
     try {
       const res = await fetch(`${API_BASE_URL}/complaints/${encodeURIComponent(id)}`, {

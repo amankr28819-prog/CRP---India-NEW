@@ -23,8 +23,8 @@ export default function SupportView() {
       a: 'Turnaround times vary by department and urgency: Emergency hazards (major water mains, fallen power lines, deep arterial potholes) are attended to within 24 to 48 hours. Routine sanitation, garbage clearing, and streetlighting are typically redressed within 3 to 7 working days.'
     },
     {
-      q: 'What should I do if my complaint is marked as "Rejected"?',
-      a: 'If a complaint is marked as Rejected, check the remarks provided by the inspecting officer. Rejections typically occur when an issue falls outside municipal jurisdiction (e.g. private residential property) or duplicate complaints already exist. You can submit a new grievance with additional landmarks and photos if required.'
+      q: 'Can a municipal authority reject my complaint?',
+      a: 'No. Under CRP India policies, municipal authorities cannot reject citizen complaints. All grievances are processed through legitimate civic stages towards resolution. If an entry is suspected to be a duplicate or inaccurate, it is reviewed transparently under Administrative Flagging with full community audit trail.'
     },
     {
       q: 'Can I edit or update a complaint once it has been submitted?',
