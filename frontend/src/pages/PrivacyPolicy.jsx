@@ -250,7 +250,7 @@ export default function PrivacyPolicy() {
                 <Mail size={18} style={{ color: 'var(--color-primary)' }} />
                 <div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Email Inquiries</div>
-                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>grievance@crp.gov.in</div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)' }}>crpindianew@gmail.com</div>
                 </div>
               </div>
 
