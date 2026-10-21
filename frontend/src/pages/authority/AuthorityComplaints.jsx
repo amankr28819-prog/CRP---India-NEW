@@ -17,8 +17,12 @@ import { api } from '../../services/api';
 import StatusBadge from '../../components/StatusBadge';
 import { CATEGORIES } from '../CategorySelect';
 import BackButton from '../../components/BackButton';
+import { useAuth } from '../../context/AuthContext';
 
 export default function AuthorityComplaints() {
+  const { user } = useAuth();
+  const isMainAuthority = user?.role === 'authority_admin' || user?.authorityRole === 'authority_admin';
+
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -40,7 +44,7 @@ export default function AuthorityComplaints() {
         limit: 15
       };
       if (statusFilter !== 'All') params.status = statusFilter;
-      if (categoryFilter !== 'All') params.category = categoryFilter;
+      if (isMainAuthority && categoryFilter !== 'All') params.category = categoryFilter;
       if (sortBy) params.sort = sortBy;
       if (searchTerm.trim()) params.search = searchTerm.trim();
 
@@ -235,24 +239,26 @@ export default function AuthorityComplaints() {
             </select>
           </div>
 
-          {/* Category Filter */}
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: '0.8125rem' }}>Filter by Category</label>
-            <select
-              value={categoryFilter}
-              onChange={(e) => {
-                setCategoryFilter(e.target.value);
-                setPage(1);
-              }}
-              className="form-select"
-              style={{ fontSize: '0.875rem' }}
-            >
-              <option value="All">All Categories</option>
-              {CATEGORIES.map(cat => (
-                <option key={cat.slug} value={cat.name}>{cat.name}</option>
-              ))}
-            </select>
-          </div>
+          {/* Category Filter — Main Municipal Authority only */}
+          {isMainAuthority && (
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: '0.8125rem' }}>Filter by Category</label>
+              <select
+                value={categoryFilter}
+                onChange={(e) => {
+                  setCategoryFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="form-select"
+                style={{ fontSize: '0.875rem' }}
+              >
+                <option value="All">All Categories</option>
+                {CATEGORIES.map(cat => (
+                  <option key={cat.slug} value={cat.name}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Change 6: Sort By with Vote Count option */}
           <div className="form-group" style={{ marginBottom: 0 }}>
