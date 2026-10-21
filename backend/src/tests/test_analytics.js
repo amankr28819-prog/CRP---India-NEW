@@ -5,7 +5,8 @@ const User = require('../models/User');
 const {
   getDashboardStats,
   getAuthorityComplaintScope,
-  categoryDepartmentMap
+  categoryDepartmentMap,
+  formatTurnaroundTime
 } = require('../controllers/authorityController');
 
 let mongod;
@@ -336,9 +337,24 @@ async function runAllTests() {
     assert(upperRes.body.data.stats.resolutionRate === 56.3, `G2: Resolution rate for Upper Authority is 56.3% (got ${upperRes.body.data.stats.resolutionRate}%)`);
 
     // H & J. Average Turnaround Time
-    // Roads: (48h + 96h + 144h) / 3 = 288h / 3 = 96.0 hrs
+    // Roads: (48h + 96h + 144h) / 3 = 288h / 3 = 96.0 hrs = 4 days
     assert(roadsRes.body.data.stats.avgTurnaroundHours === 96, `H/J1: Average turnaround for Roads is 96.0 hrs (got ${roadsRes.body.data.stats.avgTurnaroundHours})`);
-    assert(roadsRes.body.data.stats.avgTurnaroundDisplay === '96 hrs', `H/J2: Formatted turnaround display is "96 hrs" (got "${roadsRes.body.data.stats.avgTurnaroundDisplay}")`);
+    assert(roadsRes.body.data.stats.avgTurnaroundDisplay === '4 days', `H/J2: Formatted turnaround display is "4 days" (got "${roadsRes.body.data.stats.avgTurnaroundDisplay}")`);
+
+    // Verify formatTurnaroundTime rules and all required examples
+    assert(formatTurnaroundTime(5) === '5 hours', 'Formatter: 5 hours');
+    assert(formatTurnaroundTime(12) === '12 hours', 'Formatter: 12 hours');
+    assert(formatTurnaroundTime(23) === '23 hours', 'Formatter: 23 hours');
+    assert(formatTurnaroundTime(24) === '1 day', 'Formatter: 24 hours -> 1 day');
+    assert(formatTurnaroundTime(30) === '1 day 6 hours', 'Formatter: 30 hours -> 1 day 6 hours');
+    assert(formatTurnaroundTime(48) === '2 days', 'Formatter: 48 hours -> 2 days');
+    assert(formatTurnaroundTime(53) === '2 days 5 hours', 'Formatter: 53 hours -> 2 days 5 hours');
+    assert(formatTurnaroundTime(72) === '3 days', 'Formatter: 72 hours -> 3 days');
+    assert(formatTurnaroundTime(397) === '16 days 13 hours', 'Formatter: 397 hours -> 16 days 13 hours');
+    assert(formatTurnaroundTime(1) === '1 hour', 'Formatter: 1 hour singular');
+    assert(formatTurnaroundTime(25) === '1 day 1 hour', 'Formatter: 25 hours -> 1 day 1 hour');
+    assert(formatTurnaroundTime(null) === 'N/A', 'Formatter: null -> N/A');
+    assert(formatTurnaroundTime(undefined) === 'N/A', 'Formatter: undefined -> N/A');
 
     // I. Zero Resolved Complaints
     const waterRes = await runMockRequest(getDashboardStats, waterAuthZero);

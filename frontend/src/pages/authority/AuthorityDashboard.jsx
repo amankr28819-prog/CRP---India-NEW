@@ -94,6 +94,39 @@ export default function AuthorityDashboard() {
 
   useEffect(() => {
     reloadAll();
+
+    const handleUpdate = () => {
+      fetchDashboardStats();
+      fetchComplaints();
+    };
+
+    const handleStorage = (e) => {
+      if (e.key === 'crp_metrics_last_updated') {
+        fetchDashboardStats();
+        fetchComplaints();
+      }
+    };
+
+    const handleFocus = () => {
+      fetchDashboardStats();
+    };
+
+    window.addEventListener('crp_metrics_updated', handleUpdate);
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('focus', handleFocus);
+
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        fetchDashboardStats();
+      }
+    }, 30000);
+
+    return () => {
+      window.removeEventListener('crp_metrics_updated', handleUpdate);
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {

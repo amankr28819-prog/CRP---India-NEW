@@ -16,6 +16,7 @@ import {
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/BackButton';
+import { formatTurnaroundTime } from '../../utils/formatters';
 
 export default function AuthorityReports() {
   const { user } = useAuth();
@@ -49,8 +50,39 @@ export default function AuthorityReports() {
   };
 
   useEffect(() => {
-    fetchMetrics('All Time');
-  }, []);
+    fetchMetrics(timeRange);
+
+    const handleUpdate = () => {
+      fetchMetrics(timeRange);
+    };
+
+    const handleStorage = (e) => {
+      if (e.key === 'crp_metrics_last_updated') {
+        fetchMetrics(timeRange);
+      }
+    };
+
+    const handleFocus = () => {
+      fetchMetrics(timeRange);
+    };
+
+    window.addEventListener('crp_metrics_updated', handleUpdate);
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('focus', handleFocus);
+
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        fetchMetrics(timeRange);
+      }
+    }, 30000);
+
+    return () => {
+      window.removeEventListener('crp_metrics_updated', handleUpdate);
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
+    };
+  }, [timeRange]);
 
   const stats = data?.stats || {
     total: 0,
@@ -74,7 +106,9 @@ export default function AuthorityReports() {
     ? stats.activeBacklog
     : ((stats.submitted || 0) + (stats.underReview || 0) + (stats.assigned || 0) + (stats.inProgress || 0));
 
-  const turnaroundDisplay = stats.avgTurnaroundDisplay || (stats.avgTurnaroundHours !== null && stats.avgTurnaroundHours !== undefined ? `${stats.avgTurnaroundHours} hrs` : 'N/A');
+  const turnaroundDisplay = stats.avgTurnaroundHours !== null && stats.avgTurnaroundHours !== undefined
+    ? formatTurnaroundTime(stats.avgTurnaroundHours)
+    : (stats.avgTurnaroundDisplay && stats.avgTurnaroundDisplay !== 'N/A' ? stats.avgTurnaroundDisplay : 'N/A');
 
   const departmentMetrics = data?.departmentStats || [];
 

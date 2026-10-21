@@ -232,6 +232,15 @@ export default function AuthorityComplaintDetail() {
         setResolutionPhoto(null);
         setResolutionPreview('');
         setTimeout(() => setActionSuccess(''), 5000);
+
+        window.dispatchEvent(new CustomEvent('crp_metrics_updated', {
+          detail: { complaintId: complaint._id, status: newStatus }
+        }));
+        try {
+          localStorage.setItem('crp_metrics_last_updated', Date.now().toString());
+        } catch {
+          // ignore storage errors
+        }
       }
     } catch (err) {
       setError(err.message || 'Failed to update status.');
