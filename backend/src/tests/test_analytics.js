@@ -4,10 +4,21 @@ const Complaint = require('../models/Complaint');
 const User = require('../models/User');
 const {
   getDashboardStats,
-  getAuthorityComplaintScope,
-  categoryDepartmentMap,
+  getDeletedComplaints,
   formatTurnaroundTime
 } = require('../controllers/authorityController');
+const {
+  getComplaints,
+  updateComplaintStatus,
+  getComplaintByRefId,
+  getMyComplaints
+} = require('../controllers/complaintController');
+const {
+  getAuthorityComplaintScope,
+  isComplaintAuthorizedForAuthority,
+  categoryDepartmentMap,
+  departmentCategoryMap
+} = require('../utils/authorityScope');
 
 let mongod;
 
@@ -22,10 +33,11 @@ async function teardownDB() {
   if (mongod) await mongod.stop();
 }
 
-function runMockRequest(handler, user, query = {}) {
+function runMockRequest(handler, user, query = {}, params = {}, body = {}) {
   return new Promise((resolve, reject) => {
-    const req = { user, query };
+    const req = { user, query, params, body };
     const res = {
+      statusCode: 200,
       status(code) {
         this.statusCode = code;
         return this;
@@ -36,7 +48,7 @@ function runMockRequest(handler, user, query = {}) {
     };
     const next = (err) => {
       if (err) reject(err);
-      else resolve({ statusCode: 200, body: null });
+      else resolve({ statusCode: res.statusCode || 200, body: null });
     };
     handler(req, res, next).catch(reject);
   });
@@ -440,6 +452,299 @@ async function runAllTests() {
     // S. Citizen Access Safeguard
     const citizenScope = getAuthorityComplaintScope(citizenUser);
     assert(citizenScope._id === null, 'S1: Citizen user scope resolves to { _id: null } (completely blocked)');
+
+    // ====================================================
+    // REGRESSION SUITE: AUDIT ISSUES 1 - 5 (SCENARIOS A - H)
+    // ====================================================
+    console.log('\n--- Running Regression Scenarios A through H ---');
+
+    // Setup Parks & Public Amenities Authority user
+    const parksAuth = await User.create({
+      name: 'Ananya Sharma',
+      email: 'parks@crp.gov.in',
+      password: 'Password123!',
+      role: 'authority_category',
+      assignedCategory: 'Public Spaces',
+      department: 'Parks & Public Amenities Directorate',
+      designation: 'Horticulture & Parks Officer'
+    });
+
+    // ----------------------------------------------------
+    // TEST A: Reassigned In-Progress Complaint
+    // ----------------------------------------------------
+    // Create 3 complaints in Parks scope matching the audit prompt example:
+    // 1) Reassigned: original category 'Other Issues', but assigned to 'Parks & Public Amenities Directorate', status 'In Progress'
+    // 2) Native Resolved 1: category 'Public Spaces', assigned to Parks dept, status 'Resolved'
+    // 3) Native Resolved 2: category 'Public Spaces', assigned to Parks dept, status 'Resolved'
+    const reassignedComp = await Complaint.create({
+      referenceId: 'CRP-2026-REASSIGNED1',
+      category: 'Other Issues',
+      assignedDepartment: 'Parks & Public Amenities Directorate',
+      title: 'Illegal debris dump in community park',
+      description: 'Debris dumped in public park zone',
+      location: 'Cubbon Park Sector 4',
+      ward: 'Ward 25',
+      city: 'Bengaluru',
+      latitude: 12.97,
+      longitude: 77.59,
+      citizen: { name: 'Citizen One', phone: '9876543210', email: 'citizen1@test.com', userId: citizenUser._id },
+      status: 'In Progress',
+      createdAt: new Date(Date.now() - 3600000)
+    });
+
+    const nativeParks1 = await Complaint.create({
+      referenceId: 'CRP-2026-PARKS-NATIVE1',
+      category: 'Public Spaces',
+      assignedDepartment: 'Parks & Public Amenities Directorate',
+      title: 'Broken park bench near fountain',
+      description: 'Bench broken near walking track',
+      location: 'Lalbagh Gate 2',
+      ward: 'Ward 25',
+      city: 'Bengaluru',
+      latitude: 12.97,
+      longitude: 77.59,
+      citizen: { name: 'Citizen Two', phone: '9876543211', email: 'citizen2@test.com', userId: citizenUser._id },
+      status: 'Resolved',
+      resolvedAt: new Date(),
+      resolvedBy: 'Ananya Sharma',
+      resolutionPhoto: 'https://example.com/resolved.jpg',
+      createdAt: new Date(Date.now() - 7200000)
+    });
+
+    const nativeParks2 = await Complaint.create({
+      referenceId: 'CRP-2026-PARKS-NATIVE2',
+      category: 'Public Spaces',
+      assignedDepartment: 'Parks & Public Amenities Directorate',
+      title: 'Overgrown thorny shrubs on walking path',
+      description: 'Shrubs obstructing pedestrian walkway',
+      location: 'Jayanagar 4th Block Park',
+      ward: 'Ward 30',
+      city: 'Bengaluru',
+      latitude: 12.93,
+      longitude: 77.58,
+      citizen: { name: 'Citizen Three', phone: '9876543212', email: 'citizen3@test.com' },
+      status: 'Resolved',
+      resolvedAt: new Date(),
+      resolvedBy: 'Ananya Sharma',
+      resolutionPhoto: 'https://example.com/resolved2.jpg',
+      createdAt: new Date(Date.now() - 10800000)
+    });
+
+    // Verify Parks dashboard stats: total 3, resolved 2, inProgress 1
+    const parksDashRes = await runMockRequest(getDashboardStats, parksAuth);
+    assert(parksDashRes.statusCode === 200, 'Test A1: Parks dashboard returns HTTP 200');
+    assert(parksDashRes.body.data.stats.total === 3, `Test A2: Parks total is 3 (got ${parksDashRes.body.data.stats.total})`);
+    assert(parksDashRes.body.data.stats.resolved === 2, `Test A3: Parks resolved is 2 (got ${parksDashRes.body.data.stats.resolved})`);
+    assert(parksDashRes.body.data.stats.inProgress === 1, `Test A4: Parks in-progress count is 1 (got ${parksDashRes.body.data.stats.inProgress})`);
+
+    // Verify Parks complaint list: getComplaints returns ALL 3 complaints
+    const parksListRes = await runMockRequest(getComplaints, parksAuth, {});
+    assert(parksListRes.statusCode === 200, 'Test A5: Parks complaint list returns HTTP 200');
+    assert(parksListRes.body.total === 3, `Test A6: Parks list total count matches stats (3 == ${parksListRes.body.total})`);
+    assert(parksListRes.body.complaints.length === 3, `Test A7: Parks list items count matches stats (3 == ${parksListRes.body.complaints.length})`);
+    const parksRefIds = parksListRes.body.complaints.map(c => c.referenceId);
+    assert(parksRefIds.includes('CRP-2026-REASSIGNED1'), 'Test A8: Reassigned in-progress complaint appears in Parks complaint list');
+    assert(parksRefIds.includes('CRP-2026-PARKS-NATIVE1'), 'Test A9: Native resolved complaint 1 appears in list');
+    assert(parksRefIds.includes('CRP-2026-PARKS-NATIVE2'), 'Test A10: Native resolved complaint 2 appears in list');
+
+    // Verify no duplicates: native complaints matching BOTH category and department appear exactly once
+    const uniqueParksRefIds = new Set(parksRefIds);
+    assert(uniqueParksRefIds.size === parksRefIds.length, `Test A11: No duplicate complaints in list (${uniqueParksRefIds.size} unique out of ${parksRefIds.length})`);
+
+    // Verify status filter 'In Progress' returns exactly the reassigned in-progress complaint
+    const parksInProgressList = await runMockRequest(getComplaints, parksAuth, { status: 'In Progress' });
+    assert(parksInProgressList.body.total === 1, `Test A12: In Progress filter count is 1 (got ${parksInProgressList.body.total})`);
+    assert(parksInProgressList.body.complaints[0]?.referenceId === 'CRP-2026-REASSIGNED1', 'Test A13: In Progress filter returns the reassigned complaint');
+
+    // ----------------------------------------------------
+    // TEST B: Unauthorized Department Isolation
+    // ----------------------------------------------------
+    // Roads authority must not be able to list, inspect, or update the Parks complaint
+    const roadsListWithParks = await runMockRequest(getComplaints, roadsAuth, { search: 'Cubbon' });
+    assert(roadsListWithParks.body.complaints.length === 0, 'Test B1: Roads authority cannot find Parks complaint via search/list');
+
+    // Attempt direct inspection via getComplaintByRefId
+    const roadsInspectRes = await runMockRequest(getComplaintByRefId, roadsAuth, {}, { id: 'CRP-2026-REASSIGNED1' });
+    assert(roadsInspectRes.statusCode === 403, `Test B2: Roads authority inspecting Parks complaint is blocked (HTTP ${roadsInspectRes.statusCode})`);
+
+    // Attempt direct status update via updateComplaintStatus
+    const roadsUpdateRes = await runMockRequest(
+      updateComplaintStatus,
+      roadsAuth,
+      {},
+      { id: 'CRP-2026-REASSIGNED1' },
+      { status: 'Under Review', remark: 'Unauthorized attempt by roads officer' }
+    );
+    assert(roadsUpdateRes.statusCode === 403, `Test B3: Roads authority updating Parks complaint status is blocked (HTTP ${roadsUpdateRes.statusCode})`);
+
+    // ----------------------------------------------------
+    // TEST C: Status Updates After Reassignment
+    // ----------------------------------------------------
+    // Authorized receiving department officer (Parks) CAN update status
+    const parksUpdateRes = await runMockRequest(
+      updateComplaintStatus,
+      parksAuth,
+      {},
+      { id: 'CRP-2026-REASSIGNED1' },
+      { status: 'Under Review', remark: 'Inspection scheduled by Horticulture officer' }
+    );
+    assert(parksUpdateRes.statusCode === 200, `Test C1: Parks officer successfully updates reassigned complaint status (HTTP ${parksUpdateRes.statusCode})`);
+    const updatedCompInDb = await Complaint.findOne({ referenceId: 'CRP-2026-REASSIGNED1' });
+    assert(updatedCompInDb.status === 'Under Review', `Test C2: DB status verified as Under Review (got ${updatedCompInDb.status})`);
+    assert(updatedCompInDb.statusHistory.length > 0, 'Test C3: Status history audit entry recorded');
+
+    // Revert status to In Progress for subsequent tests
+    await Complaint.updateOne({ referenceId: 'CRP-2026-REASSIGNED1' }, { status: 'In Progress' });
+
+    // ----------------------------------------------------
+    // TEST D: Departmental Analytics Grouping
+    // ----------------------------------------------------
+    // In upper authority analytics, the reassigned complaint (category 'Other Issues')
+    // must be credited to 'Parks & Public Amenities Directorate', NOT 'Central Civic Redressal Cell'
+    const adminAnalyticsRes = await runMockRequest(getDashboardStats, upperAdmin);
+    assert(adminAnalyticsRes.statusCode === 200, 'Test D1: Admin analytics returns HTTP 200');
+    const deptStats = adminAnalyticsRes.body.data.departmentStats;
+    const parksDeptMetric = deptStats.find(d => d.department === 'Parks & Public Amenities Directorate');
+    assert(Boolean(parksDeptMetric), 'Test D2: Parks & Public Amenities Directorate exists in departmentStats');
+    assert(parksDeptMetric.total === 3, `Test D3: Parks department total includes reassigned complaint (got ${parksDeptMetric.total}, expected 3)`);
+    assert(parksDeptMetric.inProgress === 1, `Test D4: Parks department inProgress includes reassigned complaint (got ${parksDeptMetric.inProgress}, expected 1)`);
+    assert(parksDeptMetric.resolved === 2, `Test D5: Parks department resolved is 2 (got ${parksDeptMetric.resolved}, expected 2)`);
+
+    // Reconcile department breakdown totals with top-level stats
+    const deptTotalSum = deptStats.reduce((acc, d) => acc + d.total, 0);
+    assert(deptTotalSum === adminAnalyticsRes.body.data.stats.total, `Test D6: Department totals reconcile with top-level stats (${deptTotalSum} == ${adminAnalyticsRes.body.data.stats.total})`);
+
+    // ----------------------------------------------------
+    // TEST E: Deleted Complaints Scoping and Reconciliation
+    // ----------------------------------------------------
+    // Create deleted complaints in different departments
+    await Complaint.create({
+      referenceId: 'CRP-2026-DEL-PARKS1',
+      category: 'Public Spaces',
+      assignedDepartment: 'Parks & Public Amenities Directorate',
+      title: 'Deleted bench complaint',
+      description: 'Citizen withdrew report',
+      location: 'Lalbagh',
+      ward: 'Ward 25',
+      city: 'Bengaluru',
+      latitude: 12.97,
+      longitude: 77.59,
+      citizen: { name: 'Citizen Del', phone: '9876543219', email: 'del@test.com' },
+      status: 'Submitted',
+      deletedByCitizen: true,
+      deletedAt: new Date()
+    });
+
+    await Complaint.create({
+      referenceId: 'CRP-2026-DEL-REASSIGNED-PARKS',
+      category: 'Other Issues',
+      assignedDepartment: 'Parks & Public Amenities Directorate',
+      title: 'Deleted reassigned park complaint',
+      description: 'Citizen withdrew park report',
+      location: 'Cubbon Park',
+      ward: 'Ward 25',
+      city: 'Bengaluru',
+      latitude: 12.97,
+      longitude: 77.59,
+      citizen: { name: 'Citizen Del2', phone: '9876543218', email: 'del2@test.com' },
+      status: 'Under Review',
+      deletedByCitizen: true,
+      deletedAt: new Date()
+    });
+
+    await Complaint.create({
+      referenceId: 'CRP-2026-DEL-WATER',
+      category: 'Water Supply',
+      assignedDepartment: 'Water Supply & Jal Board',
+      title: 'Deleted water pipeline report',
+      description: 'Withdrawn by citizen',
+      location: 'Indiranagar',
+      ward: 'Ward 12',
+      city: 'Bengaluru',
+      latitude: 12.98,
+      longitude: 77.64,
+      citizen: { name: 'Citizen Water', phone: '9876543217', email: 'delwater@test.com' },
+      status: 'Submitted',
+      deletedByCitizen: true,
+      deletedAt: new Date()
+    });
+
+    // Verify Parks dashboard deleted count
+    const parksDashWithDel = await runMockRequest(getDashboardStats, parksAuth);
+    assert(parksDashWithDel.body.data.stats.deletedCount === 2, `Test E1: Parks dashboard deleted count is 2 (got ${parksDashWithDel.body.data.stats.deletedCount})`);
+
+    // Verify Parks getDeletedComplaints list
+    const parksDelList = await runMockRequest(getDeletedComplaints, parksAuth, {});
+    assert(parksDelList.statusCode === 200, 'Test E2: Parks getDeletedComplaints returns HTTP 200');
+    assert(parksDelList.body.total === 2, `Test E3: Deleted complaints total matches dashboard count (2 == ${parksDelList.body.total})`);
+    assert(parksDelList.body.complaints.length === 2, `Test E4: Deleted complaints list count is 2 (got ${parksDelList.body.complaints.length})`);
+    const delRefIds = parksDelList.body.complaints.map(c => c.referenceId);
+    assert(delRefIds.includes('CRP-2026-DEL-PARKS1'), 'Test E5: Includes native deleted parks complaint');
+    assert(delRefIds.includes('CRP-2026-DEL-REASSIGNED-PARKS'), 'Test E6: Includes reassigned deleted parks complaint');
+    assert(!delRefIds.includes('CRP-2026-DEL-WATER'), 'Test E7: Excludes unrelated Water deleted complaint');
+
+    // Active complaints must never appear in deleted list
+    assert(!delRefIds.includes('CRP-2026-PARKS-NATIVE1'), 'Test E8: Active complaints strictly excluded from deleted complaints');
+
+    // Lower authority Roads cannot see Parks deleted complaints
+    const roadsDelList = await runMockRequest(getDeletedComplaints, roadsAuth, {});
+    const roadsDelIds = roadsDelList.body.complaints.map(c => c.referenceId);
+    assert(!roadsDelIds.includes('CRP-2026-DEL-PARKS1'), 'Test E9: Roads authority cannot view Parks deleted complaints');
+
+    // ----------------------------------------------------
+    // TEST F: Main Municipal Authority Permissions
+    // ----------------------------------------------------
+    // Main authority sees complaints organization-wide
+    const adminAllComplaints = await runMockRequest(getComplaints, upperAdmin, {});
+    assert(adminAllComplaints.statusCode === 200, 'Test F1: Admin getComplaints returns HTTP 200');
+    assert(adminAllComplaints.body.total > 15, `Test F2: Admin sees organization-wide complaints (total=${adminAllComplaints.body.total})`);
+
+    // Main authority can filter by category
+    const adminWaterList = await runMockRequest(getComplaints, upperAdmin, { category: 'Water Supply' });
+    assert(adminWaterList.body.total === 2, `Test F3: Admin category filtering by Water Supply returns 2 complaints (got ${adminWaterList.body.total})`);
+    const allWaterCategory = adminWaterList.body.complaints.every(c => c.category === 'Water Supply');
+    assert(allWaterCategory, 'Test F4: All returned complaints belong to Water Supply category');
+
+    // ----------------------------------------------------
+    // TEST G: Citizen Access & Privacy Safeguards
+    // ----------------------------------------------------
+    // Citizen myReports filter only returns complaints created by this citizen
+    const citizenMyReports = await runMockRequest(getComplaints, citizenUser, { myReports: 'true' });
+    assert(citizenMyReports.statusCode === 200, 'Test G1: Citizen myReports returns HTTP 200');
+    assert(citizenMyReports.body.total >= 2, `Test G2: Citizen sees own reports (total=${citizenMyReports.body.total})`);
+    const citizenRefIds = citizenMyReports.body.complaints.map(c => c.referenceId);
+    assert(citizenRefIds.includes('CRP-2026-REASSIGNED1'), 'Test G3: Citizen own complaint present in myReports');
+
+    // Public feed (unauthenticated) excludes deleted complaints and masks citizen PII
+    const publicFeed = await runMockRequest(getComplaints, null, {});
+    assert(publicFeed.statusCode === 200, 'Test G4: Public complaints feed returns HTTP 200');
+    const publicDelPresent = publicFeed.body.complaints.some(c => c.deletedByCitizen === true);
+    assert(!publicDelPresent, 'Test G5: Public feed strictly excludes citizen-deleted complaints');
+
+    // Verify PII masking on public inspection
+    const publicInspect = await runMockRequest(getComplaintByRefId, null, {}, { id: 'CRP-2026-PARKS-NATIVE1' });
+    assert(publicInspect.statusCode === 200, 'Test G6: Public inspection returns HTTP 200');
+    assert(publicInspect.body.complaint.citizen.phone.includes('*'), 'Test G7: Citizen phone number is masked for public');
+    assert(publicInspect.body.complaint.citizen.email.includes('*'), 'Test G8: Citizen email is masked for public');
+
+    // ----------------------------------------------------
+    // TEST H: Pagination and Search Filtering
+    // ----------------------------------------------------
+    // Pagination: page=1&limit=2 returns 2 items on page, but total is 3
+    const parksPaged = await runMockRequest(getComplaints, parksAuth, { page: 1, limit: 2 });
+    assert(parksPaged.body.complaints.length === 2, `Test H1: Page 1 limit 2 returns 2 items (got ${parksPaged.body.complaints.length})`);
+    assert(parksPaged.body.total === 3, `Test H2: Total count remains complete eligible count 3 (got ${parksPaged.body.total})`);
+    assert(parksPaged.body.pages === 2, `Test H3: Calculated pages is 2 (got ${parksPaged.body.pages})`);
+
+    // Search: keyword matching title/description within authority scope
+    const parksSearch = await runMockRequest(getComplaints, parksAuth, { search: 'debris' });
+    assert(parksSearch.body.total === 1, `Test H4: Scoped search for "debris" returns 1 result (got ${parksSearch.body.total})`);
+    assert(parksSearch.body.complaints[0]?.referenceId === 'CRP-2026-REASSIGNED1', 'Test H5: Scoped search matches reassigned complaint');
+
+    // Status filter: 'Resolved' returns 2 resolved complaints
+    const parksResolvedList = await runMockRequest(getComplaints, parksAuth, { status: 'Resolved' });
+    assert(parksResolvedList.body.total === 2, `Test H6: Status filter "Resolved" returns 2 items (got ${parksResolvedList.body.total})`);
+    assert(parksResolvedList.body.complaints.every(c => c.status === 'Resolved'), 'Test H7: All items in resolved filter have status Resolved');
 
   } catch (err) {
     console.error('Fatal test execution error:', err);

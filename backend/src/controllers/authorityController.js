@@ -3,57 +3,11 @@ const User = require('../models/User');
 const { escapeRegex } = require('../middleware/sanitize');
 const { getCanonicalDeptOfficerMap, resolveAssignedOfficer } = require('./complaintController');
 
-const categoryDepartmentMap = {
-  'Roads & Potholes': 'Public Works Department (Roads)',
-  'Garbage & Sanitation': 'Solid Waste & Sanitation Department',
-  'Streetlights': 'Municipal Electrical & Lighting Division',
-  'Water Supply': 'Water Supply & Jal Board',
-  'Drainage': 'Stormwater Drainage & Sewerage Board',
-  'Public Spaces': 'Parks & Public Amenities Directorate',
-  'Other Issues': 'Central Civic Redressal Cell'
-};
-
-/**
- * Resolves the authorized query scope for an authority user.
- * - Upper authority (authority_admin): Organization-wide access (no category/dept constraint).
- * - Lower authority (authority_category or authority with category/dept): Strictly constrained
- *   to complaints belonging to their assigned category or assigned department.
- */
-const getAuthorityComplaintScope = (user) => {
-  if (!user) {
-    return { _id: null };
-  }
-
-  // Upper municipal authority: organization-wide scope
-  if (user.role === 'authority_admin') {
-    return {};
-  }
-
-  // Lower municipal authority
-  const orConditions = [];
-  if (user.assignedCategory && typeof user.assignedCategory === 'string' && user.assignedCategory.trim()) {
-    orConditions.push({ category: user.assignedCategory.trim() });
-  }
-  if (user.department && typeof user.department === 'string' && user.department.trim()) {
-    orConditions.push({ assignedDepartment: user.department.trim() });
-    // Also map department to standard category if applicable
-    const matchedCategory = Object.keys(categoryDepartmentMap).find(
-      cat => categoryDepartmentMap[cat] === user.department.trim()
-    );
-    if (matchedCategory && matchedCategory !== user.assignedCategory) {
-      orConditions.push({ category: matchedCategory });
-    }
-  }
-
-  if (orConditions.length === 1) {
-    return orConditions[0];
-  } else if (orConditions.length > 1) {
-    return { $or: orConditions };
-  }
-
-  // Fallback: If lower authority has neither category nor department assigned, deny data
-  return { _id: null };
-};
+const {
+  categoryDepartmentMap,
+  departmentCategoryMap,
+  getAuthorityComplaintScope
+} = require('../utils/authorityScope');
 
 /**
  * Parses optional timeRange query parameters:
@@ -220,22 +174,27 @@ const getDashboardStats = async (req, res, next) => {
     const avgTurnaroundDisplay = formatTurnaroundTime(avgTurnaroundHours);
 
     // 3. Departmental Live Resolution Metrics
+    // Grouped by assignedDepartment to reflect actual handling department
     // For Lower Authority: strictly restricted to their authorized department(s)
     // For Upper Authority: lists all municipal departments
-    const authorizedCategories = isUpperAuthority
-      ? Object.keys(categoryDepartmentMap)
-      : Object.keys(categoryDepartmentMap).filter(cat => {
-          const deptName = categoryDepartmentMap[cat];
-          const matchCat = req.user.assignedCategory && cat === req.user.assignedCategory;
-          const matchDept = req.user.department && deptName === req.user.department;
-          return matchCat || matchDept;
-        });
+    const authorizedDepartments = isUpperAuthority
+      ? Object.values(categoryDepartmentMap)
+      : Object.keys(categoryDepartmentMap)
+          .filter(cat => {
+            const deptName = categoryDepartmentMap[cat];
+            const matchCat = req.user.assignedCategory && cat === req.user.assignedCategory;
+            const matchDept = req.user.department && deptName === req.user.department;
+            return matchCat || matchDept;
+          })
+          .map(cat => categoryDepartmentMap[cat]);
+
+    const uniqueAuthDepts = Array.from(new Set(authorizedDepartments));
 
     const departmentPipeline = [
       { $match: activeQuery },
       {
         $group: {
-          _id: '$category',
+          _id: { $ifNull: ['$assignedDepartment', 'Central Civic Redressal Cell'] },
           total: { $sum: 1 },
           submitted: { $sum: { $cond: [{ $eq: ['$status', 'Submitted'] }, 1, 0] } },
           underReview: { $sum: { $cond: [{ $eq: ['$status', 'Under Review'] }, 1, 0] } },
@@ -249,8 +208,8 @@ const getDashboardStats = async (req, res, next) => {
 
     const rawDeptStats = await Complaint.aggregate(departmentPipeline);
 
-    const departmentStats = authorizedCategories.map(category => {
-      const found = rawDeptStats.find(d => d._id === category);
+    const departmentStats = uniqueAuthDepts.map(deptName => {
+      const found = rawDeptStats.find(d => d._id === deptName);
       const catTotal = found ? found.total : 0;
       const catResolved = found ? found.resolved : 0;
       const catInProgress = found ? found.inProgress : 0;
@@ -260,8 +219,9 @@ const getDashboardStats = async (req, res, next) => {
       const efficiency = catTotal > 0 ? Number(((catResolved / catTotal) * 100).toFixed(1)) : 0;
 
       return {
-        category,
-        departmentName: categoryDepartmentMap[category] || category,
+        category: departmentCategoryMap[deptName] || deptName,
+        department: deptName,
+        departmentName: deptName,
         total: catTotal,
         resolved: catResolved,
         inProgress: catInProgress,
@@ -353,17 +313,20 @@ const getDeletedComplaints = async (req, res, next) => {
       deletedByCitizen: true
     };
 
-    // Category Authority strict boundary enforcement
-    if (req.user.role === 'authority_category') {
-      // If client requests a category parameter that differs from assigned category, reject!
-      if (category && category !== 'All' && category !== req.user.assignedCategory) {
-        return res.status(403).json({
-          success: false,
-          message: `Access denied: You are only authorized to view deleted complaints in your assigned category (${req.user.assignedCategory}).`
-        });
+    const isMainAuthority = req.user.role === 'authority_admin';
+    const isLowerAuthority = ['authority_category', 'authority'].includes(req.user.role);
+
+    if (isLowerAuthority) {
+      const scopeFilter = getAuthorityComplaintScope(req.user);
+      if (scopeFilter._id !== undefined) {
+        query._id = scopeFilter._id;
+      } else if (scopeFilter.$or) {
+        if (!query.$and) query.$and = [];
+        query.$and.push({ $or: scopeFilter.$or });
+      } else {
+        Object.assign(query, scopeFilter);
       }
-      query.category = req.user.assignedCategory;
-    } else {
+    } else if (isMainAuthority) {
       // Main Authority / Admin can filter by category or view all
       if (category && category !== 'All') {
         query.category = category;
@@ -373,14 +336,24 @@ const getDeletedComplaints = async (req, res, next) => {
     if (search && typeof search === 'string' && search.trim()) {
       const cleanSearch = escapeRegex(search.trim());
       if (cleanSearch) {
-        query.$or = [
-          { referenceId: { $regex: cleanSearch, $options: 'i' } },
-          { title: { $regex: cleanSearch, $options: 'i' } },
-          { location: { $regex: cleanSearch, $options: 'i' } },
-          { description: { $regex: cleanSearch, $options: 'i' } },
-          { ward: { $regex: cleanSearch, $options: 'i' } },
-          { city: { $regex: cleanSearch, $options: 'i' } }
-        ];
+        const searchCondition = {
+          $or: [
+            { referenceId: { $regex: cleanSearch, $options: 'i' } },
+            { title: { $regex: cleanSearch, $options: 'i' } },
+            { location: { $regex: cleanSearch, $options: 'i' } },
+            { description: { $regex: cleanSearch, $options: 'i' } },
+            { ward: { $regex: cleanSearch, $options: 'i' } },
+            { city: { $regex: cleanSearch, $options: 'i' } }
+          ]
+        };
+        if (query.$and) {
+          query.$and.push(searchCondition);
+        } else if (query.$or) {
+          query.$and = [{ $or: query.$or }, searchCondition];
+          delete query.$or;
+        } else {
+          query.$or = searchCondition.$or;
+        }
       }
     }
 

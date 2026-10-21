@@ -27,9 +27,7 @@ export default function AuthorityDeletedComplaints() {
         page,
         limit: 15
       };
-      if (isCategoryAuth) {
-        params.category = user.assignedCategory;
-      } else if (categoryFilter !== 'All') {
+      if (!isCategoryAuth && categoryFilter !== 'All') {
         params.category = categoryFilter;
       }
       if (searchTerm.trim()) {

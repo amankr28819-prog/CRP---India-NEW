@@ -93,7 +93,9 @@ export default function AuthorityDashboard() {
   };
 
   useEffect(() => {
-    reloadAll();
+    setLoading(true);
+    setError('');
+    fetchDashboardStats().finally(() => setLoading(false));
 
     const handleUpdate = () => {
       fetchDashboardStats();
