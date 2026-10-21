@@ -1,31 +1,7 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import {
-  X,
-  Send,
-  Sparkles,
-  AlertCircle,
-  RefreshCw,
-  Search,
-  ArrowLeft,
-  Calendar,
-  Clock,
-  ExternalLink,
-  ChevronRight,
-  ClipboardList,
-  CheckCircle2,
-  Tag,
-  Building2,
-  FileText,
-  MessageSquare,
-  Copy,
-  Check,
-  ChevronDown,
-  ChevronUp
-} from 'lucide-react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { X, Send, Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import StatusBadge from './StatusBadge';
 import aiAssistantAvatar from '../assets/ai-assistant-girl.jpg';
 
 const SUGGESTED_QUESTIONS = [
@@ -398,164 +374,7 @@ const ChatMessageItem = React.memo(function ChatMessageItem({ msg }) {
   );
 });
 
-// Compact, honest visual progress stepper
-function ComplaintProgressStepper({ status }) {
-  if (status === 'Rejected') {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '8px 12px',
-          backgroundColor: 'rgba(239, 68, 68, 0.08)',
-          border: '1px solid rgba(239, 68, 68, 0.25)',
-          borderRadius: '8px',
-          fontSize: '0.785rem',
-          color: '#DC2626'
-        }}
-      >
-        <AlertCircle size={15} style={{ flexShrink: 0 }} />
-        <span>This complaint was reviewed and recorded as <strong>Rejected</strong>.</span>
-      </div>
-    );
-  }
-
-  if (status === 'Duplicate' || status === 'Misinformation') {
-    return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '8px 12px',
-          backgroundColor: 'rgba(245, 158, 11, 0.08)',
-          border: '1px solid rgba(245, 158, 11, 0.25)',
-          borderRadius: '8px',
-          fontSize: '0.785rem',
-          color: '#D97706'
-        }}
-      >
-        <AlertCircle size={15} style={{ flexShrink: 0 }} />
-        <span>This complaint was marked as <strong>{status}</strong>.</span>
-      </div>
-    );
-  }
-
-  const stages = [
-    { key: 'Submitted', label: 'Submitted' },
-    { key: 'Under Review', label: 'Under Review' },
-    { key: 'In Progress', label: 'In Progress' },
-    { key: 'Resolved', label: 'Resolved' }
-  ];
-
-  const getStageIndex = (st) => {
-    switch (st) {
-      case 'Submitted': return 0;
-      case 'Under Review': return 1;
-      case 'Assigned': return 2;
-      case 'In Progress': return 2;
-      case 'Resolved': return 3;
-      default: return 0;
-    }
-  };
-
-  const currentIndex = getStageIndex(status);
-
-  return (
-    <div style={{ padding: '6px 4px 2px 4px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-        {stages.map((stage, idx) => {
-          const isCompleted = idx < currentIndex || (idx === currentIndex && status === 'Resolved');
-          const isCurrent = idx === currentIndex && status !== 'Resolved';
-
-          const dotColor = isCompleted
-            ? '#16A34A'
-            : isCurrent
-            ? 'var(--color-primary, #0B4F9C)'
-            : 'var(--border-subtle, #CBD5E1)';
-
-          return (
-            <React.Fragment key={stage.key}>
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  zIndex: 2,
-                  width: '24px'
-                }}
-              >
-                <div
-                  style={{
-                    width: isCurrent ? '16px' : '12px',
-                    height: isCurrent ? '16px' : '12px',
-                    borderRadius: '50%',
-                    backgroundColor: dotColor,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: isCurrent ? '0 0 0 3px rgba(11, 79, 156, 0.2)' : 'none',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  {isCompleted && (
-                    <Check size={8} color="#FFFFFF" strokeWidth={3} />
-                  )}
-                  {isCurrent && (
-                    <div style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#FFFFFF' }} />
-                  )}
-                </div>
-              </div>
-
-              {idx < stages.length - 1 && (
-                <div
-                  style={{
-                    flex: 1,
-                    height: '2px',
-                    backgroundColor: idx < currentIndex ? '#16A34A' : 'var(--border-subtle, #E2E8F0)',
-                    margin: '0 -2px',
-                    zIndex: 1
-                  }}
-                />
-              )}
-            </React.Fragment>
-          );
-        })}
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-        {stages.map((stage, idx) => {
-          const isCurrent = idx === currentIndex;
-          const isCompleted = idx < currentIndex || (idx === currentIndex && status === 'Resolved');
-          return (
-            <span
-              key={stage.key}
-              style={{
-                fontSize: '0.675rem',
-                fontWeight: isCurrent ? 700 : isCompleted ? 600 : 500,
-                color: isCurrent
-                  ? 'var(--color-primary, #0B4F9C)'
-                  : isCompleted
-                  ? '#16A34A'
-                  : 'var(--text-muted, #94A3B8)',
-                textAlign: idx === 0 ? 'left' : idx === stages.length - 1 ? 'right' : 'center',
-                flex: 1
-              }}
-            >
-              {stage.label}
-            </span>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 export default function AIAssistant() {
-  const navigate = useNavigate();
-  const location = useLocation();
-
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -564,142 +383,12 @@ export default function AIAssistant() {
   const [streamingText, setStreamingText] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
-  // AI Complaint Tracking State
-  const [viewMode, setViewMode] = useState('chat'); // 'chat' | 'tracking-list' | 'tracking-detail'
-  const [complaintsList, setComplaintsList] = useState([]);
-  const [complaintsLoading, setComplaintsLoading] = useState(false);
-  const [complaintsError, setComplaintsError] = useState('');
-  const [selectedComplaint, setSelectedComplaint] = useState(null);
-  const [summaryData, setSummaryData] = useState(null);
-  const [summaryLoading, setSummaryLoading] = useState(false);
-  const [summaryError, setSummaryError] = useState('');
-  const [complaintSearch, setComplaintSearch] = useState('');
-  const [copiedId, setCopiedId] = useState(false);
-  const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
-
   const isBusy = isLoading || isStreaming;
 
   const { user } = useAuth();
   const messagesContainerRef = useRef(null);
   const inputRef = useRef(null);
   const abortControllerRef = useRef(null);
-
-  // Open tracking view and fetch complaints if authenticated, or redirect unauthenticated visitor
-  const handleOpenTracking = useCallback(async () => {
-    if (!user) {
-      try {
-        sessionStorage.setItem('crp_open_ai_tracking', 'true');
-      } catch (e) {
-        // ignore sessionStorage errors
-      }
-      setIsOpen(false);
-      navigate('/citizen/login', {
-        state: {
-          from: location.pathname + location.search,
-          message: 'Please log in to your Citizen account to track your complaints.'
-        }
-      });
-      return;
-    }
-
-    setViewMode('tracking-list');
-    setErrorMessage('');
-    setComplaintsLoading(true);
-    setComplaintsError('');
-    try {
-      const res = await api.getMyComplaints({ limit: 100 });
-      if (res && res.success) {
-        setComplaintsList(res.complaints || []);
-      } else {
-        setComplaintsError(res?.message || 'Unable to load your complaints at this time.');
-      }
-    } catch (err) {
-      console.error('[AI Assistant] Error fetching complaints:', err);
-      setComplaintsError(err?.message || 'Failed to load complaints. Please check your network connection.');
-    } finally {
-      setComplaintsLoading(false);
-    }
-  }, [user, navigate, location]);
-
-  // Auto-resume complaint tracking if redirected back after login
-  useEffect(() => {
-    try {
-      const pendingTracking = sessionStorage.getItem('crp_open_ai_tracking');
-      if (pendingTracking === 'true' && user) {
-        sessionStorage.removeItem('crp_open_ai_tracking');
-        setIsOpen(true);
-        handleOpenTracking();
-      }
-    } catch (e) {
-      // ignore storage errors
-    }
-  }, [user, handleOpenTracking]);
-
-  // Select complaint and fetch/generate AI summary
-  const handleSelectComplaint = useCallback(async (complaint, forceRefresh = false) => {
-    if (!complaint) return;
-    setSelectedComplaint(complaint);
-    setIsHistoryExpanded(false);
-    setViewMode('tracking-detail');
-    setSummaryError('');
-    setSummaryLoading(true);
-
-    try {
-      const targetId = complaint.referenceId || complaint._id;
-      const res = await api.getAIComplaintSummary(targetId, forceRefresh);
-      if (res && res.success && res.data) {
-        setSummaryData(res.data);
-      } else {
-        setSummaryError(res?.message || 'Unable to generate tracking summary for this complaint.');
-      }
-    } catch (err) {
-      console.error('[AI Assistant] Error fetching AI summary:', err);
-      setSummaryError(err?.message || 'Failed to generate AI summary. Please check your network connection.');
-    } finally {
-      setSummaryLoading(false);
-    }
-  }, []);
-
-  const handleRefreshSummary = useCallback(() => {
-    if (!selectedComplaint || summaryLoading) return;
-    handleSelectComplaint(selectedComplaint, true);
-  }, [selectedComplaint, summaryLoading, handleSelectComplaint]);
-
-  const handleCopyId = useCallback((refId) => {
-    if (!refId) return;
-    try {
-      navigator.clipboard?.writeText(refId);
-      setCopiedId(true);
-      setTimeout(() => setCopiedId(false), 2000);
-    } catch (err) {
-      console.warn('Failed to copy reference ID to clipboard:', err);
-    }
-  }, []);
-
-  const handleBackToList = useCallback(() => {
-    setSelectedComplaint(null);
-    setSummaryData(null);
-    setSummaryError('');
-    setIsHistoryExpanded(false);
-    setViewMode('tracking-list');
-  }, []);
-
-  const handleBackToChat = useCallback(() => {
-    setViewMode('chat');
-  }, []);
-
-  // Filter complaints by search query
-  const filteredComplaints = useMemo(() => {
-    if (!complaintSearch.trim()) return complaintsList;
-    const q = complaintSearch.toLowerCase().trim();
-    return complaintsList.filter((c) => {
-      const ref = (c.referenceId || '').toLowerCase();
-      const title = (c.title || '').toLowerCase();
-      const cat = (c.category || '').toLowerCase();
-      const status = (c.status || '').toLowerCase();
-      return ref.includes(q) || title.includes(q) || cat.includes(q) || status.includes(q);
-    });
-  }, [complaintsList, complaintSearch]);
 
   // Streaming buffers & throttling refs
   const streamBufferRef = useRef('');
@@ -1042,7 +731,7 @@ export default function AIAssistant() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              {viewMode === 'chat' && (messages.length > 0 || isStreaming) && (
+              {(messages.length > 0 || isStreaming) && (
                 <button
                   type="button"
                   onClick={handleClearChat}
@@ -1061,52 +750,6 @@ export default function AIAssistant() {
                   }}
                 >
                   <RefreshCw size={15} />
-                </button>
-              )}
-
-              {viewMode === 'tracking-list' && user && (
-                <button
-                  type="button"
-                  onClick={handleOpenTracking}
-                  title="Refresh complaints"
-                  aria-label="Refresh complaints"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'rgba(255, 255, 255, 0.85)',
-                    cursor: 'pointer',
-                    padding: '6px',
-                    borderRadius: '6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <RefreshCw size={15} className={complaintsLoading ? 'crp-ai-spin' : ''} />
-                </button>
-              )}
-
-              {viewMode === 'tracking-detail' && (
-                <button
-                  type="button"
-                  onClick={handleRefreshSummary}
-                  disabled={summaryLoading}
-                  title="Refresh AI summary"
-                  aria-label="Refresh AI summary"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'rgba(255, 255, 255, 0.85)',
-                    cursor: summaryLoading ? 'not-allowed' : 'pointer',
-                    padding: '6px',
-                    borderRadius: '6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: summaryLoading ? 0.6 : 1
-                  }}
-                >
-                  <RefreshCw size={15} className={summaryLoading ? 'crp-ai-spin' : ''} />
                 </button>
               )}
 
@@ -1132,1048 +775,265 @@ export default function AIAssistant() {
             </div>
           </div>
 
-          {/* VIEW MODE: CHAT */}
-          {viewMode === 'chat' && (
-            <>
-              {/* Messages Body */}
-              <div
-                ref={messagesContainerRef}
-                onScroll={handleScroll}
-                style={{
-                  flex: 1,
-                  padding: '16px',
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '14px',
-                  backgroundColor: 'var(--bg-subtle)',
-                  scrollBehavior: 'auto'
-                }}
-              >
-                {/* Welcome Greeting Banner */}
-                <div
+          {/* Messages Body */}
+          <div
+            ref={messagesContainerRef}
+            onScroll={handleScroll}
+            style={{
+              flex: 1,
+              padding: '16px',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+              backgroundColor: 'var(--bg-subtle)',
+              scrollBehavior: 'auto'
+            }}
+          >
+            {/* Welcome Greeting Banner */}
+            <div
+              style={{
+                backgroundColor: 'var(--bg-surface, #FFFFFF)',
+                border: '1px solid var(--border-subtle, #E2E8F0)',
+                borderRadius: '12px',
+                padding: '14px',
+                fontSize: '0.875rem',
+                color: 'var(--text-secondary, #475569)',
+                lineHeight: 1.5,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                <img
+                  src={aiAssistantAvatar}
+                  alt="AI Assistant Avatar"
                   style={{
-                    backgroundColor: 'var(--bg-surface, #FFFFFF)',
-                    border: '1px solid var(--border-subtle, #E2E8F0)',
-                    borderRadius: '12px',
-                    padding: '14px',
-                    fontSize: '0.875rem',
-                    color: 'var(--text-secondary, #475569)',
-                    lineHeight: 1.5,
-                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid var(--color-primary, #0B4F9C)',
+                    flexShrink: 0
                   }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <img
-                      src={aiAssistantAvatar}
-                      alt="AI Assistant Avatar"
-                      style={{
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: '50%',
-                        objectFit: 'cover',
-                        border: '2px solid var(--color-primary, #0B4F9C)',
-                        flexShrink: 0
-                      }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 700, color: 'var(--text-primary, #0F172A)', fontSize: '0.95rem' }}>
-                        {greetingHeadline}
-                      </div>
-                      <div style={{ fontSize: '0.825rem', color: 'var(--text-muted, #64748B)' }}>
-                        I'm your CRP India AI Assistant. How can I help you today?
-                      </div>
-                    </div>
+                />
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-primary, #0F172A)', fontSize: '0.95rem' }}>
+                    {greetingHeadline}
+                  </div>
+                  <div style={{ fontSize: '0.825rem', color: 'var(--text-muted, #64748B)' }}>
+                    I'm your CRP India AI Assistant. How can I help you today?
                   </div>
                 </div>
-
-                {/* Suggested Questions Chips (Displayed when conversation is fresh) */}
-                {messages.length === 0 && !isStreaming && (
-                  <div>
-                    <div style={{ fontSize: '0.775rem', fontWeight: 600, color: 'var(--text-muted, #64748B)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      Suggested options & questions:
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {/* Existing Suggested Questions preserved completely */}
-                      {SUGGESTED_QUESTIONS.map((q, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          disabled={isBusy}
-                          onClick={() => handleSendMessage(q)}
-                          style={{
-                            textAlign: 'left',
-                            padding: '9px 12px',
-                            backgroundColor: 'var(--bg-surface, #FFFFFF)',
-                            border: '1px solid var(--border-subtle, #E2E8F0)',
-                            borderRadius: '8px',
-                            fontSize: '0.825rem',
-                            color: 'var(--color-primary, #0B4F9C)',
-                            fontWeight: 500,
-                            cursor: isBusy ? 'not-allowed' : 'pointer',
-                            transition: 'background-color 0.15s ease, border-color 0.15s ease',
-                            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
-                          }}
-                          className="crp-ai-chip"
-                        >
-                          {q}
-                        </button>
-                      ))}
-
-                      {/* Exactly ONE Track Complaint Option Button - Positioned BELOW Suggested Questions */}
-                      <button
-                        type="button"
-                        onClick={handleOpenTracking}
-                        style={{
-                          marginTop: '4px',
-                          textAlign: 'left',
-                          padding: '10px 14px',
-                          backgroundColor: 'var(--color-primary, #0B4F9C)',
-                          border: '1px solid var(--color-primary, #0B4F9C)',
-                          borderRadius: '8px',
-                          fontSize: '0.84rem',
-                          color: '#FFFFFF',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          boxShadow: '0 2px 6px rgba(11, 79, 156, 0.25)',
-                          transition: 'opacity 0.15s ease'
-                        }}
-                        className="crp-ai-chip"
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <ClipboardList size={16} />
-                          <span>Track Complaint</span>
-                        </div>
-                        <ChevronRight size={15} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Committed Messages */}
-                {messages.map((msg, index) => (
-                  <ChatMessageItem key={index} msg={msg} />
-                ))}
-
-                {/* Active Streaming Message */}
-                {isStreaming && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      alignItems: 'flex-start',
-                      justifyContent: 'flex-start',
-                      gap: '8px'
-                    }}
-                  >
-                    <img
-                      src={aiAssistantAvatar}
-                      alt="AI"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        borderRadius: '50%',
-                        objectFit: 'cover',
-                        border: '1.5px solid var(--border-subtle, #E2E8F0)',
-                        flexShrink: 0,
-                        marginTop: '2px'
-                      }}
-                    />
-                    <div
-                      style={{
-                        maxWidth: '82%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'flex-start'
-                      }}
-                    >
-                      <div
-                        style={{
-                          padding: '10px 14px',
-                          borderRadius: '14px 14px 14px 2px',
-                          backgroundColor: 'var(--bg-surface, #FFFFFF)',
-                          color: 'var(--text-primary, #0F172A)',
-                          border: '1px solid var(--border-subtle, #E2E8F0)',
-                          fontSize: '0.875rem',
-                          lineHeight: 1.5,
-                          wordBreak: 'break-word',
-                          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
-                        }}
-                      >
-                        <MarkdownContent content={streamingText} isStreaming={true} />
-                      </div>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted, #94A3B8)', marginTop: '3px', padding: '0 4px' }}>
-                        AI Assistant
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Loading / Thinking Indicator (shown only before first chunk arrives) */}
-                {isLoading && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', backgroundColor: 'var(--bg-surface, #FFFFFF)', border: '1px solid var(--border-subtle, #E2E8F0)', borderRadius: '14px 14px 14px 2px', width: 'fit-content', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)' }}>
-                    <img
-                      src={aiAssistantAvatar}
-                      alt="AI Thinking"
-                      style={{
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        objectFit: 'cover'
-                      }}
-                    />
-                    <Sparkles size={16} className="crp-ai-spin" style={{ color: 'var(--color-primary, #0B4F9C)' }} />
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary, #475569)', fontStyle: 'italic' }}>
-                      Thinking...
-                    </span>
-                  </div>
-                )}
-
-                {/* Error Message Notice with Retry */}
-                {errorMessage && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 14px', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', fontSize: '0.8125rem', color: 'var(--color-accent-urgent, #EF4444)' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                      <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-                      <span>{errorMessage}</span>
-                    </div>
-                    {messages.length > 0 && messages[messages.length - 1].role === 'user' && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const lastUserMsg = messages[messages.length - 1].text;
-                          setMessages((prev) => prev.slice(0, -1));
-                          handleSendMessage(lastUserMsg);
-                        }}
-                        style={{
-                          alignSelf: 'flex-start',
-                          padding: '4px 10px',
-                          backgroundColor: 'transparent',
-                          border: '1px solid var(--color-accent-urgent, #EF4444)',
-                          borderRadius: '4px',
-                          color: 'var(--color-accent-urgent, #EF4444)',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Retry
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
+            </div>
 
-              {/* Input Footer */}
+            {/* Suggested Questions Chips (Displayed when conversation is fresh) */}
+            {messages.length === 0 && !isStreaming && (
+              <div>
+                <div style={{ fontSize: '0.775rem', fontWeight: 600, color: 'var(--text-muted, #64748B)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Suggested questions:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {SUGGESTED_QUESTIONS.map((q, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      disabled={isBusy}
+                      onClick={() => handleSendMessage(q)}
+                      style={{
+                        textAlign: 'left',
+                        padding: '9px 12px',
+                        backgroundColor: 'var(--bg-surface, #FFFFFF)',
+                        border: '1px solid var(--border-subtle, #E2E8F0)',
+                        borderRadius: '8px',
+                        fontSize: '0.825rem',
+                        color: 'var(--color-primary, #0B4F9C)',
+                        fontWeight: 500,
+                        cursor: isBusy ? 'not-allowed' : 'pointer',
+                        transition: 'background-color 0.15s ease, border-color 0.15s ease',
+                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
+                      }}
+                      className="crp-ai-chip"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Committed Messages */}
+            {messages.map((msg, index) => (
+              <ChatMessageItem key={index} msg={msg} />
+            ))}
+
+            {/* Active Streaming Message */}
+            {isStreaming && (
               <div
                 style={{
-                  padding: '12px 14px',
-                  backgroundColor: 'var(--bg-surface, #FFFFFF)',
-                  borderTop: '1px solid var(--border-subtle, #E2E8F0)',
                   display: 'flex',
-                  alignItems: 'center',
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  justifyContent: 'flex-start',
                   gap: '8px'
                 }}
               >
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask a question about CRP India..."
-                  disabled={isBusy}
-                  maxLength={1000}
+                <img
+                  src={aiAssistantAvatar}
+                  alt="AI"
                   style={{
-                    flex: 1,
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border-subtle)',
-                    backgroundColor: 'var(--bg-subtle)',
-                    color: 'var(--text-primary)',
-                    fontSize: '0.875rem',
-                    outline: 'none',
-                    fontFamily: 'inherit'
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '1.5px solid var(--border-subtle, #E2E8F0)',
+                    flexShrink: 0,
+                    marginTop: '2px'
                   }}
-                  aria-label="Type your question for the AI Assistant"
                 />
-
-                <button
-                  type="button"
-                  onClick={() => handleSendMessage()}
-                  disabled={isBusy || !inputValue.trim()}
-                  title="Send question"
-                  aria-label="Send question"
-                  style={{
-                    width: '38px',
-                    height: '38px',
-                    borderRadius: '8px',
-                    backgroundColor: 'var(--color-primary, #0B4F9C)',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: (isBusy || !inputValue.trim()) ? 'not-allowed' : 'pointer',
-                    opacity: (isBusy || !inputValue.trim()) ? 0.5 : 1,
-                    transition: 'opacity 0.15s ease'
-                  }}
-                >
-                  <Send size={16} />
-                </button>
-              </div>
-            </>
-          )}
-
-          {/* VIEW MODE: TRACKING LIST */}
-          {viewMode === 'tracking-list' && (
-            <div
-              style={{
-                flex: 1,
-                padding: '16px',
-                overflowY: 'auto',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-                backgroundColor: 'var(--bg-subtle)'
-              }}
-            >
-              {/* Unauthenticated notice */}
-              {!user && (
                 <div
                   style={{
-                    padding: '20px 16px',
-                    backgroundColor: 'var(--bg-surface, #FFFFFF)',
-                    border: '1px solid var(--border-subtle, #E2E8F0)',
-                    borderRadius: '12px',
-                    textAlign: 'center',
+                    maxWidth: '82%',
                     display: 'flex',
                     flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '12px',
-                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
+                    alignItems: 'flex-start'
                   }}
                 >
                   <div
                     style={{
-                      width: '44px',
-                      height: '44px',
-                      borderRadius: '50%',
-                      backgroundColor: 'var(--color-primary-light, #EFF6FF)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--color-primary, #0B4F9C)'
+                      padding: '10px 14px',
+                      borderRadius: '14px 14px 14px 2px',
+                      backgroundColor: 'var(--bg-surface, #FFFFFF)',
+                      color: 'var(--text-primary, #0F172A)',
+                      border: '1px solid var(--border-subtle, #E2E8F0)',
+                      fontSize: '0.875rem',
+                      lineHeight: 1.5,
+                      wordBreak: 'break-word',
+                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                     }}
                   >
-                    <ClipboardList size={22} />
+                    <MarkdownContent content={streamingText} isStreaming={true} />
                   </div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary, #0F172A)' }}>
-                      Citizen Login Required
-                    </div>
-                    <div style={{ fontSize: '0.825rem', color: 'var(--text-secondary, #475569)', marginTop: '4px', lineHeight: 1.45 }}>
-                      Please log in to your Citizen account to access and track your submitted complaints with real-time AI status summaries.
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', width: '100%', marginTop: '4px' }}>
-                    <Link
-                      to="/citizen/login"
-                      onClick={() => setIsOpen(false)}
-                      style={{
-                        flex: 1,
-                        padding: '9px 12px',
-                        backgroundColor: 'var(--color-primary, #0B4F9C)',
-                        color: '#FFFFFF',
-                        borderRadius: '6px',
-                        fontSize: '0.825rem',
-                        fontWeight: 600,
-                        textAlign: 'center',
-                        textDecoration: 'none'
-                      }}
-                    >
-                      Log In as Citizen
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={handleBackToChat}
-                      style={{
-                        padding: '9px 12px',
-                        backgroundColor: 'var(--bg-subtle, #F1F5F9)',
-                        color: 'var(--text-secondary, #475569)',
-                        border: '1px solid var(--border-subtle, #E2E8F0)',
-                        borderRadius: '6px',
-                        fontSize: '0.825rem',
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      Back to AI Chat
-                    </button>
-                  </div>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted, #94A3B8)', marginTop: '3px', padding: '0 4px' }}>
+                    AI Assistant
+                  </span>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Authenticated citizen list */}
-              {user && (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.925rem', color: 'var(--text-primary, #0F172A)' }}>
-                        Your Submitted Complaints
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748B)' }}>
-                        Select any complaint to view its AI status summary
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleOpenTracking}
-                      disabled={complaintsLoading}
-                      title="Refresh complaints list"
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--color-primary, #0B4F9C)',
-                        cursor: 'pointer',
-                        padding: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontSize: '0.75rem',
-                        fontWeight: 600
-                      }}
-                    >
-                      <RefreshCw size={12} className={complaintsLoading ? 'crp-ai-spin' : ''} />
-                      <span>Refresh</span>
-                    </button>
-                  </div>
+            {/* Loading / Thinking Indicator (shown only before first chunk arrives) */}
+            {isLoading && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', backgroundColor: 'var(--bg-surface, #FFFFFF)', border: '1px solid var(--border-subtle, #E2E8F0)', borderRadius: '14px 14px 14px 2px', width: 'fit-content', boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)' }}>
+                <img
+                  src={aiAssistantAvatar}
+                  alt="AI Thinking"
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    objectFit: 'cover'
+                  }}
+                />
+                <Sparkles size={16} className="crp-ai-spin" style={{ color: 'var(--color-primary, #0B4F9C)' }} />
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary, #475569)', fontStyle: 'italic' }}>
+                  Thinking...
+                </span>
+              </div>
+            )}
 
-                  {/* Filter Search Input (when multiple complaints exist) */}
-                  {complaintsList.length > 3 && (
-                    <div style={{ position: 'relative' }}>
-                      <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted, #94A3B8)' }} />
-                      <input
-                        type="text"
-                        value={complaintSearch}
-                        onChange={(e) => setComplaintSearch(e.target.value)}
-                        placeholder="Filter by ID, title, or category..."
-                        style={{
-                          width: '100%',
-                          padding: '7px 10px 7px 30px',
-                          borderRadius: '6px',
-                          border: '1px solid var(--border-subtle, #E2E8F0)',
-                          backgroundColor: 'var(--bg-surface, #FFFFFF)',
-                          color: 'var(--text-primary, #0F172A)',
-                          fontSize: '0.8rem',
-                          outline: 'none',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {/* Loading State */}
-                  {complaintsLoading && (
-                    <div
-                      style={{
-                        padding: '28px 16px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '10px',
-                        backgroundColor: 'var(--bg-surface, #FFFFFF)',
-                        borderRadius: '10px',
-                        border: '1px solid var(--border-subtle, #E2E8F0)'
-                      }}
-                    >
-                      <Sparkles size={20} className="crp-ai-spin" style={{ color: 'var(--color-primary, #0B4F9C)' }} />
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary, #475569)' }}>
-                        Loading your submitted complaints...
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Error State */}
-                  {!complaintsLoading && complaintsError && (
-                    <div
-                      style={{
-                        padding: '12px 14px',
-                        backgroundColor: 'rgba(239, 68, 68, 0.08)',
-                        border: '1px solid rgba(239, 68, 68, 0.25)',
-                        borderRadius: '8px',
-                        fontSize: '0.8125rem',
-                        color: 'var(--color-accent-urgent, #EF4444)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <AlertCircle size={16} />
-                        <span>{complaintsError}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleOpenTracking}
-                        style={{
-                          alignSelf: 'flex-start',
-                          padding: '4px 10px',
-                          backgroundColor: 'transparent',
-                          border: '1px solid var(--color-accent-urgent, #EF4444)',
-                          borderRadius: '4px',
-                          color: 'var(--color-accent-urgent, #EF4444)',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Retry
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Empty State: No complaints submitted */}
-                  {!complaintsLoading && !complaintsError && complaintsList.length === 0 && (
-                    <div
-                      style={{
-                        padding: '24px 16px',
-                        backgroundColor: 'var(--bg-surface, #FFFFFF)',
-                        border: '1px solid var(--border-subtle, #E2E8F0)',
-                        borderRadius: '12px',
-                        textAlign: 'center',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '10px',
-                        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '42px',
-                          height: '42px',
-                          borderRadius: '50%',
-                          backgroundColor: 'var(--bg-subtle, #F1F5F9)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'var(--text-muted, #94A3B8)'
-                        }}
-                      >
-                        <ClipboardList size={22} />
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.925rem', color: 'var(--text-primary, #0F172A)' }}>
-                          No complaints submitted yet
-                        </div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #475569)', marginTop: '4px', lineHeight: 1.45 }}>
-                          You have not reported any civic issues yet. Once you submit a complaint, you can track its progress and live AI status summaries right here.
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', width: '100%', marginTop: '4px' }}>
-                        <Link
-                          to="/account/complaints"
-                          onClick={() => setIsOpen(false)}
-                          style={{
-                            flex: 1,
-                            padding: '8px 12px',
-                            backgroundColor: 'var(--color-primary, #0B4F9C)',
-                            color: '#FFFFFF',
-                            borderRadius: '6px',
-                            fontSize: '0.8rem',
-                            fontWeight: 600,
-                            textAlign: 'center',
-                            textDecoration: 'none'
-                          }}
-                        >
-                          Submit a Complaint
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={handleBackToChat}
-                          style={{
-                            padding: '8px 12px',
-                            backgroundColor: 'var(--bg-subtle, #F1F5F9)',
-                            color: 'var(--text-secondary, #475569)',
-                            border: '1px solid var(--border-subtle, #E2E8F0)',
-                            borderRadius: '6px',
-                            fontSize: '0.8rem',
-                            fontWeight: 600,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Back to AI Chat
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Complaint List Display */}
-                  {!complaintsLoading && !complaintsError && filteredComplaints.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {filteredComplaints.map((c) => {
-                        const refId = c.referenceId || c._id;
-                        const formattedCreated = new Date(c.createdAt).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric'
-                        });
-                        const hasUpdate = c.updatedAt && c.updatedAt !== c.createdAt;
-                        const formattedUpdated = hasUpdate
-                          ? new Date(c.updatedAt).toLocaleDateString('en-IN', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric'
-                            })
-                          : null;
-
-                        return (
-                          <button
-                            key={c._id || refId}
-                            type="button"
-                            onClick={() => handleSelectComplaint(c)}
-                            style={{
-                              textAlign: 'left',
-                              padding: '12px 14px',
-                              backgroundColor: 'var(--bg-surface, #FFFFFF)',
-                              border: '1px solid var(--border-subtle, #E2E8F0)',
-                              borderRadius: '10px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '6px',
-                              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)',
-                              transition: 'all 0.15s ease',
-                              fontFamily: 'inherit'
-                            }}
-                            className="crp-ai-chip"
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                              <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-primary, #0B4F9C)' }}>
-                                {refId}
-                              </span>
-                              <StatusBadge status={c.status} size="small" />
-                            </div>
-
-                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary, #0F172A)', lineHeight: 1.35 }}>
-                              {c.title}
-                            </div>
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-muted, #64748B)' }}>
-                              <Tag size={12} />
-                              <span>{c.category}</span>
-                            </div>
-
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                fontSize: '0.725rem',
-                                color: 'var(--text-muted, #64748B)',
-                                marginTop: '4px',
-                                borderTop: '1px dashed var(--border-subtle, #E2E8F0)',
-                                paddingTop: '6px'
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span>Filed: {formattedCreated}</span>
-                                {formattedUpdated && <span>• Updated: {formattedUpdated}</span>}
-                              </div>
-                              <ChevronRight size={14} style={{ color: 'var(--color-primary, #0B4F9C)' }} />
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-
-          {/* VIEW MODE: TRACKING DETAIL */}
-          {viewMode === 'tracking-detail' && selectedComplaint && (() => {
-            const refId = summaryData?.referenceId || selectedComplaint.referenceId || selectedComplaint._id;
-            const currentStatus = summaryData?.status || selectedComplaint.status;
-            const hasUpdate = (summaryData?.updatedAt && summaryData.updatedAt !== summaryData.createdAt) ||
-              (selectedComplaint.updatedAt && selectedComplaint.updatedAt !== selectedComplaint.createdAt);
-            const formattedUpdated = hasUpdate
-              ? new Date(summaryData?.updatedAt || selectedComplaint.updatedAt).toLocaleDateString('en-IN', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric'
-                })
-              : null;
-            const formattedCreated = new Date(selectedComplaint.createdAt).toLocaleDateString('en-IN', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric'
-            });
-            const recordedHistory = summaryData?.recordedData?.statusHistory || selectedComplaint.statusHistory || [];
-            const resolutionNote = summaryData?.recordedData?.resolutionNote || selectedComplaint.resolutionNote;
-
-            return (
-              <div
-                style={{
-                  flex: 1,
-                  padding: '16px',
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                  backgroundColor: 'var(--bg-subtle)'
-                }}
-              >
-                {/* Navigation Bar: Back to Complaints & Refresh */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* Error Message Notice with Retry */}
+            {errorMessage && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px 14px', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', fontSize: '0.8125rem', color: 'var(--color-accent-urgent, #EF4444)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                  <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <span>{errorMessage}</span>
+                </div>
+                {messages.length > 0 && messages[messages.length - 1].role === 'user' && (
                   <button
                     type="button"
-                    onClick={handleBackToList}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--color-primary, #0B4F9C)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      padding: 0
+                    onClick={() => {
+                      const lastUserMsg = messages[messages.length - 1].text;
+                      // Remove failed user turn and resend
+                      setMessages((prev) => prev.slice(0, -1));
+                      handleSendMessage(lastUserMsg);
                     }}
-                  >
-                    <ArrowLeft size={14} />
-                    <span>Back to Complaints</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleRefreshSummary}
-                    disabled={summaryLoading}
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--color-primary, #0B4F9C)',
-                      cursor: summaryLoading ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
+                      alignSelf: 'flex-start',
+                      padding: '4px 10px',
+                      backgroundColor: 'transparent',
+                      border: '1px solid var(--color-accent-urgent, #EF4444)',
+                      borderRadius: '4px',
+                      color: 'var(--color-accent-urgent, #EF4444)',
                       fontSize: '0.75rem',
                       fontWeight: 600,
-                      opacity: summaryLoading ? 0.6 : 1
-                    }}
-                  >
-                    <RefreshCw size={12} className={summaryLoading ? 'crp-ai-spin' : ''} />
-                    <span>Refresh</span>
-                  </button>
-                </div>
-
-                {/* Compact Complaint Overview Card with Progress Stepper */}
-                <div
-                  style={{
-                    backgroundColor: 'var(--bg-surface, #FFFFFF)',
-                    border: '1px solid var(--border-subtle, #E2E8F0)',
-                    borderRadius: '12px',
-                    padding: '14px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
-                  }}
-                >
-                  {/* Card Header: ID, Copy Button, Portal Link, Status Badge */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontWeight: 800, fontSize: '0.975rem', color: 'var(--color-primary, #0B4F9C)' }}>
-                        {refId}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyId(refId)}
-                        title={copiedId ? 'Copied ID!' : 'Copy Complaint ID'}
-                        aria-label="Copy Complaint ID"
-                        style={{
-                          background: 'var(--bg-subtle, #F1F5F9)',
-                          border: '1px solid var(--border-subtle, #E2E8F0)',
-                          borderRadius: '4px',
-                          padding: '3px 5px',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                          color: copiedId ? '#16A34A' : 'var(--text-muted, #64748B)',
-                          fontSize: '0.675rem',
-                          fontWeight: 600,
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        {copiedId ? <Check size={11} /> : <Copy size={11} />}
-                        <span>{copiedId ? 'Copied' : 'Copy'}</span>
-                      </button>
-                      <Link
-                        to={`/complaints/${refId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Open full portal details in new tab"
-                        style={{ color: 'var(--text-muted, #94A3B8)', display: 'inline-flex', padding: '2px' }}
-                      >
-                        <ExternalLink size={13} />
-                      </Link>
-                    </div>
-
-                    <StatusBadge status={currentStatus} />
-                  </div>
-
-                  {/* Title & Metadata */}
-                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary, #0F172A)', lineHeight: 1.35 }}>
-                    {summaryData?.title || selectedComplaint.title}
-                  </div>
-
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '0.725rem', color: 'var(--text-muted, #64748B)' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <Tag size={11} />
-                      {summaryData?.category || selectedComplaint.category}
-                    </span>
-                    {(summaryData?.recordedData?.assignedDepartment || selectedComplaint.assignedDepartment) && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <Building2 size={11} />
-                        {summaryData?.recordedData?.assignedDepartment || selectedComplaint.assignedDepartment}
-                      </span>
-                    )}
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <Calendar size={11} />
-                      Filed {formattedCreated}
-                    </span>
-                  </div>
-
-                  {/* Compact Visual Progress Stepper */}
-                  <div style={{ borderTop: '1px solid var(--border-subtle, #E2E8F0)', paddingTop: '10px', marginTop: '2px' }}>
-                    <ComplaintProgressStepper status={currentStatus} />
-                  </div>
-                </div>
-
-                {/* Latest Update Card */}
-                <div
-                  style={{
-                    backgroundColor: 'var(--bg-surface, #FFFFFF)',
-                    border: '1.5px solid var(--border-subtle, #CBDDF0)',
-                    borderRadius: '12px',
-                    padding: '14px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                    boxShadow: '0 3px 10px rgba(11, 79, 156, 0.05)'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle, #E2E8F0)', paddingBottom: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary, #0F172A)' }}>
-                      <Sparkles size={14} style={{ color: 'var(--color-primary, #0B4F9C)' }} />
-                      <span>Latest Update</span>
-                    </div>
-
-                    <span style={{ fontSize: '0.725rem', color: 'var(--text-muted, #64748B)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <Clock size={11} />
-                      <span>{formattedUpdated ? `Updated ${formattedUpdated}` : `Filed ${formattedCreated}`}</span>
-                    </span>
-                  </div>
-
-                  {/* Loading State Skeleton */}
-                  {summaryLoading && (
-                    <div style={{ padding: '20px 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', textAlign: 'center' }}>
-                      <Sparkles size={20} className="crp-ai-spin" style={{ color: 'var(--color-primary, #0B4F9C)' }} />
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted, #64748B)', fontStyle: 'italic' }}>
-                        Generating concise progress summary...
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Error State with Retry */}
-                  {!summaryLoading && summaryError && (
-                    <div style={{ padding: '10px 12px', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '6px', fontSize: '0.8rem', color: 'var(--color-accent-urgent, #EF4444)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <AlertCircle size={14} />
-                        <span>{summaryError}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleRefreshSummary}
-                        style={{
-                          background: 'none',
-                          border: '1px solid var(--color-accent-urgent, #EF4444)',
-                          borderRadius: '4px',
-                          color: 'var(--color-accent-urgent, #EF4444)',
-                          fontSize: '0.725rem',
-                          fontWeight: 600,
-                          padding: '3px 8px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Retry
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Concise Grounded AI Summary */}
-                  {!summaryLoading && !summaryError && summaryData?.summary && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-primary, #0F172A)', lineHeight: 1.5 }}>
-                        {summaryData.summary}
-                      </div>
-
-                      {/* Official Resolution Note if Resolved */}
-                      {currentStatus === 'Resolved' && resolutionNote && (
-                        <div
-                          style={{
-                            marginTop: '4px',
-                            padding: '8px 10px',
-                            backgroundColor: '#F0FDF4',
-                            border: '1px solid #BBF7D0',
-                            borderRadius: '6px',
-                            fontSize: '0.785rem',
-                            color: '#166534',
-                            lineHeight: 1.4
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600, marginBottom: '2px' }}>
-                            <CheckCircle2 size={13} style={{ color: '#16A34A' }} />
-                            <span>Resolution Note:</span>
-                          </div>
-                          <div>{resolutionNote}</div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Expandable "View History" Accordion (Collapsed by default) */}
-                {recordedHistory && recordedHistory.length > 0 && (
-                  <div
-                    style={{
-                      backgroundColor: 'var(--bg-surface, #FFFFFF)',
-                      border: '1px solid var(--border-subtle, #E2E8F0)',
-                      borderRadius: '10px',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
-                      style={{
-                        width: '100%',
-                        padding: '9px 12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '0.785rem',
-                        fontWeight: 600,
-                        color: 'var(--text-secondary, #475569)',
-                        fontFamily: 'inherit'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <FileText size={13} style={{ color: 'var(--color-primary, #0B4F9C)' }} />
-                        <span>View History ({recordedHistory.length})</span>
-                      </div>
-                      {isHistoryExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
-
-                    {isHistoryExpanded && (
-                      <div
-                        style={{
-                          padding: '6px 14px 12px 14px',
-                          borderTop: '1px solid var(--border-subtle, #E2E8F0)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '10px'
-                        }}
-                      >
-                        {recordedHistory.map((h, i) => (
-                          <div
-                            key={i}
-                            style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '2px',
-                              fontSize: '0.75rem',
-                              paddingLeft: '10px',
-                              borderLeft: '2px solid var(--border-subtle, #CBD5E1)'
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ fontWeight: 600, color: 'var(--text-primary, #0F172A)' }}>
-                                {h.status}
-                              </span>
-                              <span style={{ color: 'var(--text-muted, #94A3B8)', fontSize: '0.7rem' }}>
-                                {h.timestamp ? new Date(h.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
-                              </span>
-                            </div>
-                            {h.remark && (
-                              <div style={{ color: 'var(--text-secondary, #475569)', fontStyle: 'italic', marginTop: '1px' }}>
-                                "{h.remark}"
-                              </div>
-                            )}
-                            <div style={{ color: 'var(--text-muted, #64748B)', fontSize: '0.7rem' }}>
-                              By {h.changedBy || 'Authority'} {h.department ? `(${h.department})` : ''}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Bottom Action Buttons */}
-                <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
-                  <button
-                    type="button"
-                    onClick={handleBackToList}
-                    style={{
-                      flex: 1,
-                      padding: '8px 12px',
-                      backgroundColor: 'var(--bg-surface, #FFFFFF)',
-                      border: '1px solid var(--border-subtle, #E2E8F0)',
-                      borderRadius: '8px',
-                      fontSize: '0.825rem',
-                      fontWeight: 600,
-                      color: 'var(--text-primary, #0F172A)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '5px'
-                    }}
-                  >
-                    <ArrowLeft size={13} />
-                    <span>Back to Complaints</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleBackToChat}
-                    style={{
-                      padding: '8px 14px',
-                      backgroundColor: 'var(--color-primary-light, #EFF6FF)',
-                      border: '1px solid var(--border-subtle, #CBDDF0)',
-                      borderRadius: '8px',
-                      fontSize: '0.825rem',
-                      fontWeight: 600,
-                      color: 'var(--color-primary, #0B4F9C)',
                       cursor: 'pointer'
                     }}
                   >
-                    Back to Guidance
+                    Retry
                   </button>
-                </div>
+                )}
               </div>
-            );
-          })()}
+            )}
+          </div>
+
+          {/* Input Footer */}
+          <div
+            style={{
+              padding: '12px 14px',
+              backgroundColor: 'var(--bg-surface, #FFFFFF)',
+              borderTop: '1px solid var(--border-subtle, #E2E8F0)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask a question about CRP India..."
+              disabled={isBusy}
+              maxLength={1000}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: '1px solid var(--border-subtle)',
+                backgroundColor: 'var(--bg-subtle)',
+                color: 'var(--text-primary)',
+                fontSize: '0.875rem',
+                outline: 'none',
+                fontFamily: 'inherit'
+              }}
+              aria-label="Type your question for the AI Assistant"
+            />
+
+            <button
+              type="button"
+              onClick={() => handleSendMessage()}
+              disabled={isBusy || !inputValue.trim()}
+              title="Send question"
+              aria-label="Send question"
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '8px',
+                backgroundColor: 'var(--color-primary, #0B4F9C)',
+                color: '#FFFFFF',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: (isBusy || !inputValue.trim()) ? 'not-allowed' : 'pointer',
+                opacity: (isBusy || !inputValue.trim()) ? 0.5 : 1,
+                transition: 'opacity 0.15s ease'
+              }}
+            >
+              <Send size={16} />
+            </button>
+          </div>
         </div>
       )}
     </div>

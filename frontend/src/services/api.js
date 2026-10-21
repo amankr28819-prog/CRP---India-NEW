@@ -646,22 +646,6 @@ export const api = {
       }
       throw err;
     }
-  },
-
-  getAIComplaintSummary: async (complaintId, forceRefresh = false) => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/ai/track-summary`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ complaintId, forceRefresh })
-      });
-      return await handleResponse(res);
-    } catch (err) {
-      if (err.name === 'TypeError' && err.message.includes('fetch')) {
-        throw new Error('Unable to connect to server. Please check your network connection.');
-      }
-      throw err;
-    }
   }
 };
 
