@@ -522,48 +522,61 @@ const getComplaintTrackingSummary = async (req, res, next) => {
 
     // 6. Grounded Factual Fallback Generator (used if AI is unavailable, unconfigured, or encounters error)
     const generateFactualFallback = () => {
-      const deptName = assignedDepartment && assignedDepartment !== 'Public Grievance Cell' ? assignedDepartment : 'the responsible municipal authority';
+      const deptName = assignedDepartment && assignedDepartment !== 'Public Grievance Cell' ? assignedDepartment : 'the responsible department';
 
       if (status === 'Resolved') {
-        let text = `Your complaint ${referenceId} regarding ${category.toLowerCase()} has been marked as Resolved.`;
+        let text = `Your ${category.toLowerCase()} complaint is currently marked as Resolved.`;
         if (resolutionNote && resolutionNote.trim()) {
-          text += ` Official resolution note: "${resolutionNote.trim()}".`;
+          text += ` The authority recorded: "${resolutionNote.trim()}".`;
+        } else {
+          text += ` The recorded issue has been addressed by municipal authorities.`;
         }
-        if (resolvedAt) {
-          text += ` Resolved on ${new Date(resolvedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}.`;
+        return text;
+      }
+
+      if (status === 'Rejected') {
+        let text = `Your complaint was marked as Rejected by the authority.`;
+        if (latestRemarkText) {
+          text += ` The recorded reason is: "${latestRemarkText}".`;
+        } else {
+          text += ` Please review the submission details or contact the civic grievance desk for further assistance.`;
         }
         return text;
       }
 
       if (status === 'In Progress') {
-        let text = `Your complaint ${referenceId} regarding ${category.toLowerCase()} is currently In Progress with ${deptName}.`;
+        let text = `Your ${category.toLowerCase()} complaint is currently In Progress with ${deptName}.`;
         if (latestRemarkText) {
-          text += ` Latest recorded update: "${latestRemarkText}".`;
+          text += ` The latest recorded update indicates: "${latestRemarkText}".`;
+        } else {
+          text += ` The complaint is being actively handled by the responsible team.`;
         }
-        text += ` Field work is actively being carried out according to municipal records. No completion has been recorded yet.`;
+        text += ` No resolution has been recorded yet.`;
         return text;
       }
 
       if (status === 'Assigned') {
-        let text = `Your complaint ${referenceId} regarding ${category.toLowerCase()} has been Assigned to ${deptName}.`;
+        let text = `Your complaint has been assigned to ${deptName}.`;
         if (latestRemarkText) {
-          text += ` Latest update: "${latestRemarkText}".`;
+          text += ` The latest update notes: "${latestRemarkText}".`;
+        } else {
+          text += ` It is queued for departmental inspection before field work begins.`;
         }
-        text += ` The complaint is queued for departmental inspection. Field work will commence once the assigned crew reviews the site.`;
         return text;
       }
 
       if (status === 'Under Review') {
-        let text = `Your complaint ${referenceId} regarding ${category.toLowerCase()} is currently Under Review by the central civic desk.`;
+        let text = `Your complaint is currently Under Review by the grievance desk.`;
         if (latestRemarkText) {
-          text += ` Latest update: "${latestRemarkText}".`;
+          text += ` Latest recorded update: "${latestRemarkText}".`;
+        } else {
+          text += ` Submission details are being verified prior to departmental assignment.`;
         }
-        text += ` The submission details are being verified before routing to the relevant department.`;
         return text;
       }
 
       // Default / Submitted
-      return `Your complaint ${referenceId} regarding ${category.toLowerCase()} was Submitted on ${new Date(createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} and is registered in the civic grievance queue. No additional municipal updates have been recorded yet.`;
+      return `Your complaint has been submitted and registered in the municipal grievance queue. No new update has been recorded yet. Check back later for the latest progress.`;
     };
 
     // 7. Generate summary via Gemini API if key is present
@@ -622,17 +635,19 @@ const getComplaintTrackingSummary = async (req, res, next) => {
     activeRequestId = ++geminiRequestCounter;
 
     const trackingSystemInstruction = `You are the CRP India civic grievance tracking assistant.
-Your task is to provide an honest, accurate, concise status update summary for a specific citizen complaint based STRICTLY on the provided database record.
+Your task is to provide an honest, accurate, concise, citizen-friendly status update summary for a specific citizen complaint based STRICTLY on the provided database record.
 
-CRITICAL ANTI-HALLUCINATION & FACTUALITY RULES:
-- NEVER invent or assume any visits, actions, phone calls, inspections, work, deadlines, or resolution details that are not explicitly stated in the record.
-- NEVER promise or predict any completion date or timeline (do NOT say "it will be resolved in 2 days" or similar).
-- If no remarks or recent updates exist in the record, clearly state: "No additional update has been recorded by municipal authorities yet."
-- If the complaint is Resolved, state that it is Resolved and mention any resolution details provided in the record.
-- If the complaint is In Progress, Assigned, Under Review, or Submitted, state its current status accurately and explain what has happened so far based only on the recorded history.
-- Mention the Complaint ID (\${referenceId}) and the current status (\${status}).
-- Keep the response between 2 to 4 sentences in a professional, reassuring, natural tone.
-- Do not use markdown headings. Avoid unnecessary bullet points.`;
+STRICT REQUIREMENTS:
+- Aim for approximately 40 to 70 words in 2 or 3 short, natural sentences.
+- Explain in simple, citizen-friendly language what the latest recorded update means for the citizen.
+- Mention current progress ONLY when directly supported by actual complaint data.
+- If the complaint is Resolved, mention the resolution details if recorded.
+- If the complaint is Rejected, explain that it was rejected and include the recorded reason if present.
+- If no additional update or remark exists, state: "No new update has been recorded yet. Check back later for the latest progress."
+- Avoid repeating information already prominently displayed in the card header (such as reciting the reference ID or repeating dates multiple times).
+- Do NOT include lengthy introductions, headings (e.g., do NOT start with "**Latest Update:**" or "**Summary:**"), conclusions, or generic filler.
+- Do NOT show internal reasoning or technical explanations.
+- NEVER invent, assume, or promise any visits, inspections, work, deadlines, or resolution dates.`;
 
     // Format sanitized history for the prompt
     const historySummary = statusHistory && statusHistory.length > 0
