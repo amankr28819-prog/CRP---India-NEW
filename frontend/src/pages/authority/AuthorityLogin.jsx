@@ -150,7 +150,7 @@ export default function AuthorityLogin() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Enter your password"
                 className="form-input"
                 style={{ paddingRight: '44px' }}
                 required
