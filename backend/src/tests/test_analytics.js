@@ -342,17 +342,20 @@ async function runAllTests() {
     assert(roadsRes.body.data.stats.avgTurnaroundDisplay === '4 days', `H/J2: Formatted turnaround display is "4 days" (got "${roadsRes.body.data.stats.avgTurnaroundDisplay}")`);
 
     // Verify formatTurnaroundTime rules and all required examples
-    assert(formatTurnaroundTime(5) === '5 hours', 'Formatter: 5 hours');
-    assert(formatTurnaroundTime(12) === '12 hours', 'Formatter: 12 hours');
-    assert(formatTurnaroundTime(23) === '23 hours', 'Formatter: 23 hours');
+    assert(formatTurnaroundTime(5.4) === '5 hours', 'Formatter: 5.4 hours -> 5 hours');
+    assert(formatTurnaroundTime(5.5) === '6 hours', 'Formatter: 5.5 hours -> 6 hours');
+    assert(formatTurnaroundTime(23.7) === '24 hours', 'Formatter: 23.7 hours -> 24 hours');
     assert(formatTurnaroundTime(24) === '1 day', 'Formatter: 24 hours -> 1 day');
-    assert(formatTurnaroundTime(30) === '1 day 6 hours', 'Formatter: 30 hours -> 1 day 6 hours');
-    assert(formatTurnaroundTime(48) === '2 days', 'Formatter: 48 hours -> 2 days');
-    assert(formatTurnaroundTime(53) === '2 days 5 hours', 'Formatter: 53 hours -> 2 days 5 hours');
-    assert(formatTurnaroundTime(72) === '3 days', 'Formatter: 72 hours -> 3 days');
+    assert(formatTurnaroundTime(30.4) === '1 day 6 hours', 'Formatter: 30.4 hours -> 1 day 6 hours');
+    assert(formatTurnaroundTime(30.5) === '1 day 7 hours', 'Formatter: 30.5 hours -> 1 day 7 hours');
+    assert(formatTurnaroundTime(47.7) === '2 days', 'Formatter: 47.7 hours -> 2 days');
+    assert(formatTurnaroundTime(53.4) === '2 days 5 hours', 'Formatter: 53.4 hours -> 2 days 5 hours');
     assert(formatTurnaroundTime(397) === '16 days 13 hours', 'Formatter: 397 hours -> 16 days 13 hours');
+    assert(formatTurnaroundTime(397.7) === '16 days 14 hours', 'Formatter: 397.7 hours -> 16 days 14 hours');
     assert(formatTurnaroundTime(1) === '1 hour', 'Formatter: 1 hour singular');
     assert(formatTurnaroundTime(25) === '1 day 1 hour', 'Formatter: 25 hours -> 1 day 1 hour');
+    assert(formatTurnaroundTime(48) === '2 days', 'Formatter: 48 hours -> 2 days');
+    assert(formatTurnaroundTime(72) === '3 days', 'Formatter: 72 hours -> 3 days');
     assert(formatTurnaroundTime(null) === 'N/A', 'Formatter: null -> N/A');
     assert(formatTurnaroundTime(undefined) === 'N/A', 'Formatter: undefined -> N/A');
 

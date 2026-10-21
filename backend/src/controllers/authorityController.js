@@ -98,12 +98,12 @@ const parseDateRange = (timeRange, customStart, customEnd) => {
 
 /**
  * Formats average turnaround duration in hours according to readable rules:
- * - If less than 24 hours: display in hours (e.g. '1 hour', '5 hours', '23 hours')
- * - If 24 hours or more: display in days and remaining hours (e.g. '1 day', '1 day 6 hours', '2 days', '16 days 13 hours')
+ * - Round duration to the nearest whole hour (half-hour values round up). Never display fractional hours.
+ * - If average is less than 24 hours: display in whole hours (e.g. 5.4 -> '5 hours', 5.5 -> '6 hours', 23.7 -> '24 hours').
+ * - If 24 hours or more: convert rounded total hours into complete days and remaining hours (e.g. 24 -> '1 day', 30.4 -> '1 day 6 hours', 397.7 -> '16 days 14 hours').
  * - One day equals exactly 24 hours. Does not round total duration up to the next full day.
  * - Handles singular and plural correctly ('1 day', '2 days', '1 hour', '2 hours').
  * - Omits '0 hours' when remaining hours after day conversion is zero.
- * - Preserves fractional hours if present and formats consistently.
  * - Returns 'N/A' if hours is null, undefined, invalid, or negative.
  */
 const formatTurnaroundTime = (hours) => {
@@ -111,23 +111,20 @@ const formatTurnaroundTime = (hours) => {
     return 'N/A';
   }
 
-  const roundedTotalHours = Number(hours.toFixed(1));
-
-  if (roundedTotalHours < 24) {
-    return roundedTotalHours === 1 ? '1 hour' : `${roundedTotalHours} hours`;
+  // Values below 24 hours: display only whole hours
+  if (hours < 24) {
+    const roundedHours = Math.round(hours);
+    return roundedHours === 1 ? '1 hour' : `${roundedHours} hours`;
   }
 
-  let days = Math.floor(roundedTotalHours / 24);
-  let remainingHours = Number((roundedTotalHours - days * 24).toFixed(1));
-
-  if (remainingHours >= 24) {
-    days += Math.floor(remainingHours / 24);
-    remainingHours = Number((remainingHours % 24).toFixed(1));
-  }
+  // Values 24 hours and above: round to whole hours, split into complete days and remaining hours
+  const totalRoundedHours = Math.round(hours);
+  const days = Math.floor(totalRoundedHours / 24);
+  const remainingHours = totalRoundedHours % 24;
 
   const dayLabel = days === 1 ? '1 day' : `${days} days`;
 
-  if (remainingHours <= 0) {
+  if (remainingHours === 0) {
     return dayLabel;
   }
 
