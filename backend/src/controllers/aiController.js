@@ -1,4 +1,6 @@
 const { GoogleGenAI } = require('@google/genai');
+const mongoose = require('mongoose');
+const Complaint = require('../models/Complaint');
 
 const CRP_INDIA_SYSTEM_INSTRUCTION = `You are the CRP India citizen-support assistant.
 
@@ -147,6 +149,9 @@ const sanitizeGeminiHistory = (history) => {
   return sanitized;
 };
 
+// Global in-memory request counter for tracking sequential Gemini API calls
+let geminiRequestCounter = 0;
+
 /**
  * @desc Handle AI conversational assistant messages using Gemini API with streaming support
  * @route POST /api/ai/chat
@@ -154,6 +159,10 @@ const sanitizeGeminiHistory = (history) => {
  */
 const chatWithAI = async (req, res) => {
   let headersSent = false;
+  let activeRequestId = null;
+  const featureName = 'AI Assistant Chat (chatWithAI)';
+  const configuredModel = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+  let apiKey = null;
 
   try {
     const { message, history, stream } = req.body;
@@ -185,7 +194,7 @@ const chatWithAI = async (req, res) => {
     }
 
     // 2. Verify Gemini API Key availability
-    const apiKey = process.env.GEMINI_API_KEY;
+    apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey || apiKey.trim() === '') {
       console.warn('[AI CONFIG ERROR] GEMINI_API_KEY is not configured in backend environment variables.');
       return res.status(503).json({
@@ -195,9 +204,12 @@ const chatWithAI = async (req, res) => {
       });
     }
 
+    // Assign sequential request number and timestamp
+    activeRequestId = ++geminiRequestCounter;
+    const requestTimestamp = new Date().toISOString();
+
     // 3. Initialize GoogleGenAI SDK instance
     const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
-    const configuredModel = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 
     // 4. Format conversation contents with alternation safeguards
     const formattedHistory = sanitizeGeminiHistory(history);
@@ -232,7 +244,8 @@ const chatWithAI = async (req, res) => {
     } catch (configErr) {
       // If thinkingConfig is unsupported on this specific model/tier, fallback cleanly without thinkingConfig
       if (configErr.status === 400 && (configErr.message?.includes('thinking') || configErr.message?.includes('Thinking'))) {
-        console.warn(`[AI STREAM WARNING] thinkingConfig not accepted by ${configuredModel}, retrying without it.`);
+        console.warn(`[GEMINI API RETRY] Request #${activeRequestId} | Feature: ${featureName} | Model: ${configuredModel} | thinkingConfig rejected (HTTP 400), falling back without thinkingConfig.`);
+        activeRequestId = ++geminiRequestCounter;
         responseStream = await ai.models.generateContentStream({
           model: configuredModel,
           contents,
@@ -245,6 +258,22 @@ const chatWithAI = async (req, res) => {
         throw configErr;
       }
     }
+
+    // Track token usage from Gemini response metadata
+    let promptTokens = null;
+    let candidatesTokens = null;
+    let totalTokens = null;
+
+    // Helper to log request metrics upon completion
+    const logRequestMetrics = () => {
+      const logPrompt = promptTokens !== null ? promptTokens : 'N/A';
+      const logCandidates = candidatesTokens !== null ? candidatesTokens : 'N/A';
+      const logTotal = totalTokens !== null ? totalTokens : 'N/A';
+
+      console.log(
+        `[GEMINI API] Request #${activeRequestId} | Feature: ${featureName} | Model: ${configuredModel} | Time: ${requestTimestamp} | Input Tokens: ${logPrompt} | Output Tokens: ${logCandidates} | Total Tokens: ${logTotal}`
+      );
+    };
 
     // 6. Handle Streaming vs Non-Streaming response
     if (wantsStream) {
@@ -259,6 +288,17 @@ const chatWithAI = async (req, res) => {
 
       let fullText = '';
       for await (const chunk of responseStream) {
+        if (chunk.usageMetadata) {
+          if (chunk.usageMetadata.promptTokenCount != null) {
+            promptTokens = chunk.usageMetadata.promptTokenCount;
+          }
+          if (chunk.usageMetadata.candidatesTokenCount != null) {
+            candidatesTokens = chunk.usageMetadata.candidatesTokenCount;
+          }
+          if (chunk.usageMetadata.totalTokenCount != null) {
+            totalTokens = chunk.usageMetadata.totalTokenCount;
+          }
+        }
         const text = chunk.text;
         if (text) {
           fullText += text;
@@ -266,14 +306,30 @@ const chatWithAI = async (req, res) => {
         }
       }
 
+      logRequestMetrics();
+
       res.write('data: [DONE]\n\n');
       return res.end();
     } else {
       // Non-streaming fallback for JSON consumers / tests
       let fullText = '';
       for await (const chunk of responseStream) {
+        if (chunk.usageMetadata) {
+          if (chunk.usageMetadata.promptTokenCount != null) {
+            promptTokens = chunk.usageMetadata.promptTokenCount;
+          }
+          if (chunk.usageMetadata.candidatesTokenCount != null) {
+            candidatesTokens = chunk.usageMetadata.candidatesTokenCount;
+          }
+          if (chunk.usageMetadata.totalTokenCount != null) {
+            totalTokens = chunk.usageMetadata.totalTokenCount;
+          }
+        }
         if (chunk.text) fullText += chunk.text;
       }
+
+      logRequestMetrics();
+
       return res.json({
         success: true,
         message: fullText || "I'm sorry, I couldn't generate a response. Please try asking again."
@@ -282,16 +338,29 @@ const chatWithAI = async (req, res) => {
   } catch (err) {
     const errorMsg = err.message || '';
     const errorStatus = err.status || 500;
+    const sanitizedApiKey = apiKey ? apiKey.trim() : '';
+    const safeErrorMsg = sanitizedApiKey ? errorMsg.split(sanitizedApiKey).join('[REDACTED]') : errorMsg;
+    const reqTag = activeRequestId ? `#${activeRequestId}` : '#N/A';
 
     if (headersSent) {
-      console.error('[AI STREAM ERROR] Stream interrupted during generation:', errorMsg);
+      console.error(`[GEMINI API STREAM ERROR] Request ${reqTag} | Interrupted during generation: ${safeErrorMsg}`);
       res.write(`data: ${JSON.stringify({ error: 'Sorry, the AI response stream was interrupted. Please try again.' })}\n\n`);
       return res.end();
     }
 
+    // Clean 429 rate limit / quota exhaustion handling without retrying
+    if (errorStatus === 429 || errorMsg.includes('RESOURCE_EXHAUSTED') || errorMsg.includes('429')) {
+      console.warn(`[GEMINI API RATE LIMIT] Request ${reqTag} | Feature: ${featureName} | Model: ${configuredModel} | Time: ${new Date().toISOString()} | Status: 429 (Rate Limit / Quota Exceeded) | Action: Terminated cleanly without retry.`);
+      return res.status(429).json({
+        success: false,
+        errorType: 'RATE_LIMIT_ERROR',
+        message: 'Gemini AI service limit reached. Please wait a moment and try again.'
+      });
+    }
+
     // Distinguish failure types for transparent diagnostics without exposing secrets
-    if (errorStatus === 400 && (errorMsg.includes('API_KEY_INVALID') || errorMsg.includes('API key not valid'))) {
-      console.error('[AI AUTH ERROR] Gemini API key authentication failed. Please verify the backend GEMINI_API_KEY.');
+    if ((errorStatus === 400 || errorStatus === 401) && (errorMsg.includes('API_KEY_INVALID') || errorMsg.includes('API key not valid'))) {
+      console.error(`[GEMINI API AUTH ERROR] Request ${reqTag} | Feature: ${featureName} | Time: ${new Date().toISOString()} | Authentication failed (invalid API key).`);
       return res.status(401).json({
         success: false,
         errorType: 'AUTH_ERROR',
@@ -300,7 +369,7 @@ const chatWithAI = async (req, res) => {
     }
 
     if (errorStatus === 404 || errorMsg.includes('not found') || errorMsg.includes('models/')) {
-      console.error(`[AI MODEL ERROR] Configured Gemini model is not found or unsupported.`);
+      console.error(`[GEMINI API MODEL ERROR] Request ${reqTag} | Feature: ${featureName} | Model: ${configuredModel} | Time: ${new Date().toISOString()} | Model not found or unsupported.`);
       return res.status(404).json({
         success: false,
         errorType: 'MODEL_ERROR',
@@ -308,16 +377,7 @@ const chatWithAI = async (req, res) => {
       });
     }
 
-    if (errorStatus === 429 || errorMsg.includes('RESOURCE_EXHAUSTED')) {
-      console.error('[AI QUOTA ERROR] Gemini API quota or rate limit exceeded.');
-      return res.status(429).json({
-        success: false,
-        errorType: 'RATE_LIMIT_ERROR',
-        message: 'Gemini AI service limit reached. Please wait a moment and try again.'
-      });
-    }
-
-    console.error('[AI SERVICE ERROR] Gemini request failed:', errorMsg);
+    console.error(`[GEMINI API ERROR] Request ${reqTag} | Feature: ${featureName} | Model: ${configuredModel} | Time: ${new Date().toISOString()} | Status: ${errorStatus} | Error: ${safeErrorMsg}`);
     return res.status(500).json({
       success: false,
       errorType: 'SERVICE_ERROR',
@@ -326,8 +386,362 @@ const chatWithAI = async (req, res) => {
   }
 };
 
+// In-memory cache for complaint AI tracking summaries: complaintId -> { summary, updatedTimestamp, status, generatedAt }
+const complaintSummaryCache = new Map();
+
+/**
+ * @desc Generate an AI-powered progress and status tracking summary for a citizen's complaint
+ * @route POST /api/ai/track-summary
+ * @access Private (authenticated citizen only)
+ */
+const getComplaintTrackingSummary = async (req, res, next) => {
+  let activeRequestId = null;
+  const featureName = 'AI Complaint Tracking (getComplaintTrackingSummary)';
+  const configuredModel = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+  let apiKey = null;
+
+  try {
+    // 1. Authentication check
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required. Please sign in to track your complaint.'
+      });
+    }
+
+    const { complaintId, forceRefresh } = req.body;
+    if (!complaintId || typeof complaintId !== 'string' || !complaintId.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid Complaint ID or Reference ID is required.'
+      });
+    }
+
+    const cleanId = complaintId.trim();
+
+    // 2. Fetch complaint from database
+    const query = mongoose.Types.ObjectId.isValid(cleanId)
+      ? { $or: [{ _id: cleanId }, { referenceId: cleanId }] }
+      : { referenceId: cleanId };
+
+    const complaint = await Complaint.findOne(query);
+
+    if (!complaint || complaint.deletedByCitizen || complaint.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Complaint not found.'
+      });
+    }
+
+    // 3. Security ownership check:
+    // Verify that the complaint belongs to the currently authenticated citizen.
+    const userId = req.user._id ? req.user._id.toString() : '';
+    const userEmail = (req.user.email || '').toLowerCase().trim();
+
+    const complaintUserId = complaint.citizen?.userId ? complaint.citizen.userId.toString() : '';
+    const complaintEmail = (complaint.citizen?.email || '').toLowerCase().trim();
+
+    const isOwner = (complaintUserId && complaintUserId === userId) || (complaintEmail && complaintEmail === userEmail);
+
+    if (!isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: You are not authorized to view or track complaints filed by another citizen.'
+      });
+    }
+
+    // 4. Extract verified database fields
+    const {
+      referenceId,
+      category,
+      title,
+      description,
+      location,
+      ward,
+      city,
+      status,
+      assignedDepartment,
+      assignedOfficer,
+      createdAt,
+      updatedAt,
+      resolvedAt,
+      resolvedBy,
+      resolutionNote,
+      resolutionPhoto,
+      statusHistory = [],
+      remarks = []
+    } = complaint;
+
+    const cacheKey = complaint._id.toString();
+    const updatedTimestamp = complaint.updatedAt ? new Date(complaint.updatedAt).getTime() : 0;
+    const latestHistory = statusHistory && statusHistory.length > 0 ? statusHistory[statusHistory.length - 1] : null;
+    const latestRemarkText = (latestHistory && latestHistory.remark) || (remarks && remarks.length > 0 && remarks[remarks.length - 1].text) || '';
+
+    // 5. Check cache: if summary exists for this exact complaint and updated timestamp hasn't changed
+    const cachedEntry = complaintSummaryCache.get(cacheKey);
+    if (!forceRefresh && cachedEntry && cachedEntry.updatedTimestamp === updatedTimestamp && cachedEntry.status === status) {
+      const complaintRecord = {
+        referenceId,
+        category,
+        title,
+        description,
+        location,
+        ward,
+        city,
+        status,
+        assignedDepartment: assignedDepartment || 'Public Grievance Cell',
+        assignedOfficer: assignedOfficer || 'Unassigned',
+        createdAt,
+        updatedAt,
+        resolvedAt: resolvedAt || null,
+        resolvedBy: resolvedBy || '',
+        resolutionNote: resolutionNote || '',
+        resolutionPhoto: resolutionPhoto || '',
+        latestRemark: latestRemarkText,
+        statusHistory
+      };
+
+      return res.json({
+        success: true,
+        data: {
+          referenceId,
+          category,
+          title,
+          description,
+          status,
+          assignedDepartment: assignedDepartment || 'Public Grievance Cell',
+          createdAt,
+          updatedAt,
+          complaint: complaintRecord,
+          recordedData: complaintRecord,
+          summary: cachedEntry.summary,
+          cached: true
+        }
+      });
+    }
+
+    // 6. Grounded Factual Fallback Generator (used if AI is unavailable, unconfigured, or encounters error)
+    const generateFactualFallback = () => {
+      const deptName = assignedDepartment && assignedDepartment !== 'Public Grievance Cell' ? assignedDepartment : 'the responsible municipal authority';
+
+      if (status === 'Resolved') {
+        let text = `Your complaint ${referenceId} regarding ${category.toLowerCase()} has been marked as Resolved.`;
+        if (resolutionNote && resolutionNote.trim()) {
+          text += ` Official resolution note: "${resolutionNote.trim()}".`;
+        }
+        if (resolvedAt) {
+          text += ` Resolved on ${new Date(resolvedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}.`;
+        }
+        return text;
+      }
+
+      if (status === 'In Progress') {
+        let text = `Your complaint ${referenceId} regarding ${category.toLowerCase()} is currently In Progress with ${deptName}.`;
+        if (latestRemarkText) {
+          text += ` Latest recorded update: "${latestRemarkText}".`;
+        }
+        text += ` Field work is actively being carried out according to municipal records. No completion has been recorded yet.`;
+        return text;
+      }
+
+      if (status === 'Assigned') {
+        let text = `Your complaint ${referenceId} regarding ${category.toLowerCase()} has been Assigned to ${deptName}.`;
+        if (latestRemarkText) {
+          text += ` Latest update: "${latestRemarkText}".`;
+        }
+        text += ` The complaint is queued for departmental inspection. Field work will commence once the assigned crew reviews the site.`;
+        return text;
+      }
+
+      if (status === 'Under Review') {
+        let text = `Your complaint ${referenceId} regarding ${category.toLowerCase()} is currently Under Review by the central civic desk.`;
+        if (latestRemarkText) {
+          text += ` Latest update: "${latestRemarkText}".`;
+        }
+        text += ` The submission details are being verified before routing to the relevant department.`;
+        return text;
+      }
+
+      // Default / Submitted
+      return `Your complaint ${referenceId} regarding ${category.toLowerCase()} was Submitted on ${new Date(createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} and is registered in the civic grievance queue. No additional municipal updates have been recorded yet.`;
+    };
+
+    // 7. Generate summary via Gemini API if key is present
+    apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey.trim() === '') {
+      const fallbackSummary = generateFactualFallback();
+      complaintSummaryCache.set(cacheKey, {
+        summary: fallbackSummary,
+        updatedTimestamp,
+        status,
+        generatedAt: Date.now()
+      });
+
+      const complaintRecord = {
+        referenceId,
+        category,
+        title,
+        description,
+        location,
+        ward,
+        city,
+        status,
+        assignedDepartment: assignedDepartment || 'Public Grievance Cell',
+        assignedOfficer: assignedOfficer || 'Unassigned',
+        createdAt,
+        updatedAt,
+        resolvedAt: resolvedAt || null,
+        resolvedBy: resolvedBy || '',
+        resolutionNote: resolutionNote || '',
+        resolutionPhoto: resolutionPhoto || '',
+        latestRemark: latestRemarkText,
+        statusHistory
+      };
+
+      return res.json({
+        success: true,
+        data: {
+          referenceId,
+          category,
+          title,
+          description,
+          status,
+          assignedDepartment: assignedDepartment || 'Public Grievance Cell',
+          createdAt,
+          updatedAt,
+          complaint: complaintRecord,
+          recordedData: complaintRecord,
+          summary: fallbackSummary,
+          cached: false,
+          isFallback: true
+        }
+      });
+    }
+
+    // Call Gemini with strict anti-hallucination prompt
+    activeRequestId = ++geminiRequestCounter;
+
+    const trackingSystemInstruction = `You are the CRP India civic grievance tracking assistant.
+Your task is to provide an honest, accurate, concise status update summary for a specific citizen complaint based STRICTLY on the provided database record.
+
+CRITICAL ANTI-HALLUCINATION & FACTUALITY RULES:
+- NEVER invent or assume any visits, actions, phone calls, inspections, work, deadlines, or resolution details that are not explicitly stated in the record.
+- NEVER promise or predict any completion date or timeline (do NOT say "it will be resolved in 2 days" or similar).
+- If no remarks or recent updates exist in the record, clearly state: "No additional update has been recorded by municipal authorities yet."
+- If the complaint is Resolved, state that it is Resolved and mention any resolution details provided in the record.
+- If the complaint is In Progress, Assigned, Under Review, or Submitted, state its current status accurately and explain what has happened so far based only on the recorded history.
+- Mention the Complaint ID (\${referenceId}) and the current status (\${status}).
+- Keep the response between 2 to 4 sentences in a professional, reassuring, natural tone.
+- Do not use markdown headings. Avoid unnecessary bullet points.`;
+
+    // Format sanitized history for the prompt
+    const historySummary = statusHistory && statusHistory.length > 0
+      ? statusHistory.map(h => `- Status: ${h.status} | By: ${h.changedBy || 'Authority'} | Dept: ${h.department || 'N/A'} | Remark: ${h.remark || 'None'} | Time: ${h.timestamp ? new Date(h.timestamp).toISOString() : 'N/A'}`).join('\n')
+      : 'No prior status transitions recorded.';
+
+    const userPrompt = `Please summarize the current status and latest updates for this citizen complaint:
+- Complaint ID: ${referenceId}
+- Category: ${category}
+- Title: ${title}
+- Current Status: ${status}
+- Assigned Department: ${assignedDepartment || 'Not yet assigned'}
+- Assigned Officer: ${assignedOfficer || 'Unassigned'}
+- Submitted On: ${new Date(createdAt).toISOString()}
+- Last Updated: ${new Date(updatedAt).toISOString()}
+- Resolution Note: ${resolutionNote || 'N/A'}
+- Resolved At: ${resolvedAt ? new Date(resolvedAt).toISOString() : 'N/A'}
+- Status History:
+${historySummary}`;
+
+    let aiSummaryText = '';
+    try {
+      const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
+      const geminiRes = await ai.models.generateContent({
+        model: configuredModel,
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: userPrompt }]
+          }
+        ],
+        config: {
+          systemInstruction: trackingSystemInstruction,
+          temperature: 0.2,
+          maxOutputTokens: 350
+        }
+      });
+
+      aiSummaryText = geminiRes.text ? geminiRes.text.trim() : '';
+      console.log(`[GEMINI API] Request #${activeRequestId} | Feature: ${featureName} | Summary generated successfully for ${referenceId}`);
+    } catch (aiErr) {
+      console.warn(`[GEMINI API WARNING] Request #${activeRequestId} | Feature: ${featureName} | Gemini call failed (${aiErr.message}), falling back to factual database summary.`);
+      aiSummaryText = generateFactualFallback();
+    }
+
+    if (!aiSummaryText) {
+      aiSummaryText = generateFactualFallback();
+    }
+
+    // Cache the generated summary
+    complaintSummaryCache.set(cacheKey, {
+      summary: aiSummaryText,
+      updatedTimestamp,
+      status,
+      generatedAt: Date.now()
+    });
+
+    const complaintRecord = {
+      referenceId,
+      category,
+      title,
+      description,
+      location,
+      ward,
+      city,
+      status,
+      assignedDepartment: assignedDepartment || 'Public Grievance Cell',
+      assignedOfficer: assignedOfficer || 'Unassigned',
+      createdAt,
+      updatedAt,
+      resolvedAt: resolvedAt || null,
+      resolvedBy: resolvedBy || '',
+      resolutionNote: resolutionNote || '',
+      resolutionPhoto: resolutionPhoto || '',
+      latestRemark: latestRemarkText,
+      statusHistory
+    };
+
+    return res.json({
+      success: true,
+      data: {
+        referenceId,
+        category,
+        title,
+        description,
+        status,
+        assignedDepartment: assignedDepartment || 'Public Grievance Cell',
+        createdAt,
+        updatedAt,
+        complaint: complaintRecord,
+        recordedData: complaintRecord,
+        summary: aiSummaryText,
+        cached: false
+      }
+    });
+
+  } catch (err) {
+    console.error(`[AI COMPLAINT TRACKING ERROR]`, err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to generate complaint tracking summary. Please try again.'
+    });
+  }
+};
+
 module.exports = {
   chatWithAI,
+  getComplaintTrackingSummary,
+  complaintSummaryCache,
   CRP_INDIA_SYSTEM_INSTRUCTION,
   sanitizeGeminiHistory
 };
