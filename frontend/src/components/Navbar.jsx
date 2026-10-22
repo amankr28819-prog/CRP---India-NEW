@@ -255,13 +255,21 @@ export default function Navbar() {
               flexShrink: 0
             }}
           />
-          <div style={{ minWidth: 'max-content', flexShrink: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: '1.15rem', color: 'var(--text-primary)', lineHeight: 1.1, whiteSpace: 'nowrap' }}>
+          <div className="navbar-brand-text" style={{ minWidth: 'max-content', flexShrink: 0 }}>
+            <div className="navbar-brand-title" style={{ fontWeight: 700, fontSize: '1.15rem', color: 'var(--text-primary)', lineHeight: 1.1, whiteSpace: 'nowrap' }}>
               CRP India
             </div>
-            <div className="brand-subtitle" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-              {isAuthorityMode ? 'Municipal Authority' : 'Civic Reporting Platform'}
-            </div>
+            {isAuthorityMode ? (
+              <div className="brand-subtitle authority-brand-subtitle">
+                Municipal Authority
+              </div>
+            ) : (
+              <div className="brand-subtitle citizen-brand-subtitle">
+                <span className="brand-text-platform">Citizen Redressal Platform</span>
+                <span className="brand-text-divider" aria-hidden="true">•</span>
+                <span className="brand-text-portal">Citizen Portal</span>
+              </div>
+            )}
           </div>
         </Link>
 
@@ -1919,6 +1927,58 @@ export default function Navbar() {
         .navbar-brand-logo {
           flex-shrink: 0 !important;
         }
+        .navbar-brand-text {
+          min-width: max-content !important;
+          flex-shrink: 0 !important;
+        }
+        .navbar-brand-title {
+          font-weight: 700 !important;
+          font-size: 1.15rem !important;
+          color: var(--text-primary) !important;
+          line-height: 1.1 !important;
+          white-space: nowrap !important;
+        }
+        .brand-subtitle {
+          font-size: 0.75rem;
+          color: var(--text-secondary);
+          font-weight: 500;
+          line-height: 1.15;
+          white-space: nowrap;
+        }
+        .authority-brand-subtitle {
+          font-size: 0.75rem !important;
+          color: var(--text-secondary) !important;
+          font-weight: 500 !important;
+          line-height: 1.15 !important;
+          white-space: nowrap !important;
+        }
+        .citizen-brand-subtitle {
+          display: flex !important;
+          align-items: center !important;
+          gap: 6px !important;
+          font-size: 0.75rem !important;
+          color: var(--text-secondary) !important;
+          font-weight: 500 !important;
+          line-height: 1.15 !important;
+          white-space: nowrap !important;
+        }
+        .brand-text-platform {
+          white-space: nowrap !important;
+          color: var(--text-secondary) !important;
+        }
+        .brand-text-divider {
+          color: var(--text-muted) !important;
+          opacity: 0.6 !important;
+          font-size: 0.7rem !important;
+          user-select: none !important;
+          flex-shrink: 0 !important;
+        }
+        .brand-text-portal {
+          font-weight: 600 !important;
+          color: var(--color-primary) !important;
+          white-space: nowrap !important;
+          flex-shrink: 0 !important;
+        }
         .desktop-nav {
           flex-shrink: 0 !important;
           white-space: nowrap !important;
@@ -1960,8 +2020,15 @@ export default function Navbar() {
         }
         @media (max-width: 640px) {
           .navbar-container {
-            padding-left: 14px !important;
-            padding-right: 14px !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+          }
+          .citizen-brand-subtitle {
+            font-size: 0.7rem !important;
+            gap: 5px !important;
+          }
+          .authority-brand-subtitle {
+            font-size: 0.72rem !important;
           }
         }
         @media (max-width: 480px) {
@@ -1969,15 +2036,91 @@ export default function Navbar() {
             padding-left: 10px !important;
             padding-right: 10px !important;
           }
-          .brand-subtitle {
-            display: none !important;
-          }
           .navbar-brand-logo {
             height: 38px !important;
             max-height: 38px !important;
           }
+          .navbar-brand-title {
+            font-size: 1.05rem !important;
+          }
+          .authority-brand-subtitle {
+            font-size: 0.7rem !important;
+            display: block !important;
+            white-space: nowrap !important;
+          }
+          .citizen-brand-subtitle {
+            font-size: 0.6875rem !important;
+            gap: 5px !important;
+            display: flex !important;
+            white-space: nowrap !important;
+          }
           .mobile-controls {
             gap: 6px !important;
+          }
+        }
+        @media (max-width: 380px) {
+          .navbar-container {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+          }
+          .navbar-brand-link {
+            gap: 8px !important;
+          }
+          .navbar-brand-logo {
+            height: 34px !important;
+            max-height: 34px !important;
+          }
+          .navbar-brand-title {
+            font-size: 0.98rem !important;
+          }
+          .authority-brand-subtitle {
+            font-size: 0.65rem !important;
+          }
+          .citizen-brand-subtitle {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 1px !important;
+            line-height: 1.15 !important;
+          }
+          .brand-text-divider {
+            display: none !important;
+          }
+          .brand-text-platform {
+            font-size: 0.625rem !important;
+            line-height: 1.15 !important;
+          }
+          .brand-text-portal {
+            font-size: 0.625rem !important;
+            line-height: 1.15 !important;
+          }
+          .mobile-controls {
+            gap: 4px !important;
+          }
+          .mobile-controls .btn-sm {
+            padding: 5px 7px !important;
+          }
+        }
+        @media (max-width: 330px) {
+          .navbar-container {
+            padding-left: 6px !important;
+            padding-right: 6px !important;
+          }
+          .navbar-brand-link {
+            gap: 6px !important;
+          }
+          .navbar-brand-logo {
+            height: 32px !important;
+            max-height: 32px !important;
+          }
+          .navbar-brand-title {
+            font-size: 0.92rem !important;
+          }
+          .authority-brand-subtitle {
+            font-size: 0.62rem !important;
+          }
+          .brand-text-platform,
+          .brand-text-portal {
+            font-size: 0.58rem !important;
           }
         }
       `}</style>
