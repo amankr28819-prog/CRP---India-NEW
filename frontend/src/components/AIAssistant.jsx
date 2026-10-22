@@ -390,6 +390,163 @@ export default function AIAssistant() {
   const inputRef = useRef(null);
   const abortControllerRef = useRef(null);
 
+  // Draggable button state (session-only, resets on page refresh)
+  const [position, setPosition] = useState(null); // { x: number, y: number } | null
+  const [isDragging, setIsDragging] = useState(false);
+
+  const buttonRef = useRef(null);
+  const wasDraggedRef = useRef(false);
+  const dragStartRef = useRef({
+    startX: 0,
+    startY: 0,
+    initialX: 0,
+    initialY: 0,
+    hasMoved: false,
+    pointerId: null
+  });
+
+  // Re-clamp button position when window is resized or orientation changes
+  useEffect(() => {
+    const handleResize = () => {
+      setPosition((prev) => {
+        if (!prev) return null; // Default position handles its own responsive styling
+        const button = buttonRef.current;
+        const width = button ? button.offsetWidth : 145;
+        const height = button ? button.offsetHeight : 50;
+        const margin = window.innerWidth <= 480 ? 12 : 16;
+        const minX = margin;
+        const maxX = Math.max(margin, window.innerWidth - width - margin);
+        const minY = margin;
+        const maxY = Math.max(margin, window.innerHeight - height - margin);
+
+        const clampedX = Math.max(minX, Math.min(prev.x, maxX));
+        const clampedY = Math.max(minY, Math.min(prev.y, maxY));
+
+        if (clampedX === prev.x && clampedY === prev.y) return prev;
+        return { x: clampedX, y: clampedY };
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
+
+  const handlePointerDown = (e) => {
+    // Only primary button (left mouse click or touch)
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+
+    const button = buttonRef.current;
+    if (!button) return;
+
+    const rect = button.getBoundingClientRect();
+
+    dragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: rect.left,
+      initialY: rect.top,
+      hasMoved: false,
+      pointerId: e.pointerId
+    };
+
+    try {
+      button.setPointerCapture(e.pointerId);
+    } catch {
+      // Safe fallback
+    }
+  };
+
+  const handlePointerMove = (e) => {
+    const { startX, startY, initialX, initialY, hasMoved, pointerId } = dragStartRef.current;
+    if (pointerId === null || e.pointerId !== pointerId) return;
+
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    // Movement threshold (5px) before committing to dragging state
+    if (!hasMoved) {
+      if (Math.hypot(dx, dy) < 5) return;
+      dragStartRef.current.hasMoved = true;
+      setIsDragging(true);
+    }
+
+    const button = buttonRef.current;
+    const width = button ? button.offsetWidth : 145;
+    const height = button ? button.offsetHeight : 50;
+
+    const margin = window.innerWidth <= 480 ? 12 : 16;
+    const minX = margin;
+    const maxX = Math.max(margin, window.innerWidth - width - margin);
+    const minY = margin;
+    const maxY = Math.max(margin, window.innerHeight - height - margin);
+
+    const proposedX = initialX + dx;
+    const proposedY = initialY + dy;
+
+    const clampedX = Math.max(minX, Math.min(proposedX, maxX));
+    const clampedY = Math.max(minY, Math.min(proposedY, maxY));
+
+    setPosition({ x: clampedX, y: clampedY });
+  };
+
+  const handlePointerUp = (e) => {
+    const { hasMoved, pointerId } = dragStartRef.current;
+    if (pointerId === null || e.pointerId !== pointerId) return;
+
+    const button = buttonRef.current;
+    if (button) {
+      try {
+        button.releasePointerCapture(e.pointerId);
+      } catch {
+        // Safe fallback
+      }
+    }
+
+    dragStartRef.current.pointerId = null;
+    setIsDragging(false);
+
+    if (hasMoved) {
+      wasDraggedRef.current = true;
+      setTimeout(() => {
+        wasDraggedRef.current = false;
+      }, 120);
+    }
+  };
+
+  const handlePointerCancel = () => {
+    const button = buttonRef.current;
+    if (button && dragStartRef.current.pointerId !== null) {
+      try {
+        button.releasePointerCapture(dragStartRef.current.pointerId);
+      } catch {
+        // Safe fallback
+      }
+    }
+    dragStartRef.current.pointerId = null;
+    setIsDragging(false);
+  };
+
+  const handleButtonClick = (e) => {
+    if (wasDraggedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      wasDraggedRef.current = false;
+      return;
+    }
+    setIsOpen(true);
+  };
+
+  const handleButtonKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setIsOpen(true);
+    }
+  };
+
   // Streaming buffers & throttling refs
   const streamBufferRef = useRef('');
   const rafIdRef = useRef(null);
@@ -605,16 +762,28 @@ export default function AIAssistant() {
   };
 
   return (
-    <div className="crp-ai-assistant-container" style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 999 }}>
-      {/* Floating Launcher Button with AI Girl Avatar */}
+    <>
+      {/* Floating Draggable Launcher Button with AI Girl Avatar */}
       {!isOpen && (
         <button
+          ref={buttonRef}
           type="button"
-          onClick={() => setIsOpen(true)}
-          className="crp-ai-fab"
+          onClick={handleButtonClick}
+          onKeyDown={handleButtonKeyDown}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+          className={`crp-ai-fab ${isDragging ? 'crp-ai-fab-dragging' : ''} ${position ? 'crp-ai-fab-dragged' : ''}`}
           aria-label="Open CRP India AI Assistant"
-          title="CRP India AI Assistant"
+          title="CRP India AI Assistant (Drag to reposition)"
           style={{
+            position: 'fixed',
+            left: position ? `${position.x}px` : undefined,
+            top: position ? `${position.y}px` : undefined,
+            right: position ? 'auto' : '24px',
+            bottom: position ? 'auto' : '24px',
+            zIndex: 999,
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
@@ -625,16 +794,22 @@ export default function AIAssistant() {
             padding: '8px 18px 8px 10px',
             fontSize: '0.925rem',
             fontWeight: 600,
-            boxShadow: '0 8px 24px rgba(11, 79, 156, 0.35)',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
-            fontFamily: 'inherit'
+            boxShadow: isDragging
+              ? '0 16px 36px rgba(11, 79, 156, 0.48)'
+              : '0 8px 24px rgba(11, 79, 156, 0.35)',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            touchAction: 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            fontFamily: 'inherit',
+            transition: isDragging ? 'none' : 'box-shadow 0.2s ease, transform 0.2s ease'
           }}
         >
-          <div style={{ position: 'relative', width: '34px', height: '34px' }}>
+          <div style={{ position: 'relative', width: '34px', height: '34px', flexShrink: 0, pointerEvents: 'none' }}>
             <img
               src={aiAssistantAvatar}
               alt="AI Assistant"
+              draggable={false}
               style={{
                 width: '34px',
                 height: '34px',
@@ -642,7 +817,10 @@ export default function AIAssistant() {
                 objectFit: 'cover',
                 border: '2px solid #FFFFFF',
                 boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-                display: 'block'
+                display: 'block',
+                pointerEvents: 'none',
+                userSelect: 'none',
+                WebkitUserDrag: 'none'
               }}
             />
             <span
@@ -654,19 +832,24 @@ export default function AIAssistant() {
                 height: '9px',
                 backgroundColor: '#10B981',
                 borderRadius: '50%',
-                border: '1.5px solid #FFFFFF'
+                border: '1.5px solid #FFFFFF',
+                pointerEvents: 'none'
               }}
             />
           </div>
-          <span>AI Assistant</span>
+          <span style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>AI Assistant</span>
         </button>
       )}
 
       {/* Chat Window */}
       {isOpen && (
         <div
-          className="crp-ai-chat-window"
+          className="crp-ai-assistant-container crp-ai-chat-window"
           style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 999,
             width: '380px',
             maxWidth: 'calc(100vw - 32px)',
             height: '560px',
@@ -1036,6 +1219,6 @@ export default function AIAssistant() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
