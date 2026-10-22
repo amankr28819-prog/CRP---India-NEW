@@ -17,7 +17,7 @@ export default function Footer() {
   return (
     <footer style={{ backgroundColor: 'var(--bg-footer)', color: 'var(--text-footer)', borderTop: '1px solid rgba(255, 255, 255, 0.08)', padding: '40px 0 24px 0', fontSize: '0.875rem' }}>
       <div className="container">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '32px', marginBottom: '32px', alignItems: 'start' }}>
+        <div className="footer-grid">
           {/* Section 1: CRP India Branding */}
           <div>
             <img
@@ -90,15 +90,15 @@ export default function Footer() {
               <li>
                 <Link to="/terms" style={{ color: 'var(--text-footer)' }}>Terms of Service</Link>
               </li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', fontSize: '0.8125rem' }}>
-                <Phone size={13} />
+              <li style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', marginTop: '6px', fontSize: '0.8125rem' }}>
+                <Phone size={13} style={{ flexShrink: 0 }} />
                 <span>Toll-Free Helpline: 1800-11-XXXX</span>
               </li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}>
-                <Mail size={13} />
+              <li style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', fontSize: '0.8125rem' }}>
+                <Mail size={13} style={{ flexShrink: 0 }} />
                 <a
                   href="mailto:crpindianew@gmail.com"
-                  style={{ color: 'var(--text-footer)', textDecoration: 'none' }}
+                  style={{ color: 'var(--text-footer)', textDecoration: 'none', wordBreak: 'break-word' }}
                 >
                   crpindianew@gmail.com
                 </a>
@@ -119,6 +119,44 @@ export default function Footer() {
       </div>
 
       <style>{`
+        .footer-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 28px;
+          margin-bottom: 32px;
+          align-items: start;
+        }
+
+        .footer-grid > div {
+          min-width: 0;
+        }
+
+        @media (min-width: 540px) {
+          .footer-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 28px 24px;
+          }
+        }
+
+        @media (min-width: 768px) {
+          .footer-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 20px;
+          }
+        }
+
+        @media (min-width: 900px) {
+          .footer-grid {
+            gap: 24px;
+          }
+        }
+
+        @media (min-width: 1100px) {
+          .footer-grid {
+            gap: 32px;
+          }
+        }
+
         .footer-crp-logo {
           width: 220px;
           max-width: 100%;
