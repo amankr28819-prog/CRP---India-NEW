@@ -196,7 +196,7 @@ export default function AuthorityLogin() {
         {/* Return to Citizen Site */}
         <div style={{ marginTop: '24px', textAlign: 'center' }}>
           <Link to="/home" style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <span>Looking for citizen grievance reporting? Return to Citizen Portal</span>
+            <span>Looking for citizen grievance reporting? Return to Citizen</span>
             <ArrowRight size={13} />
           </Link>
         </div>

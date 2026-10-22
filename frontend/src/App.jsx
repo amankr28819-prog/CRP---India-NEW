@@ -116,7 +116,7 @@ function AppLayout() {
           <Route path="/" element={<RoleSelection />} />
           <Route path="/select-role" element={<RoleSelection />} />
 
-          {/* Citizen Portal */}
+          {/* Citizen */}
           <Route path="/home" element={<Home />} />
           <Route
             path="/dashboard"

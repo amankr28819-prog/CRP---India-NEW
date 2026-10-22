@@ -24,7 +24,7 @@ export default function RoleSelection() {
   const handleSelectRole = (role) => {
     if (role === 'citizen') {
       if (isAuthenticated && isAuthority) {
-        requestPortalSwitch('/home', 'Citizen Portal');
+        requestPortalSwitch('/home', 'Citizen');
         return;
       }
       selectPortal('citizen');
@@ -263,7 +263,7 @@ const boxLeave = (e) => {
             </div>
 
             <div style={{ marginTop: '28px', display: 'flex', alignItems: 'center', gap: '6px', color: '#3B82F6', fontWeight: 600, fontSize: '0.875rem' }}>
-              <span>Enter Citizen Portal</span>
+              <span>Enter Citizen</span>
               <ArrowRight size={16} />
             </div>
           </div>

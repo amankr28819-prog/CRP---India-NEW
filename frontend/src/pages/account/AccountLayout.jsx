@@ -122,7 +122,7 @@ export default function AccountLayout() {
       {/* Top Breadcrumb */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.825rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
         <Link to="/home" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>
-          Citizen Portal
+          Citizen
         </Link>
         <ChevronRight size={14} />
         <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Citizen Account</span>

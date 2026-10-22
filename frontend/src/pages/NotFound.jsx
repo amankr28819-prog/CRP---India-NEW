@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { FileQuestion, ArrowLeft, Home, Shield } from 'lucide-react';
 
@@ -98,7 +98,7 @@ export default function NotFound() {
             }}
           >
             <Home size={18} />
-            <span>Go to Citizen Portal</span>
+            <span>Go to Citizen</span>
           </Link>
 
           <Link

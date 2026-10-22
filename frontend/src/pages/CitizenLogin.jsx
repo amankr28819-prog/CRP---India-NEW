@@ -1574,7 +1574,7 @@ export default function CitizenLogin() {
       <AuthTransition
         isOpen={isTransitioning}
         title="Signing In..."
-        redirectText="Redirecting to Citizen Portal..."
+        redirectText="Redirecting to Citizen..."
         type="login"
       />
     </div>

@@ -110,7 +110,7 @@ export default function Navbar() {
 
   const handleCitizenPortalClick = () => {
     if (isAuthenticated) {
-      requestPortalSwitch('/home', 'Citizen Portal');
+      requestPortalSwitch('/home', 'Citizen');
     } else {
       navigate('/home');
     }
@@ -267,7 +267,7 @@ export default function Navbar() {
               <div className="brand-subtitle citizen-brand-subtitle">
                 <span className="brand-text-platform">Citizen Redressal Platform</span>
                 <span className="brand-text-divider" aria-hidden="true">•</span>
-                <span className="brand-text-portal">Citizen Portal</span>
+                <span className="brand-text-portal">Citizen</span>
               </div>
             )}
           </div>
@@ -337,12 +337,12 @@ export default function Navbar() {
           <div style={{ display: 'none', alignItems: 'center', gap: '10px' }} className="desktop-actions">
             <ThemeToggle />
 
-            {/* Citizen Portal Switcher */}
+            {/* Citizen Switcher */}
             <button
               type="button"
               onClick={handleCitizenPortalClick}
               className="btn btn-secondary btn-sm"
-              title="Switch to Citizen Portal"
+              title="Switch to Citizen"
               style={{
                 borderColor: 'var(--border-subtle)',
                 color: 'var(--text-primary)',
@@ -353,7 +353,7 @@ export default function Navbar() {
               }}
             >
               <Users size={14} style={{ color: 'var(--color-primary)' }} />
-              <span>Citizen Portal</span>
+              <span>Citizen</span>
             </button>
 
             {isAuthenticated ? (
@@ -980,7 +980,7 @@ export default function Navbar() {
                 >
                   <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-subtle)', backgroundColor: 'var(--bg-subtle)' }}>
                     <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 700 }}>
-                      Citizen Portal
+                      Citizen
                     </div>
                     <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginTop: '2px' }}>
                       Information & Resources
@@ -1253,7 +1253,7 @@ export default function Navbar() {
                     style={{ width: '100%', justifyContent: 'center', gap: '8px', fontSize: '0.85rem' }}
                   >
                     <Users size={16} style={{ color: 'var(--color-primary)' }} />
-                    <span>Switch to Citizen Portal</span>
+                    <span>Switch to Citizen</span>
                   </button>
 
                   <button
@@ -1632,7 +1632,7 @@ export default function Navbar() {
                   style={{ width: '100%', borderColor: 'var(--border-subtle)', justifyContent: 'center' }}
                 >
                   <Users size={16} style={{ color: 'var(--color-primary)' }} />
-                  <span>Citizen Portal</span>
+                  <span>Citizen</span>
                 </button>
 
                 {isAuthenticated ? (
@@ -2018,14 +2018,22 @@ export default function Navbar() {
             font-size: 0.78rem !important;
           }
         }
+        @media (max-width: 767px) {
+          .brand-text-platform,
+          .brand-text-divider {
+            display: none !important;
+          }
+          .citizen-brand-subtitle {
+            gap: 0 !important;
+          }
+        }
         @media (max-width: 640px) {
           .navbar-container {
             padding-left: 12px !important;
             padding-right: 12px !important;
           }
           .citizen-brand-subtitle {
-            font-size: 0.7rem !important;
-            gap: 5px !important;
+            font-size: 0.72rem !important;
           }
           .authority-brand-subtitle {
             font-size: 0.72rem !important;
@@ -2049,8 +2057,7 @@ export default function Navbar() {
             white-space: nowrap !important;
           }
           .citizen-brand-subtitle {
-            font-size: 0.6875rem !important;
-            gap: 5px !important;
+            font-size: 0.7rem !important;
             display: flex !important;
             white-space: nowrap !important;
           }
@@ -2076,22 +2083,9 @@ export default function Navbar() {
           .authority-brand-subtitle {
             font-size: 0.65rem !important;
           }
-          .citizen-brand-subtitle {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 1px !important;
-            line-height: 1.15 !important;
-          }
-          .brand-text-divider {
-            display: none !important;
-          }
-          .brand-text-platform {
-            font-size: 0.625rem !important;
-            line-height: 1.15 !important;
-          }
+          .citizen-brand-subtitle,
           .brand-text-portal {
-            font-size: 0.625rem !important;
-            line-height: 1.15 !important;
+            font-size: 0.68rem !important;
           }
           .mobile-controls {
             gap: 4px !important;
@@ -2118,9 +2112,9 @@ export default function Navbar() {
           .authority-brand-subtitle {
             font-size: 0.62rem !important;
           }
-          .brand-text-platform,
+          .citizen-brand-subtitle,
           .brand-text-portal {
-            font-size: 0.58rem !important;
+            font-size: 0.62rem !important;
           }
         }
       `}</style>
