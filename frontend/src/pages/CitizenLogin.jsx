@@ -36,6 +36,12 @@ export default function CitizenLogin() {
   const [loading, setLoading] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  const handleDemoAutofill = () => {
+    setIdentifier('Rohandeshmukh@gmail.com');
+    setPassword('Example@123');
+    setError('');
+  };
+
   // Google Sign-In State & Refs
   const [googleClientId, setGoogleClientId] = useState('');
   const [googleLoaded, setGoogleLoaded] = useState(false);
@@ -538,7 +544,21 @@ export default function CitizenLogin() {
           }}
         >
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <div style={{ width: '42px', height: '42px', borderRadius: '8px', backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto' }}>
+            <div
+              onClick={handleDemoAutofill}
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '8px',
+                backgroundColor: 'var(--color-primary-light)',
+                color: 'var(--color-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 12px auto',
+                cursor: 'pointer'
+              }}
+            >
               <User size={22} />
             </div>
             <h1 style={{ fontSize: '1.45rem', fontWeight: 700, color: 'var(--text-primary)' }}>

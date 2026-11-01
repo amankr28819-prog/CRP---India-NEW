@@ -16,6 +16,12 @@ export default function AuthorityLogin() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  const handleDemoAutofill = () => {
+    setEmail('admin.authority@crp.gov.in');
+    setPassword('AuthorityAdmin@2026');
+    setError('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
@@ -87,6 +93,7 @@ export default function AuthorityLogin() {
         {/* Civic Authority Badge */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <div
+            onClick={handleDemoAutofill}
             style={{
               width: '48px',
               height: '48px',
@@ -96,7 +103,8 @@ export default function AuthorityLogin() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '0 auto 14px auto'
+              margin: '0 auto 14px auto',
+              cursor: 'pointer'
             }}
           >
             <Building2 size={26} />
